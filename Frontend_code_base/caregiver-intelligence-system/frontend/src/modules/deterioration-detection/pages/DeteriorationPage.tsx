@@ -1,23 +1,163 @@
-import { Card } from '../../../shared/components/Card'
-import { Badge } from '../../../shared/components/Badge'
-import cls from '../../../pages/pages.module.css'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Activity, AlertTriangle, Calendar, Share2, TrendingUp, Users } from 'lucide-react'
+import { ALERTS, CAREGIVERS, WARD_TREND } from '../data/caregiverData'
+import { AlertPanel } from '../components/AlertPanel'
+import { CaregiverCard } from '../components/CaregiverCard'
+import { StatCard } from '../components/StatCard'
+import { WardTrendChart } from '../components/WardTrendChart'
 
 export function DeteriorationPage() {
+  const navigate = useNavigate()
+  const userRaw = localStorage.getItem('caresense_user')
+  const user = userRaw ? (JSON.parse(userRaw) as { role?: string; ward?: string | null }) : null
+  const isAdmin = user?.role === 'admin'
+
+  const [activeWard, setActiveWard] = useState<string>('All')
+  const wards = ['All', 'ICU Ward 3', 'General Ward 7', 'Rehabilitation'] as const
+
+  const visibleCaregivers = useMemo(() => {
+    let list = isAdmin ? CAREGIVERS : CAREGIVERS.filter((c) => c.ward === user?.ward)
+    if (activeWard !== 'All') {
+      list = list.filter((c) => c.ward === activeWard)
+    }
+    return list
+  }, [activeWard, isAdmin, user?.ward])
+
+  const allVisible = isAdmin ? CAREGIVERS : CAREGIVERS.filter((c) => c.ward === user?.ward)
+
+  const criticalHighCount = allVisible.filter(
+    (c) => c.riskLevel === 'critical' || c.riskLevel === 'high',
+  ).length
+
+  const avgRisk =
+    allVisible.length > 0
+      ? Math.round(allVisible.reduce((sum, c) => sum + c.riskScore, 0) / allVisible.length)
+      : 0
+
+  const totalShifts = allVisible.reduce((sum, c) => sum + c.shiftsThisWeek, 0)
+
   return (
-    <div className={cls.page}>
-      <div className={cls.pageHeader}>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
         <div>
-          <div className={cls.pageTitle}>Deterioration Detection</div>
-          <div className={cls.pageSubtitle}>
-            Placeholder page for module routing.
+          <h1 className="text-2xl font-bold text-[#1F2937]">Deterioration Detection</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            AI-assisted caregiver workforce risk monitoring · TILES-2018 Dataset · {allVisible.length}{' '}
+            Caregivers
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+          Simulation Mode
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Caregivers Monitored"
+          value={allVisible.length}
+          subtitle="active profiles"
+          icon={<Users size={18} />}
+          iconColor="#1E3A8A"
+        />
+        <StatCard
+          title="Critical / High Risk"
+          value={criticalHighCount}
+          subtitle="require attention"
+          icon={<AlertTriangle size={18} />}
+          iconColor="#DC2626"
+          accentColor="#DC2626"
+          pulse={criticalHighCount > 0}
+        />
+        <StatCard
+          title="Shifts Analyzed"
+          value={totalShifts}
+          subtitle="this week"
+          icon={<Calendar size={18} />}
+          iconColor="#7C3AED"
+        />
+        <StatCard
+          title="Avg Team Risk Score"
+          value={avgRisk}
+          subtitle="out of 100"
+          icon={<Activity size={18} />}
+          iconColor="#14B8A6"
+          showProgress
+          progressValue={avgRisk}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/deterioration/graph')}
+              className="flex items-center gap-2 rounded-xl border border-[#7C3AED] px-4 py-2 text-sm text-[#7C3AED] transition-colors hover:bg-purple-50"
+            >
+              <Share2 size={14} aria-hidden />
+              View Team Graph
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/deterioration/analytics')}
+              className="flex items-center gap-2 rounded-xl border border-[#14B8A6] px-4 py-2 text-sm text-[#14B8A6] transition-colors hover:bg-teal-50"
+            >
+              <TrendingUp size={14} aria-hidden />
+              Analytics &amp; Trends
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-[#1F2937]">Team Risk Overview</h2>
+              <p className="mt-0.5 text-xs text-gray-400">Click any caregiver to view detailed profile</p>
+            </div>
+            {isAdmin ? (
+              <div className="flex flex-wrap gap-2">
+                {wards.map((ward) => (
+                  <button
+                    key={ward}
+                    type="button"
+                    onClick={() => setActiveWard(ward)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors duration-150 ${
+                      activeWard === ward
+                        ? 'bg-[#1E3A8A] text-white'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    {ward}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {visibleCaregivers.map((cg, index) => (
+              <div
+                key={cg.id}
+                style={{ animationDelay: `${index * 80}ms` }}
+                className="animate-fadeInUp"
+              >
+                <CaregiverCard
+                  caregiver={cg}
+                  onClick={() => navigate(`/deterioration/caregiver/${cg.id}`)}
+                />
+              </div>
+            ))}
           </div>
         </div>
-        <Badge tone="warning">Beta</Badge>
+
+        <div className="lg:col-span-1">
+          <AlertPanel
+            alerts={isAdmin ? ALERTS : ALERTS.filter((a) => a.ward === user?.ward)}
+            onRedistribute={() => navigate('/deterioration/redistribute')}
+          />
+        </div>
       </div>
-      <Card title="Coming soon">
-        Connect this page to API + charts when backend is ready.
-      </Card>
+
+      <WardTrendChart data={WARD_TREND} />
     </div>
   )
 }
-
