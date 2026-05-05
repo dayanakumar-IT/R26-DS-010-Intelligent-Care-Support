@@ -5,7 +5,7 @@ import { Icon } from '../../shared/components/Icons'
 import cls from './layout.module.css'
 
 const nav = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard', color: '#1E3A8A' },
+  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard', color: '#1E3A8A' },
   {
     to: '/deterioration',
     label: 'Deterioration Detection',
@@ -43,7 +43,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
                 .filter(Boolean)
                 .join(' ')
             }
-            end={item.to === '/'}
+            end={item.to === '/dashboard'}
           >
             <span className={cls.navIcon}>
               <Icon name={item.icon} />
