@@ -3,6 +3,7 @@ import { MainLayout } from './layout/MainLayout'
 import { Home } from '../pages/Home'
 import { Login } from '../pages/Login'
 import { NotFound } from '../pages/NotFound'
+import { PrivateRoute } from '../components/PrivateRoute'
 import { DeteriorationRoutes } from '../modules/deterioration-detection/routes'
 import { VoiceLogRoutes } from '../modules/voice-log/routes'
 import { FallDetectionRoutes } from '../modules/fall-detection/routes'
@@ -10,14 +11,19 @@ import { SignVitalsRoutes } from '../modules/sign-vitals/routes'
 
 export const router = createBrowserRouter([
   {
-    path: '/login',
+    path: '/',
     element: <Login />,
   },
   {
     path: '/',
-    element: <MainLayout />,
+    element: (
+      <PrivateRoute>
+        <MainLayout />
+      </PrivateRoute>
+    ),
     children: [
-      { index: true, element: <Home /> },
+      { path: 'dashboard', element: <Home /> },
+      { path: 'Home', element: <Navigate to="/dashboard" replace /> },
       ...DeteriorationRoutes,
       ...VoiceLogRoutes,
       ...FallDetectionRoutes,
@@ -25,6 +31,7 @@ export const router = createBrowserRouter([
       { path: '*', element: <NotFound /> },
     ],
   },
-  { path: '*', element: <Navigate to="/" replace /> },
+  { path: '/login', element: <Navigate to="/" replace /> },
+  { path: '*', element: <Navigate to="/dashboard" replace /> },
 ])
 

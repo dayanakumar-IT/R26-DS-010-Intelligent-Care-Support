@@ -1,3 +1,5 @@
+@import 'tailwindcss';
+
 :root {
   --brand-blue: #1e3a8a;
   --brand-purple: #7c3aed;
