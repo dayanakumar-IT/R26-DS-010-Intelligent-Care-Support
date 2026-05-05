@@ -1,0 +1,167 @@
+.authWrap {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(
+      1200px 600px at 20% 10%,
+      color-mix(in oklab, var(--brand-purple) 18%, transparent 82%) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 85% 15%,
+      color-mix(in oklab, var(--brand-blue) 18%, transparent 82%) 0%,
+      transparent 55%
+    ),
+    var(--bg);
+}
+
+.authCard {
+  width: min(420px, 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: color-mix(in oklab, var(--surface) 92%, white 8%);
+  box-shadow: var(--shadow-lg);
+  padding: 18px;
+}
+
+.authBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 14px;
+}
+
+.authLogo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: white;
+  object-fit: cover;
+}
+
+.authTitle {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.authSubtitle {
+  margin-top: 2px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.authForm {
+  display: grid;
+  gap: 12px;
+  padding: 6px 10px 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.field span {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.field input {
+  height: 42px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 12px;
+  outline: none;
+  color: var(--text-strong);
+}
+
+.field input:focus {
+  border-color: color-mix(in oklab, var(--brand-purple) 55%, var(--border) 45%);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--brand-purple) 16%, transparent 84%);
+}
+
+.authHint {
+  font-size: 0.86rem;
+  color: var(--text);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pageTitle {
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.pageSubtitle {
+  margin-top: 4px;
+  color: var(--text);
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.metricRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.metricValue {
+  font-size: 2rem;
+  font-weight: 950;
+  color: var(--text-strong);
+}
+
+.metricLabel {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.center {
+  min-height: 60svh;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .grid3 {
+    grid-template-columns: 1fr;
+  }
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
