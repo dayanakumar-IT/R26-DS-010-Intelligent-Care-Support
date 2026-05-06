@@ -116,12 +116,12 @@ export const PATIENT_HISTORY: Record<string, HistoryEntry[]> = {
 }
 
 export const RISK_TREND_DATA = [
-  { label: '11 May', low: 12, moderate: 6, high: 3, total: 21 },
-  { label: '12 May', low: 11, moderate: 7, high: 4, total: 22 },
-  { label: '13 May', low: 13, moderate: 6, high: 3, total: 22 },
-  { label: '14 May', low: 10, moderate: 8, high: 4, total: 22 },
-  { label: '15 May', low: 11, moderate: 7, high: 5, total: 23 },
-  { label: '16 May', low: 10, moderate: 9, high: 4, total: 23 },
+  { label: '30 Apr', low: 12, moderate: 6, high: 3, total: 21 },
+  { label: '01 May', low: 11, moderate: 7, high: 4, total: 22 },
+  { label: '02 May', low: 13, moderate: 6, high: 3, total: 22 },
+  { label: '03 May', low: 10, moderate: 8, high: 4, total: 22 },
+  { label: '04 May', low: 11, moderate: 7, high: 5, total: 23 },
+  { label: '05 May', low: 10, moderate: 9, high: 4, total: 23 },
   { label: '06 May', low: 11, moderate: 8, high: 5, total: 24 },
 ]
 
@@ -132,4 +132,4 @@ export const POSTURE_DIST = [
   { label: 'Lying',    value: 10, color: '#8B5CF6' },
 ]
 
-export const ALERT_TREND = [2, 3, 1, 4, 3, 5, 6, 4, 5, 8]
+export const ALERT_TREND = [2, 3, 1, 4, 3, 5, 6, 4]

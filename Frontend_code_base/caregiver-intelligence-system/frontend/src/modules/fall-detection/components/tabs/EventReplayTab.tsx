@@ -47,12 +47,44 @@ const CONTRIB: Record<string, string[]> = {
   'Night / Confusion':   ['Reduced visual input (night)', 'Disorientation detected', 'Irregular movement path', 'Slow reaction time'],
 }
 
-// ─── Shared skeleton renderer (reused by main page and modal) ─────────────────
-function SkeletonSVG({ frame, joints, width, height }: {
+// Maps joint names to JOINT_GROUPS index for heatmap coloring.
+const JOINT_GROUP_IDX: Record<string, number> = {
+  head: 0, neck: 0,
+  lShoulder: 1, rShoulder: 1, lElbow: 1, rElbow: 1, lWrist: 1, rWrist: 1,
+  torso: 2,
+  lHip: 3, rHip: 3,
+  lKnee: 4, rKnee: 4,
+  lAnkle: 5, rAnkle: 5,
+}
+
+// Interpolates green (#10B981) → amber (#F59E0B) → red (#EF4444) by instability %.
+function heatColor(pct: number): string {
+  const t = Math.min(1, Math.max(0, (pct - 8) / 74))
+  if (t < 0.5) {
+    const f = t * 2
+    return `rgb(${Math.round(16 + f * 229)},${Math.round(185 - f * 27)},${Math.round(129 - f * 118)})`
+  }
+  const f = (t - 0.5) * 2
+  return `rgb(${Math.round(245 - f * 6)},${Math.round(158 - f * 90)},${Math.round(11 + f * 57)})`
+}
+
+// ─── Shared skeleton renderer ─────────────────────────────────────────────────
+// heatPctMap: when provided, each joint/bone is coloured by its instability %.
+function SkeletonSVG({ frame, joints, width, height, heatPctMap }: {
   frame: Frame
   joints: Record<string, { x: number; y: number }>
   width: number; height: number
+  heatPctMap?: Record<string, number>
 }) {
+  const jc  = (name: string) =>
+    heatPctMap ? heatColor(heatPctMap[name] ?? 10) : (frame.unstable.includes(name) ? frame.stageColor : '#4B5563')
+  const bc  = (a: string, b: string) =>
+    heatPctMap
+      ? heatColor(Math.max(heatPctMap[a] ?? 10, heatPctMap[b] ?? 10))
+      : frame.stageColor
+  const bop = (a: string, b: string) =>
+    heatPctMap ? 0.88 : (frame.unstable.includes(a) || frame.unstable.includes(b) ? 0.95 : 0.35)
+
   return (
     <svg width={width} height={height} viewBox="0 0 100 100">
       <defs>
@@ -66,22 +98,21 @@ function SkeletonSVG({ frame, joints, width, height }: {
       {BONES.map(([a, b]) => {
         const ja = joints[a], jb = joints[b]
         if (!ja || !jb) return null
-        const hot = frame.unstable.includes(a) || frame.unstable.includes(b)
         return (
           <line key={`${a}-${b}`} x1={ja.x} y1={ja.y} x2={jb.x} y2={jb.y}
-            stroke={frame.stageColor} strokeWidth="2.4" strokeLinecap="round"
-            opacity={hot ? 0.95 : 0.35} />
+            stroke={bc(a, b)} strokeWidth="2.4" strokeLinecap="round" opacity={bop(a, b)} />
         )
       })}
       {Object.entries(joints).map(([name, j]) => {
         const unstable = frame.unstable.includes(name)
         const isHead   = name === 'head'
+        const col      = jc(name)
+        const glow     = heatPctMap || unstable
         return (
           <g key={name}>
-            {unstable && <circle cx={j.x} cy={j.y} r={isHead ? 9 : 5} fill={frame.stageColor} opacity="0.2" />}
-            <circle cx={j.x} cy={j.y} r={isHead ? 6.5 : unstable ? 3.8 : 2.6}
-              fill={unstable ? frame.stageColor : '#4B5563'}
-              stroke="#0A0F1A" strokeWidth="1" opacity={unstable ? 1 : 0.72} />
+            {glow && <circle cx={j.x} cy={j.y} r={isHead ? 9 : 5} fill={col} opacity="0.22" />}
+            <circle cx={j.x} cy={j.y} r={isHead ? 6.5 : (glow ? 3.8 : 2.6)}
+              fill={col} stroke="#0A0F1A" strokeWidth="1" opacity={glow ? 1 : 0.72} />
           </g>
         )
       })}
@@ -106,15 +137,16 @@ export function EventReplayTab() {
   const [modalEvent, setModalEvent] = useState<EventRecord | null>(null)
 
   // ── Skeleton animation (modal) ────────────────────────────────────────────
-  const [frameIdx, setFrameIdx] = useState(0)
-  const [playing,  setPlaying]  = useState(false)
-  const [speed,    setSpeed]    = useState(1)
+  const [frameIdx,     setFrameIdx]     = useState(0)
+  const [playing,      setPlaying]      = useState(false)
+  const [speed,        setSpeed]        = useState(1)
+  const [heatmapMode,  setHeatmapMode]  = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const scenario = useMemo(
-    () => getPatientScenario(modalEvent?.patient.id ?? 'P001'),
+    () => getPatientScenario(modalEvent?.patient.id ?? 'P001', modalEvent?.patient.posture),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [modalEvent?.patient.id],
+    [modalEvent?.patient.id, modalEvent?.patient.posture],
   )
   const { frames: currentFrames, category, categoryColor } = scenario
 
@@ -161,13 +193,13 @@ export function EventReplayTab() {
 
   useEffect(() => { setJoints(computeJoints(frame, noiseAmp)) }, [frameIdx]) // eslint-disable-line
 
-  function closeModal() { setModalEvent(null); setPlaying(false) }
+  function closeModal() { setModalEvent(null); setPlaying(false); setHeatmapMode(false) }
 
   // ── Build event list from PATIENT_HISTORY ─────────────────────────────────
   const allEvents = useMemo<EventRecord[]>(() => {
     const out: EventRecord[] = []
     patients.forEach(p => {
-      const ps      = getPatientScenario(p.id)
+      const ps      = getPatientScenario(p.id, p.posture)
       const history = PATIENT_HISTORY[p.id]
       if (history) {
         history.forEach((h, idx) => {
@@ -203,7 +235,20 @@ export function EventReplayTab() {
         })
       }
     })
-    return out.sort((a, b) => b.riskScore - a.riskScore)
+    // Interleave risk groups so High / Moderate / Low events are mixed throughout the list.
+    // Within each group events are ordered by risk score desc.
+    const byRisk = (l: string) => out.filter(e => e.riskLevel === l).sort((a, b) => b.riskScore - a.riskScore)
+    const high = byRisk('High Risk')
+    const mod  = byRisk('Moderate Risk')
+    const low  = byRisk('Low Risk')
+    const mixed: EventRecord[] = []
+    const maxLen = Math.max(high.length, mod.length, low.length)
+    for (let i = 0; i < maxLen; i++) {
+      if (high[i]) mixed.push(high[i])
+      if (mod[i])  mixed.push(mod[i])
+      if (low[i])  mixed.push(low[i])
+    }
+    return mixed
   }, [patients])
 
   const filtered = useMemo(() => allEvents.filter(e => {
@@ -226,11 +271,22 @@ export function EventReplayTab() {
   const stageIdx = Math.max(0, STAGE_JUMPS.findIndex((s, i) =>
     frameIdx >= s.start && (i === STAGE_JUMPS.length - 1 || frameIdx < STAGE_JUMPS[i + 1].start),
   ))
+  // Risk boost: at frame.risk=73 (HIGH) even "stable" joints show amber, not green.
+  // Scales from 0 at risk=30 to ~49 at risk=100, lifting the minimum instability display.
+  const riskBoost = Math.max(0, (frame.risk - 30) / 70) * 49
   const groupInstability = JOINT_GROUPS.map(g => {
     const unstableCt = g.joints.filter(j => frame.unstable.includes(j)).length
     const frac       = unstableCt / g.joints.length
-    return { ...g, pct: Math.round(g.min + frac * (g.max - g.min)) }
+    const base       = g.min + frac * (g.max - g.min)
+    return { ...g, pct: Math.min(g.max, Math.round(base + riskBoost * (1 - frac))) }
   })
+
+  // Per-joint instability % — fed to SkeletonSVG when heatmap mode is active.
+  const heatPctMap: Record<string, number> | undefined = heatmapMode
+    ? Object.fromEntries(
+        Object.keys(joints).map(n => [n, groupInstability[JOINT_GROUP_IDX[n] ?? 0]?.pct ?? 10])
+      )
+    : undefined
 
   // ── Category legend pills ─────────────────────────────────────────────────
   const categories = SCENARIO_CATEGORIES.map((c, i) => ({ label: c, color: SCENARIO_COLORS[i], icon: SCENARIO_ICONS[i] }))
@@ -429,15 +485,43 @@ export function EventReplayTab() {
                   </span>
                 </div>
 
-                {/* Risk score */}
-                <div style={{ position: 'absolute', top: 10, right: 14, textAlign: 'right', zIndex: 2 }}>
+                {/* Risk score — bottom-left (heatmap button occupies top-right) */}
+                <div style={{ position: 'absolute', bottom: 48, left: 14, textAlign: 'left', zIndex: 2 }}>
                   <div style={{ fontSize: 34, fontWeight: 950, color: scoreColor(frame.risk), lineHeight: 1 }}>{frame.risk}</div>
                   <div style={{ fontSize: 11, fontWeight: 800, color: scoreColor(frame.risk), letterSpacing: '0.1em' }}>
                     {frame.risk >= 71 ? 'HIGH' : frame.risk >= 41 ? 'MED' : 'LOW'}
                   </div>
                 </div>
 
-                <SkeletonSVG frame={frame} joints={joints} width={280} height={300} />
+                <SkeletonSVG frame={frame} joints={joints} width={280} height={300} heatPctMap={heatPctMap} />
+
+                {/* Heatmap toggle button */}
+                <button onClick={() => setHeatmapMode(m => !m)}
+                  style={{
+                    position: 'absolute', top: 12, right: 14, zIndex: 3,
+                    padding: '4px 11px', borderRadius: 7, cursor: 'pointer', fontSize: 10, fontWeight: 800,
+                    border: `1px solid ${heatmapMode ? '#10B981' : '#334155'}`,
+                    background: heatmapMode ? 'rgba(16,185,129,0.18)' : 'rgba(30,41,59,0.85)',
+                    color: heatmapMode ? '#10B981' : '#64748B',
+                    letterSpacing: '0.04em', backdropFilter: 'blur(2px)',
+                  }}>
+                  🌡 {heatmapMode ? 'HEAT ON' : 'HEATMAP'}
+                </button>
+
+                {/* Heatmap legend — shown when heatmap mode is active */}
+                {heatmapMode && (
+                  <div style={{ position: 'absolute', right: 14, bottom: 48, zIndex: 3,
+                    display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div style={{ fontSize: 8, color: '#64748B', textAlign: 'right',
+                      fontWeight: 700, letterSpacing: '0.06em', marginBottom: 2 }}>INSTABILITY</div>
+                    {[['High', '#EF4444'], ['Med', '#F59E0B'], ['Low', '#10B981']] .map(([label, col]) => (
+                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: col }}>{label}</span>
+                        <div style={{ width: 18, height: 4, borderRadius: 2, background: col }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Event label */}
                 <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)' }}>

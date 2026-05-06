@@ -20,7 +20,7 @@ function Slider({ value, min, max, color = '#2563EB', onChange }: SliderProps) {
 }
 
 export function SettingsTab() {
-  const [notifs, setNotifs] = useState({ highRisk: true, moderateRisk: true, lowRisk: false, email: true, sound: true, desktop: true })
+  const [notifs, setNotifs] = useState({ highRisk: true, moderateRisk: true, lowRisk: false, email: true, sound: true, vibration: true, desktop: true })
   const [cam, setCam] = useState('USB Camera 01')
   const [fps, setFps] = useState(25)
   const [thresholds, setThresholds] = useState({ low: 40, moderate: 70 })
@@ -92,8 +92,9 @@ export function SettingsTab() {
           { key: 'moderateRisk', label: 'Moderate Risk Alerts',  desc: 'Warnings for moderate risk events',        color: '#F59E0B' },
           { key: 'lowRisk',      label: 'Low Risk Alerts',       desc: 'Informational low-risk notifications',     color: '#14B8A6' },
           { key: 'email',        label: 'Email Notifications',   desc: 'Send alerts to registered email',          color: '#2563EB' },
-          { key: 'sound',        label: 'Sound Alerts',          desc: 'Play audio when alerts trigger',           color: '#7C3AED' },
-          { key: 'desktop',      label: 'Desktop Notifications', desc: 'Browser push notifications',              color: '#1E3A8A' },
+          { key: 'sound',        label: 'Sound Alerts',          desc: 'Play audio on edge device when alert triggers', color: '#7C3AED' },
+          { key: 'vibration',    label: 'Vibration Alerts',      desc: 'Vibrate mobile device for high-risk events', color: '#EF4444' },
+          { key: 'desktop',      label: 'Desktop Notifications', desc: 'Browser push notifications',                  color: '#1E3A8A' },
         ].map(item => (
           <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
             <div>
@@ -192,6 +193,74 @@ export function SettingsTab() {
           <button style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>
             🗑 Clear Cache
           </button>
+        </div>
+      </div>
+
+      {/* Edge Device & Privacy — spans full width */}
+      <div style={{ gridColumn: '1/-1', background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>⚡</span> Edge Device &amp; Privacy
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+
+          {/* Device Status */}
+          <div style={{ background: 'rgba(20,184,166,0.05)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#14B8A6', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Device Status</div>
+            {[
+              { label: 'Processing Mode', value: 'Local Edge',        icon: '⚡', ok: true  },
+              { label: 'Camera',          value: 'USB Camera 01',     icon: '📷', ok: true  },
+              { label: 'AI Model',        value: 'ST-GCN Active',     icon: '🤖', ok: true  },
+              { label: 'Cloud Sync',      value: 'Disabled',          icon: '☁',  ok: false },
+            ].map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 13 }}>{item.icon}</span>
+                <span style={{ flex: 1, fontSize: 12, color: '#374151' }}>{item.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 5,
+                  background: item.ok ? 'rgba(20,184,166,0.1)' : 'rgba(100,116,139,0.1)',
+                  color: item.ok ? '#14B8A6' : '#64748B' }}>
+                  {item.value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Privacy Guarantees */}
+          <div style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.15)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Privacy Guarantees</div>
+            {[
+              'No video data is stored or transmitted',
+              'Skeleton data only — patient identity protected',
+              'All processing happens on local edge device',
+              'No cloud upload — Wi-Fi not required',
+              'Raw frames discarded immediately after pose extraction',
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 7 }}>
+                <span style={{ color: '#2563EB', fontWeight: 900, flexShrink: 0, marginTop: 1 }}>✓</span>
+                <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* System Performance */}
+          <div style={{ background: 'rgba(124,58,237,0.04)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>System Performance</div>
+            {[
+              { label: 'Inference Latency',  value: '~18 ms',   bar: 18,  color: '#14B8A6' },
+              { label: 'Detection FPS',      value: '25 FPS',   bar: 42,  color: '#2563EB' },
+              { label: 'Model Confidence',   value: '≥ 85%',    bar: 85,  color: '#7C3AED' },
+              { label: 'CPU Usage',          value: '34%',      bar: 34,  color: '#F59E0B' },
+            ].map(item => (
+              <div key={item.label} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                  <span style={{ color: '#374151' }}>{item.label}</span>
+                  <span style={{ fontWeight: 700, color: item.color }}>{item.value}</span>
+                </div>
+                <div style={{ height: 4, background: '#E5E7EB', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${item.bar}%`, background: item.color, borderRadius: 2 }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -442,7 +442,7 @@ export function ReportsTab() {
               </div>
               <BarChart data={barData} width={280} height={140} />
               <div style={{ display: 'flex', gap: 10, marginTop: 8, justifyContent: 'center' }}>
-                {[['Low','#16A34A'],['Moderate','#F59E0B'],['High','#EF4444']].map(([l,c]) => (
+                {[['Low','#14B8A6'],['Moderate','#F59E0B'],['High','#EF4444']].map(([l,c]) => (
                   <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
                     <span style={{ fontSize: 10, color: '#6B7280' }}>{l}</span>

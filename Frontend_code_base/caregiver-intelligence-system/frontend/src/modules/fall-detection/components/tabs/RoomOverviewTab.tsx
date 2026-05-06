@@ -14,6 +14,8 @@ export function RoomOverviewTab() {
   const { patients } = useFallStore()
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
   const [selectedRoom, setSelectedRoom]       = useState<string | null>(null)
+  const [tablePage, setTablePage]             = useState(1)
+  const TABLE_PAGE_SIZE = 8
 
   const totalLow  = patients.filter(p => p.riskLevel === 'Low Risk').length
   const totalMod  = patients.filter(p => p.riskLevel === 'Moderate Risk').length
@@ -29,7 +31,10 @@ export function RoomOverviewTab() {
     { label: 'High Risk',     value: totalHigh, color: '#EF4444' },
   ]
   const highRiskPatients = patients.filter(p => p.riskLevel === 'High Risk')
-  const displayPatients  = selectedRoom ? patients.filter(p => p.roomId === selectedRoom) : patients
+  const allDisplayPatients = selectedRoom ? patients.filter(p => p.roomId === selectedRoom) : patients
+  const tablePageCount     = Math.max(1, Math.ceil(allDisplayPatients.length / TABLE_PAGE_SIZE))
+  const safeTablePage      = Math.min(tablePage, tablePageCount)
+  const displayPatients    = allDisplayPatients.slice((safeTablePage - 1) * TABLE_PAGE_SIZE, safeTablePage * TABLE_PAGE_SIZE)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -124,7 +129,7 @@ export function RoomOverviewTab() {
 
           return (
             <div key={room.id}
-              onClick={() => setSelectedRoom(isSelected ? null : room.id)}
+              onClick={() => { setSelectedRoom(isSelected ? null : room.id); setTablePage(1) }}
               style={{
                 background: 'white',
                 border: `1.5px solid ${isSelected ? '#2563EB' : '#E5E7EB'}`,
@@ -302,7 +307,7 @@ export function RoomOverviewTab() {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             {ROOMS.map(r => (
               <button key={r.id}
-                onClick={() => setSelectedRoom(selectedRoom === r.id ? null : r.id)}
+                onClick={() => { setSelectedRoom(selectedRoom === r.id ? null : r.id); setTablePage(1) }}
                 style={{
                   padding: '5px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600,
                   border: '1px solid', borderColor: selectedRoom === r.id ? '#2563EB' : '#E5E7EB',
@@ -368,17 +373,21 @@ export function RoomOverviewTab() {
         {/* Table footer */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAFAFA' }}>
           <span style={{ fontSize: 12, color: '#6B7280' }}>
-            Showing <b style={{ color: '#374151' }}>{displayPatients.length}</b> of <b style={{ color: '#374151' }}>{patients.length}</b> patients
+            Showing <b style={{ color: '#374151' }}>{allDisplayPatients.length === 0 ? 0 : `${(safeTablePage - 1) * TABLE_PAGE_SIZE + 1}–${Math.min(safeTablePage * TABLE_PAGE_SIZE, allDisplayPatients.length)}`}</b> of <b style={{ color: '#374151' }}>{allDisplayPatients.length}</b> patients
           </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[1, 2, 3].map(n => (
-              <button key={n} style={{
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <button onClick={() => setTablePage(p => Math.max(1, p - 1))} disabled={safeTablePage === 1}
+              style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid #E5E7EB', background: 'white', color: safeTablePage === 1 ? '#D1D5DB' : '#374151', fontSize: 12, cursor: safeTablePage === 1 ? 'default' : 'pointer' }}>← Prev</button>
+            {Array.from({ length: tablePageCount }, (_, i) => i + 1).map(n => (
+              <button key={n} onClick={() => setTablePage(n)} style={{
                 width: 30, height: 30, borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600,
-                border: '1px solid', borderColor: n === 1 ? '#2563EB' : '#E5E7EB',
-                background: n === 1 ? '#2563EB' : 'white',
-                color:      n === 1 ? 'white'   : '#374151',
+                border: '1px solid', borderColor: n === safeTablePage ? '#2563EB' : '#E5E7EB',
+                background: n === safeTablePage ? '#2563EB' : 'white',
+                color:      n === safeTablePage ? 'white'   : '#374151',
               }}>{n}</button>
             ))}
+            <button onClick={() => setTablePage(p => Math.min(tablePageCount, p + 1))} disabled={safeTablePage === tablePageCount}
+              style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid #E5E7EB', background: 'white', color: safeTablePage === tablePageCount ? '#D1D5DB' : '#374151', fontSize: 12, cursor: safeTablePage === tablePageCount ? 'default' : 'pointer' }}>Next →</button>
           </div>
         </div>
       </div>

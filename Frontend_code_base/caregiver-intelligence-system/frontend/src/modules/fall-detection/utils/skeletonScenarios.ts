@@ -49,7 +49,6 @@ export const SCENARIO_CATEGORIES = [
 export const SCENARIO_COLORS = ['#7C3AED', '#1E3A8A', '#2563EB', '#14B8A6', '#EF4444', '#475569']
 export const SCENARIO_ICONS  = ['🛏', '🪑', '🚶', '⚖', '⚡', '🌙']
 
-// Normal activity labels per scenario (shown when patient is low risk)
 export const SCENARIO_NORMAL_LABELS = [
   'Resting in bed', 'Seated — stable', 'Walking normally',
   'Standing — stable', 'Normal activity', 'Resting at night',
@@ -68,6 +67,7 @@ export interface Frame {
   stageLabel: string
   stageColor: string
   baseJoints?: Record<string, [number, number]>
+  splitTilt?: boolean
 }
 
 interface PhaseSpec {
@@ -76,6 +76,7 @@ interface PhaseSpec {
   risk: [number, number]; conf: [number, number]; speed: [number, number]
   unstable: string[]
   baseJoints?: Record<string, [number, number]>
+  splitTilt?: boolean
 }
 
 const JN:  string[] = []
@@ -86,9 +87,8 @@ const JT   = ['torso']
 const JHT  = ['lHip', 'rHip', 'torso']
 const JAL  = ['lKnee', 'rKnee', 'lHip', 'rHip', 'torso', 'lAnkle', 'rAnkle', 'lShoulder', 'rShoulder', 'neck']
 
-// ── Scenario-specific base poses ──────────────────────────────────────────────
-// Horizontal figure lying in bed (head left, feet right).
-// At tilt=0° this looks flat; as tilt increases toward 90° the figure naturally rises to standing.
+// ── Base pose definitions ─────────────────────────────────────────────────────
+// Horizontal figure in bed — tilt rotation naturally lifts person to standing as they rise.
 const LYING_JOINTS: Record<string, [number, number]> = {
   head: [14, 50], neck: [24, 50],
   lShoulder: [34, 44], rShoulder: [34, 56],
@@ -99,6 +99,7 @@ const LYING_JOINTS: Record<string, [number, number]> = {
   lKnee: [76, 44], rKnee: [76, 56],
   lAnkle: [88, 44], rAnkle: [88, 56],
 }
+
 // Sitting at bed edge — upright torso, legs hanging down.
 const BED_SITTING_JOINTS: Record<string, [number, number]> = {
   head: [50, 10], neck: [50, 20],
@@ -110,6 +111,7 @@ const BED_SITTING_JOINTS: Record<string, [number, number]> = {
   lKnee: [38, 74], rKnee: [62, 74],
   lAnkle: [36, 90], rAnkle: [64, 90],
 }
+
 // Seated in chair — upright torso, knees bent at 90°.
 const SEATED_JOINTS: Record<string, [number, number]> = {
   head: [50, 8], neck: [50, 18],
@@ -121,59 +123,66 @@ const SEATED_JOINTS: Record<string, [number, number]> = {
   lKnee: [34, 74], rKnee: [66, 74],
   lAnkle: [30, 92], rAnkle: [70, 92],
 }
-// Mid-stride walking — left leg forward, right leg back, arms in counter-swing.
-const WALKING_JOINTS: Record<string, [number, number]> = {
-  head: [49, 9], neck: [49, 19],
-  lShoulder: [35, 27], rShoulder: [64, 27],
-  lElbow: [27, 40], rElbow: [73, 40],
-  lWrist: [21, 53], rWrist: [79, 53],
-  torso: [50, 44],
-  lHip: [43, 56], rHip: [58, 56],
-  lKnee: [46, 69], rKnee: [55, 73],
-  lAnkle: [48, 86], rAnkle: [53, 92],
+
+// Mid-stride walking — arms and legs asymmetric to show movement.
+const WALK_STRIDE_JOINTS: Record<string, [number, number]> = {
+  head: [50, 9],  neck: [50, 21],
+  lShoulder: [35, 29], rShoulder: [65, 29],
+  lElbow: [27, 43],    rElbow: [74, 41],
+  lWrist: [22, 57],    rWrist: [80, 54],
+  torso: [50, 49],
+  lHip: [43, 61],  rHip: [57, 61],
+  lKnee: [40, 75], rKnee: [61, 73],
+  lAnkle: [37, 91], rAnkle: [64, 87],
 }
-// Night shuffling gait — slightly hunched, short slow steps.
-const NIGHT_WALK_JOINTS: Record<string, [number, number]> = {
-  head: [50, 12], neck: [50, 22],
-  lShoulder: [37, 31], rShoulder: [63, 31],
-  lElbow: [31, 44], rElbow: [69, 44],
-  lWrist: [27, 56], rWrist: [73, 56],
-  torso: [50, 48],
-  lHip: [43, 59], rHip: [57, 59],
-  lKnee: [45, 73], rKnee: [56, 75],
-  lAnkle: [44, 89], rAnkle: [57, 91],
+// Mid-rise from chair — torso pitched forward, knees still bent, arms reaching for support.
+const RISING_JOINTS: Record<string, [number, number]> = {
+  head: [54, 13], neck: [53, 23],
+  lShoulder: [40, 31], rShoulder: [67, 29],
+  lElbow: [33, 45], rElbow: [74, 43],
+  lWrist: [29, 58], rWrist: [79, 57],
+  torso: [52, 49],
+  lHip: [42, 60], rHip: [63, 60],
+  lKnee: [40, 75], rKnee: [64, 75],
+  lAnkle: [38, 91], rAnkle: [65, 91],
 }
 
 const SCENARIOS: PhaseSpec[][] = [
   // 0: BED_RISE — waking / getting up from bed
+  // LYING_JOINTS: tilt=0 flat, tilt=45 half-risen, tilt=90 standing — natural bed-rise.
   [
-    { stage:'normal',   stageLabel:'Lying in Bed',        stageColor:'#14B8A6', frames:8,
+    { stage:'normal',   stageLabel:'Rising from Bed',     stageColor:'#14B8A6', frames:8,
       tilt:[20,23], swayX:[0,3],   swayY:[0,-1],  risk:[35,40], conf:[0.92,0.91], speed:[0.08,0.10], unstable:JN,
       baseJoints: LYING_JOINTS },
-    { stage:'early',    stageLabel:'Sitting Up — Unstable', stageColor:'#F59E0B', frames:9,
+    { stage:'early',    stageLabel:'Balance Unstable',     stageColor:'#F59E0B', frames:9,
       tilt:[23,32], swayX:[3,10],  swayY:[-1,-3], risk:[40,60], conf:[0.91,0.84], speed:[0.10,0.24], unstable:JA,
-      baseJoints: BED_SITTING_JOINTS },
+      baseJoints: LYING_JOINTS },
     { stage:'high',     stageLabel:'RISK: Losing Balance', stageColor:'#EF4444', frames:7,
-      tilt:[32,42], swayX:[10,18], swayY:[-3,-6], risk:[60,82], conf:[0.84,0.74], speed:[0.24,0.46], unstable:JL },
-    { stage:'critical', stageLabel:'⚠ NEAR FALL',          stageColor:'#EF4444', frames:6,
-      tilt:[42,46], swayX:[18,24], swayY:[-6,-8], risk:[82,96], conf:[0.74,0.66], speed:[0.46,0.62], unstable:JAL },
-    { stage:'recovery', stageLabel:'Regaining Stability',  stageColor:'#F59E0B', frames:10,
-      tilt:[46,10], swayX:[24,4],  swayY:[-8,0],  risk:[96,55], conf:[0.66,0.88], speed:[0.62,0.16], unstable:JKA,
+      tilt:[32,42], swayX:[10,18], swayY:[-3,-6], risk:[60,82], conf:[0.84,0.74], speed:[0.24,0.46], unstable:JL,
       baseJoints: BED_SITTING_JOINTS },
+    { stage:'critical', stageLabel:'⚠ NEAR FALL',          stageColor:'#EF4444', frames:6,
+      tilt:[42,46], swayX:[18,24], swayY:[-6,-8], risk:[82,96], conf:[0.74,0.66], speed:[0.46,0.62], unstable:JAL,
+      baseJoints: BED_SITTING_JOINTS },
+    { stage:'recovery', stageLabel:'Regaining Stability',  stageColor:'#F59E0B', frames:10,
+      tilt:[46,10], swayX:[24,4],  swayY:[-8,0],  risk:[96,55], conf:[0.66,0.88], speed:[0.62,0.16], unstable:JKA },
   ],
   // 1: CHAIR_STAND — chair-to-stand transfer
+  // SEATED_JOINTS + splitTilt: tilt rotates only the upper body so legs stay visibly
+  // seated (knees bent, feet on floor) while torso/head lean forward — correct chair-rise look.
   [
     { stage:'normal',   stageLabel:'Seated in Chair',        stageColor:'#14B8A6', frames:8,
       tilt:[15,18], swayX:[0,4],   swayY:[0,-1],  risk:[32,38], conf:[0.93,0.92], speed:[0.06,0.09], unstable:JN,
-      baseJoints: SEATED_JOINTS },
+      baseJoints: SEATED_JOINTS, splitTilt: true },
     { stage:'early',    stageLabel:'Rising — Knee Strain',   stageColor:'#F59E0B', frames:9,
       tilt:[18,28], swayX:[4,12],  swayY:[-1,-3], risk:[38,60], conf:[0.92,0.83], speed:[0.09,0.26], unstable:JKA,
-      baseJoints: SEATED_JOINTS },
+      baseJoints: SEATED_JOINTS, splitTilt: true },
     { stage:'high',     stageLabel:'RISK: Transfer Failing',  stageColor:'#EF4444', frames:7,
-      tilt:[28,38], swayX:[12,20], swayY:[-3,-6], risk:[60,80], conf:[0.83,0.74], speed:[0.26,0.46], unstable:JL },
+      tilt:[28,38], swayX:[12,20], swayY:[-3,-6], risk:[60,80], conf:[0.83,0.74], speed:[0.26,0.46], unstable:JL,
+      baseJoints: RISING_JOINTS },
     { stage:'critical', stageLabel:'⚠ FORWARD FALL RISK',    stageColor:'#EF4444', frames:6,
-      tilt:[38,44], swayX:[20,22], swayY:[-6,-8], risk:[80,94], conf:[0.74,0.67], speed:[0.46,0.58], unstable:JAL },
-    { stage:'recovery', stageLabel:'Sitting Back — Stable',  stageColor:'#F59E0B', frames:10,
+      tilt:[38,44], swayX:[20,22], swayY:[-6,-8], risk:[80,94], conf:[0.74,0.67], speed:[0.46,0.58], unstable:JAL,
+      baseJoints: RISING_JOINTS },
+    { stage:'recovery', stageLabel:'Partial Recovery',        stageColor:'#F59E0B', frames:10,
       tilt:[44,12], swayX:[22,5],  swayY:[-8,0],  risk:[94,56], conf:[0.67,0.87], speed:[0.58,0.16], unstable:JKA,
       baseJoints: SEATED_JOINTS },
   ],
@@ -181,19 +190,19 @@ const SCENARIOS: PhaseSpec[][] = [
   [
     { stage:'normal',   stageLabel:'Normal Walking',         stageColor:'#14B8A6', frames:8,
       tilt:[3,5],   swayX:[6,10],  swayY:[0,0],   risk:[30,36], conf:[0.93,0.92], speed:[0.22,0.26], unstable:JN,
-      baseJoints: WALKING_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'early',    stageLabel:'Gait Irregularity',      stageColor:'#F59E0B', frames:9,
       tilt:[5,10],  swayX:[10,16], swayY:[0,-2],  risk:[36,56], conf:[0.92,0.86], speed:[0.26,0.32], unstable:JA,
-      baseJoints: WALKING_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'high',     stageLabel:'RISK: Stumbling',        stageColor:'#EF4444', frames:7,
       tilt:[10,18], swayX:[16,24], swayY:[-2,-5], risk:[56,78], conf:[0.86,0.76], speed:[0.32,0.50], unstable:JKA,
-      baseJoints: WALKING_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'critical', stageLabel:'⚠ BALANCE LOST',         stageColor:'#EF4444', frames:6,
       tilt:[18,24], swayX:[24,28], swayY:[-5,-8], risk:[78,94], conf:[0.76,0.66], speed:[0.50,0.64], unstable:JAL,
-      baseJoints: WALKING_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'recovery', stageLabel:'Stopping & Stabilising', stageColor:'#F59E0B', frames:10,
       tilt:[24,5],  swayX:[28,6],  swayY:[-8,0],  risk:[94,52], conf:[0.66,0.89], speed:[0.64,0.18], unstable:JA,
-      baseJoints: WALKING_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
   ],
   // 3: STANDING_SWAY — prolonged imbalance while standing
   [
@@ -225,19 +234,19 @@ const SCENARIOS: PhaseSpec[][] = [
   [
     { stage:'normal',   stageLabel:'Night Movement Detected', stageColor:'#14B8A6', frames:8,
       tilt:[4,6],   swayX:[3,8],   swayY:[0,-1],  risk:[33,40], conf:[0.88,0.86], speed:[0.10,0.14], unstable:JN,
-      baseJoints: NIGHT_WALK_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'early',    stageLabel:'Disoriented Gait',        stageColor:'#F59E0B', frames:9,
       tilt:[6,12],  swayX:[8,16],  swayY:[-1,-3], risk:[40,60], conf:[0.86,0.80], speed:[0.14,0.28], unstable:JA,
-      baseJoints: NIGHT_WALK_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'high',     stageLabel:'RISK: Confused Movement', stageColor:'#EF4444', frames:7,
       tilt:[12,22], swayX:[16,22], swayY:[-3,-6], risk:[60,80], conf:[0.80,0.71], speed:[0.28,0.46], unstable:JL,
-      baseJoints: NIGHT_WALK_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'critical', stageLabel:'⚠ DISORIENTATION FALL',  stageColor:'#EF4444', frames:6,
       tilt:[22,28], swayX:[22,26], swayY:[-6,-8], risk:[80,94], conf:[0.71,0.64], speed:[0.46,0.60], unstable:JAL,
-      baseJoints: NIGHT_WALK_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
     { stage:'recovery', stageLabel:'Alert Triggered',         stageColor:'#14B8A6', frames:10,
       tilt:[28,6],  swayX:[26,4],  swayY:[-8,0],  risk:[94,50], conf:[0.64,0.84], speed:[0.60,0.16], unstable:JKA,
-      baseJoints: NIGHT_WALK_JOINTS },
+      baseJoints: WALK_STRIDE_JOINTS },
   ],
 ]
 
@@ -263,6 +272,7 @@ export function expandScenario(phases: PhaseSpec[], dir: number): Frame[] {
         stageLabel: phase.stageLabel,
         stageColor: phase.stageColor,
         baseJoints: phase.baseJoints,
+        splitTilt:  phase.splitTilt,
       })
       t += 100
     }
@@ -270,9 +280,19 @@ export function expandScenario(phases: PhaseSpec[], dir: number): Frame[] {
   return frames
 }
 
-export function getPatientScenario(patientId: string) {
+export function getPatientScenario(patientId: string, posture?: string) {
   const num = parseInt(patientId.replace(/\D/g, ''))
-  const sid = num % 6
+  // Map posture to the correct scenario so skeletons are contextually accurate:
+  // Lying → Bed Event, Sitting → Chair Transfer, Walking → Walking Instability,
+  // Standing → cycle among Standing Sway / Sudden Collapse / Night Confused for variety.
+  let sid: number
+  switch (posture) {
+    case 'Lying':    sid = 0; break
+    case 'Sitting':  sid = 1; break
+    case 'Walking':  sid = 2; break
+    case 'Standing': sid = 3 + (num % 3); break  // 3, 4, or 5 — varies per patient
+    default:         sid = num % 6; break
+  }
   const dir = num % 2 === 0 ? 1 : -1
   return {
     frames:        expandScenario(SCENARIOS[sid], dir),
@@ -285,13 +305,12 @@ export function getPatientScenario(patientId: string) {
   }
 }
 
-// Phase boundary frame indices (fixed for all scenarios since phase sizes are constant)
+// Recovery phase removed from display — animation plays through Normal → Early Signs → High Risk → Near-Fall.
 export const STAGE_JUMPS = [
   { label: 'Normal',      start: 0,  color: '#14B8A6' },
   { label: 'Early Signs', start: 8,  color: '#F59E0B' },
   { label: 'High Risk',   start: 17, color: '#EF4444' },
   { label: 'Near-Fall',   start: 24, color: '#EF4444' },
-  { label: 'Recovery',    start: 30, color: '#F59E0B' },
 ]
 
 export const BASE_JOINTS: Record<string, [number, number]> = {
@@ -323,6 +342,11 @@ export const JOINT_LABELS: Record<string, string> = {
   lAnkle:'L.Ankle', rAnkle:'R.Ankle',
 }
 
+// Lower body joints that must stay fixed when splitTilt is active (seated pose).
+// The upper body (head, neck, shoulders, arms, torso) still rotates with tilt so the
+// person looks like they're leaning forward — correct for rising from a chair.
+const LOWER_BODY = new Set(['lHip', 'rHip', 'lKnee', 'rKnee', 'lAnkle', 'rAnkle'])
+
 export function computeJoints(frame: Frame, noise: number): Record<string, { x: number; y: number }> {
   const base = frame.baseJoints ?? BASE_JOINTS
   const tiltRad = (frame.tilt * Math.PI) / 180
@@ -331,8 +355,11 @@ export function computeJoints(frame: Frame, noise: number): Record<string, { x: 
   return Object.fromEntries(
     Object.entries(base).map(([name, [bx, by]]) => {
       const dx = bx - 50, dy = by - 52
-      const rx = dx * Math.cos(tiltRad) - dy * Math.sin(tiltRad)
-      const ry = dx * Math.sin(tiltRad) + dy * Math.cos(tiltRad)
+      // splitTilt: keep legs at their base position so both knees stay at the same
+      // height — prevents the seated figure from looking like a mid-stride walker.
+      const fixedLower = frame.splitTilt && LOWER_BODY.has(name)
+      const rx = fixedLower ? dx : dx * Math.cos(tiltRad) - dy * Math.sin(tiltRad)
+      const ry = fixedLower ? dy : dx * Math.sin(tiltRad) + dy * Math.cos(tiltRad)
       const jitter = (Math.random() - 0.5) * noise
       return [name, { x: hipX + rx + jitter, y: hipY + ry + frame.swayY * 0.2 + jitter }]
     })
@@ -340,7 +367,6 @@ export function computeJoints(frame: Frame, noise: number): Record<string, { x: 
 }
 
 // ─── Per-scenario, per-stage live activity descriptions ──────────────────────
-// Index matches SCENARIOS array (0=Bed Rise, 1=Chair Stand, 2=Walking, 3=Standing Sway, 4=Sudden Collapse, 5=Night Confused)
 export const LIVE_ACTIVITY_DESCRIPTIONS: Record<number, Record<string, string[]>> = {
   0: { // BED_RISE
     normal:   ['Resting in bed — stable', 'Minor position shift', 'Lying still — normal', 'Waking up — calm movement', 'Sitting at bed edge — balanced'],

@@ -452,7 +452,7 @@ export function DashboardTab({ onNavigate }: Props) {
           <table className="w-full text-xs" style={{ minWidth: 800 }}>
             <thead>
               <tr style={{ background: '#F9FAFB' }}>
-                {['Patient ID', 'Name', 'Room', 'Bed', 'Risk Level', 'Score', 'Alert', 'Last Updated', 'Trend (30s)', 'Action'].map(h => (
+                {['Patient ID', 'Name', 'Room', 'Bed', 'Posture', 'Risk Level', 'Score', 'Alert', 'Last Updated', 'Trend (30s)', 'Action'].map(h => (
                   <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: '#94A3B8', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                 ))}
               </tr>
@@ -472,6 +472,14 @@ export function DashboardTab({ onNavigate }: Props) {
                     <td className="px-3 py-2.5 font-semibold" style={{ color: '#1F2937' }}>{p.name}</td>
                     <td className="px-3 py-2.5" style={{ color: '#64748B' }}>{p.room}</td>
                     <td className="px-3 py-2.5" style={{ color: '#64748B' }}>{p.bed}</td>
+                    <td className="px-3 py-2.5">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{
+                        background: p.posture === 'Walking' ? 'rgba(124,58,237,0.08)' : p.posture === 'Standing' ? 'rgba(37,99,235,0.08)' : p.posture === 'Sitting' ? 'rgba(245,158,11,0.08)' : 'rgba(20,184,166,0.08)',
+                        color: p.posture === 'Walking' ? '#7C3AED' : p.posture === 'Standing' ? '#2563EB' : p.posture === 'Sitting' ? '#F59E0B' : '#14B8A6',
+                      }}>
+                        {p.posture === 'Walking' ? '🚶' : p.posture === 'Standing' ? '🧍' : p.posture === 'Sitting' ? '🪑' : '🛏'} {p.posture}
+                      </span>
+                    </td>
                     <td className="px-3 py-2.5">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: riskBg(p.riskLevel), color: rc }}>{p.riskLevel}</span>
                     </td>

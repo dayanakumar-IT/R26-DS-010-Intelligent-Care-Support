@@ -110,6 +110,7 @@ export function PatientDetailPanel({ patient, onClose, onViewLive }: Props) {
 interface SkeletonCanvasProps {
   patientId: string
   riskLevel: string
+  posture?: string
   patientStatus?: string
   size?: number
   showStats?: boolean
@@ -118,10 +119,10 @@ interface SkeletonCanvasProps {
   onFrameChange?: (frame: Frame) => void
 }
 function SkeletonCanvas({
-  patientId, riskLevel, patientStatus = 'Normal', size = 220,
+  patientId, riskLevel, posture, patientStatus = 'Normal', size = 220,
   showStats = false, showStageLabel = true, loop = true, onFrameChange,
 }: SkeletonCanvasProps) {
-  const scenario = useMemo(() => getPatientScenario(patientId), [patientId])
+  const scenario = useMemo(() => getPatientScenario(patientId, posture), [patientId, posture])
 
   // Derive loop window and speed from clinical state.
   // Alert + High Risk  → stuck in Near-Fall zone (17-29): "patient is GOING TO FALL right now"
@@ -242,7 +243,7 @@ function OverviewTab({ patient }: { patient: Patient }) {
   const c   = riskColor(patient.riskLevel)
   const sc  = scoreColor(patient.riskScore)
   const frl = fallRiskLabel(patient.riskScore)
-  const scenario = useMemo(() => getPatientScenario(patient.id), [patient.id])
+  const scenario = useMemo(() => getPatientScenario(patient.id, patient.posture), [patient.id, patient.posture])
 
 
   const infoRows: [string, string, string?][] = [
@@ -324,6 +325,7 @@ function OverviewTab({ patient }: { patient: Patient }) {
             <SkeletonCanvas
               patientId={patient.id}
               riskLevel={patient.riskLevel}
+              posture={patient.posture}
               patientStatus={patient.status}
               size={200}
               showStageLabel={true}
@@ -398,7 +400,7 @@ function LiveViewTab({ patient, onViewLive }: { patient: Patient; onViewLive: (p
   const [currentFrame, setCurrentFrame] = useState<Frame | null>(null)
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const eventRef  = useRef<ReturnType<typeof setTimeout>  | null>(null)
-  const scenario  = useMemo(() => getPatientScenario(patient.id), [patient.id])
+  const scenario  = useMemo(() => getPatientScenario(patient.id, patient.posture), [patient.id, patient.posture])
 
   const c   = scoreColor(liveScore)
   const lvl = liveScore >= 71 ? 'High Risk' : liveScore >= 41 ? 'Moderate Risk' : 'Low Risk'
@@ -496,6 +498,7 @@ function LiveViewTab({ patient, onViewLive }: { patient: Patient; onViewLive: (p
           <SkeletonCanvas
             patientId={patient.id}
             riskLevel={patient.riskLevel}
+            posture={patient.posture}
             patientStatus={patient.status}
             size={200}
             showStageLabel={true}
@@ -833,7 +836,7 @@ function HistoryTab({ patient, history }: {
 
 // ── Replay Tab ────────────────────────────────────────────────────────────────
 function ReplayTab({ patient }: { patient: Patient }) {
-  const scenario = useMemo(() => getPatientScenario(patient.id), [patient.id])
+  const scenario = useMemo(() => getPatientScenario(patient.id, patient.posture), [patient.id, patient.posture])
   const [frameIdx, setFrameIdx] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)

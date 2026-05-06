@@ -14,12 +14,18 @@ export function AlertsRiskTab() {
   const [riskFilter, setRiskFilter] = useState<string>('All')
   const [statusFilter, setStatusFilter] = useState<string>('All')
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 8
 
   const filtered = alerts.filter(a => {
     const riskMatch = riskFilter === 'All' || a.riskLevel === riskFilter
     const statusMatch = statusFilter === 'All' || a.status === statusFilter
     return riskMatch && statusMatch
   })
+
+  const pageCount  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage   = Math.min(page, pageCount)
+  const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const highCount = alerts.filter(a => a.riskLevel === 'High Risk' && a.status !== 'Resolved').length
   const modCount  = alerts.filter(a => a.riskLevel === 'Moderate Risk' && a.status !== 'Resolved').length
@@ -34,7 +40,7 @@ export function AlertsRiskTab() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', whiteSpace: 'nowrap' }}>Risk Level:</span>
           {['All', 'High Risk', 'Moderate Risk', 'Low Risk'].map(opt => (
-            <button key={opt} onClick={() => setRiskFilter(opt)}
+            <button key={opt} onClick={() => { setRiskFilter(opt); setPage(1) }}
               style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #E5E7EB', background: riskFilter === opt ? '#2563EB' : 'white', color: riskFilter === opt ? 'white' : '#374151', fontSize: 12, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
               {opt}
             </button>
@@ -42,13 +48,13 @@ export function AlertsRiskTab() {
           <div style={{ width: 1, height: 20, background: '#E5E7EB', margin: '0 4px' }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Status:</span>
           {['All', 'New', 'Acknowledged', 'Resolved'].map(opt => (
-            <button key={opt} onClick={() => setStatusFilter(opt)}
+            <button key={opt} onClick={() => { setStatusFilter(opt); setPage(1) }}
               style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #E5E7EB', background: statusFilter === opt ? '#1E3A8A' : 'white', color: statusFilter === opt ? 'white' : '#374151', fontSize: 12, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
               {opt}
             </button>
           ))}
           <div style={{ marginLeft: 'auto' }}>
-            <button onClick={() => { setRiskFilter('All'); setStatusFilter('All') }}
+            <button onClick={() => { setRiskFilter('All'); setStatusFilter('All'); setPage(1) }}
               style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #E5E7EB', background: 'white', color: '#374151', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
               Clear Filters
             </button>
@@ -72,7 +78,7 @@ export function AlertsRiskTab() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(a => (
+                {paginated.map(a => (
                   <tr key={a.id} style={{ borderBottom: '1px solid #F3F4F6', cursor: 'pointer', opacity: a.status === 'Resolved' ? 0.5 : 1 }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(37,99,235,0.03)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
@@ -111,10 +117,20 @@ export function AlertsRiskTab() {
               </tbody>
             </table>
           </div>
-          <div style={{ padding: '10px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 6 }}>
-            {[1, 2, 3].map(n => (
-              <button key={n} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #E5E7EB', background: n === 1 ? '#2563EB' : 'white', color: n === 1 ? 'white' : '#374151', fontSize: 12, cursor: 'pointer' }}>{n}</button>
-            ))}
+          <div style={{ padding: '10px 16px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, color: '#94A3B8' }}>
+              {filtered.length === 0 ? '0' : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)}`} of {filtered.length} alerts
+            </span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}
+                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: safePage === 1 ? '#D1D5DB' : '#374151', fontSize: 12, cursor: safePage === 1 ? 'default' : 'pointer' }}>← Prev</button>
+              {Array.from({ length: pageCount }, (_, i) => i + 1).map(n => (
+                <button key={n} onClick={() => setPage(n)}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid', borderColor: n === safePage ? '#2563EB' : '#E5E7EB', background: n === safePage ? '#2563EB' : 'white', color: n === safePage ? 'white' : '#374151', fontSize: 12, cursor: 'pointer' }}>{n}</button>
+              ))}
+              <button onClick={() => setPage(p => Math.min(pageCount, p + 1))} disabled={safePage === pageCount}
+                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: safePage === pageCount ? '#D1D5DB' : '#374151', fontSize: 12, cursor: safePage === pageCount ? 'default' : 'pointer' }}>Next →</button>
+            </div>
           </div>
         </div>
       </div>

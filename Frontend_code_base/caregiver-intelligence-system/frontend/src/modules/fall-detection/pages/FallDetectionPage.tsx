@@ -26,7 +26,7 @@ export function FallDetectionPage() {
   const [showNotifPanel, setShowNotifPanel] = useState(false)
   const [search, setSearch] = useState('')
 
-  const { alerts, startLive, lastUpdate } = useFallStore()
+  const { alerts, patients, startLive, lastUpdate } = useFallStore()
   const newAlertCount = alerts.filter(a => a.status === 'New').length
 
   // Live clock
@@ -190,7 +190,7 @@ export function FallDetectionPage() {
           <span style={{ color: '#64748B' }}>AI Model: <b style={{ color: '#1F2937' }}>ST-GCN Active</b></span>
         </div>
         <span style={{ color: '#64748B' }}>USB Camera 01 &nbsp;·&nbsp; <b style={{ color: '#2563EB' }}>25 FPS</b></span>
-        <span style={{ color: '#64748B' }}>24 patients monitored</span>
+        <span style={{ color: '#64748B' }}>{patients.length} patients monitored</span>
         <span style={{ color: '#64748B' }}>Active alerts: <b style={{ color: '#EF4444' }}>{newAlertCount}</b></span>
         <span className="ml-auto" style={{ color: '#94A3B8' }}>
           Last sync: <b style={{ color: '#1F2937' }}>{lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</b>
