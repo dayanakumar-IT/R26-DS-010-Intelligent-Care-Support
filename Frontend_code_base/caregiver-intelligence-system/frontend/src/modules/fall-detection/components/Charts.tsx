@@ -153,7 +153,7 @@ export function BarChart({ data, width = 340, height = 160 }: BarChartProps) {
         const base = padT + H
         return (
           <g key={i}>
-            <rect x={x} y={base - lowH} width={barW} height={lowH} fill="#16A34A" rx="2" />
+            <rect x={x} y={base - lowH} width={barW} height={lowH} fill="#14B8A6" rx="2" />
             <rect x={x} y={base - lowH - modH} width={barW} height={modH} fill="#F59E0B" rx="2" />
             <rect x={x} y={base - totalH} width={barW} height={hiH} fill="#EF4444" rx="2" />
             <text x={x + barW / 2} y={height - 6} textAnchor="middle" fontSize="9" fill="var(--text)">{d.label}</text>
@@ -187,7 +187,7 @@ interface RiskArcProps { score: number; size?: number }
 
 export function RiskArc({ score, size = 80 }: RiskArcProps) {
   const cx = size / 2, cy = size / 2 + 4, r = size / 2 - 10
-  const color = score >= 71 ? '#EF4444' : score >= 41 ? '#F59E0B' : '#16A34A'
+  const color = score >= 71 ? '#EF4444' : score >= 41 ? '#F59E0B' : '#14B8A6'
   const startAngle = -200, endAngle = 20
   const totalArc = endAngle - startAngle
   const filledArc = (score / 100) * totalArc

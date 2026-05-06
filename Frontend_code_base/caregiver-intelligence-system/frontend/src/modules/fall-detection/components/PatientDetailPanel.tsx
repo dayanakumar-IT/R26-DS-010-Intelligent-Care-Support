@@ -1282,7 +1282,7 @@ function AnalyticsTab({ patient }: { patient: Patient }) {
           <MiniArea data={patient.trend} color={sc} width={260} height={80} />
           <div style={{ display:'flex', gap:12, marginTop:10, flexWrap:'wrap' }}>
             <div style={{ fontSize:11, color:'#6B7280' }}>
-              Min: <b style={{ color:'#16A34A' }}>{Math.min(...patient.trend)}</b>
+              Min: <b style={{ color:'#14B8A6' }}>{Math.min(...patient.trend)}</b>
             </div>
             <div style={{ fontSize:11, color:'#6B7280' }}>
               Max: <b style={{ color:'#EF4444' }}>{Math.max(...patient.trend)}</b>
