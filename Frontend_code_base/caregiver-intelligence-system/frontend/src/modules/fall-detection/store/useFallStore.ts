@@ -19,10 +19,10 @@ function statusFromScore(s: number): PatientStatus {
 }
 
 function liveUpdate(p: Patient): Patient {
-  // High-risk patients drift up slightly; low-risk drift down; moderate fluctuate
-  const bias = p.riskLevel === 'High Risk' ? 0.8 : p.riskLevel === 'Moderate Risk' ? 0.1 : -0.4
-  const noise = (Math.random() - 0.5) * 4
-  const newScore = Math.max(0, Math.min(100, Math.round(p.riskScore + noise + bias)))
+  // Larger noise so scores regularly cross the 41/71 thresholds, producing visible level changes
+  const bias  = p.riskLevel === 'High Risk' ? 1.2 : p.riskLevel === 'Moderate Risk' ? 0.2 : -0.6
+  const noise = (Math.random() - 0.5) * 16
+  const newScore = Math.max(5, Math.min(100, Math.round(p.riskScore + noise + bias)))
   const newTrend = [...p.trend.slice(1), newScore]
   const newConf  = Math.max(0.6, Math.min(0.99, p.confidence + (Math.random() - 0.5) * 0.015))
   const newLevel  = levelFromScore(newScore)
@@ -84,9 +84,9 @@ export const useFallStore = create<FallStore>((set, get) => ({
   tick: () => {
     const { patients, alerts } = get()
 
-    // Update 4-6 random patients per tick
+    // Update 10 random patients per tick for faster visible changes
     const indices = new Set<number>()
-    while (indices.size < 6) indices.add(Math.floor(Math.random() * patients.length))
+    while (indices.size < 10) indices.add(Math.floor(Math.random() * patients.length))
 
     const updatedPatients = patients.map((p, i) => indices.has(i) ? liveUpdate(p) : p)
 

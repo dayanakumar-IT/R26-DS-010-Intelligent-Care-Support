@@ -56,6 +56,16 @@ export const RECORDED_EVENTS: RecordedEvent[] = [
 ]
 
 export const PATIENT_HISTORY: Record<string, HistoryEntry[]> = {
+  P001: [
+    { time: '10:30:40 AM', event: 'Resting in bed — stable',               riskLevel: 'Low Risk',      riskScore: 25, duration: '30:00' },
+    { time: '10:00:00 AM', event: 'Minor position adjustment',              riskLevel: 'Low Risk',      riskScore: 20, duration: '0:30' },
+    { time: '09:45:00 AM', event: 'Woke up — checked position, settled',   riskLevel: 'Low Risk',      riskScore: 30, duration: '1:00' },
+  ],
+  P002: [
+    { time: '10:30:38 AM', event: 'Unstable sit-to-stand transition',       riskLevel: 'Moderate Risk', riskScore: 58, duration: '0:45' },
+    { time: '10:28:00 AM', event: 'Prolonged sitting — slight sway',        riskLevel: 'Moderate Risk', riskScore: 48, duration: '2:00' },
+    { time: '10:25:00 AM', event: 'Stable seated position',                 riskLevel: 'Low Risk',      riskScore: 30, duration: '5:00' },
+  ],
   P003: [
     { time: '10:30:45 AM', event: 'Unstable standing — excessive sway',    riskLevel: 'High Risk',     riskScore: 82, duration: '0:15' },
     { time: '10:29:30 AM', event: 'Rapid posture transition detected',      riskLevel: 'High Risk',     riskScore: 76, duration: '0:22' },
@@ -64,11 +74,44 @@ export const PATIENT_HISTORY: Record<string, HistoryEntry[]> = {
     { time: '10:25:00 AM', event: 'Normal movement — monitoring',           riskLevel: 'Low Risk',      riskScore: 38, duration: '1:20' },
     { time: '10:22:15 AM', event: 'Sitting position maintained',            riskLevel: 'Low Risk',      riskScore: 28, duration: '3:00' },
   ],
+  P005: [
+    { time: '10:30:42 AM', event: 'Excessive body leaning while standing',  riskLevel: 'High Risk',     riskScore: 79, duration: '0:20' },
+    { time: '10:29:20 AM', event: 'Sway escalating — instability detected', riskLevel: 'High Risk',     riskScore: 72, duration: '0:35' },
+    { time: '10:28:00 AM', event: 'Moderate sway while standing',           riskLevel: 'Moderate Risk', riskScore: 58, duration: '0:45' },
+    { time: '10:26:00 AM', event: 'Normal standing position',               riskLevel: 'Low Risk',      riskScore: 35, duration: '2:00' },
+  ],
+  P007: [
+    { time: '10:30:30 AM', event: 'Difficulty standing up from chair',      riskLevel: 'Moderate Risk', riskScore: 55, duration: '0:40' },
+    { time: '10:28:15 AM', event: 'Chair transfer — slight imbalance',      riskLevel: 'Moderate Risk', riskScore: 50, duration: '0:30' },
+    { time: '10:25:00 AM', event: 'Seated — stable, no concern',            riskLevel: 'Low Risk',      riskScore: 32, duration: '5:00' },
+  ],
+  P011: [
+    { time: '10:30:20 AM', event: 'Prolonged sitting with body lean',       riskLevel: 'Moderate Risk', riskScore: 50, duration: '1:00' },
+    { time: '10:28:00 AM', event: 'Minor posture deviation noted',           riskLevel: 'Moderate Risk', riskScore: 44, duration: '0:45' },
+    { time: '10:24:00 AM', event: 'Stable seated position',                 riskLevel: 'Low Risk',      riskScore: 28, duration: '8:00' },
+  ],
+  P012: [
+    { time: '10:30:40 AM', event: 'Slow unstable gait near bed',            riskLevel: 'Moderate Risk', riskScore: 48, duration: '0:35' },
+    { time: '10:28:50 AM', event: 'Posture change — standing to walking',   riskLevel: 'Moderate Risk', riskScore: 44, duration: '0:25' },
+    { time: '10:26:00 AM', event: 'Normal standing — monitoring',           riskLevel: 'Low Risk',      riskScore: 30, duration: '3:00' },
+  ],
   P013: [
     { time: '10:30:43 AM', event: 'Unsteady walking detected',              riskLevel: 'High Risk',     riskScore: 88, duration: '0:08' },
     { time: '10:29:20 AM', event: 'Dragging or weak leg movement',          riskLevel: 'High Risk',     riskScore: 82, duration: '0:18' },
     { time: '10:27:45 AM', event: 'Slow unstable walking',                  riskLevel: 'Moderate Risk', riskScore: 65, duration: '0:45' },
     { time: '10:25:10 AM', event: 'Normal walking pattern',                 riskLevel: 'Low Risk',      riskScore: 34, duration: '2:00' },
+  ],
+  P019: [
+    { time: '10:30:44 AM', event: 'Sudden stumbling — near-fall event',     riskLevel: 'High Risk',     riskScore: 75, duration: '0:12' },
+    { time: '10:29:00 AM', event: 'Abnormal gait — dragging foot',          riskLevel: 'High Risk',     riskScore: 68, duration: '0:30' },
+    { time: '10:27:20 AM', event: 'Losing balance while turning',           riskLevel: 'Moderate Risk', riskScore: 58, duration: '0:20' },
+    { time: '10:25:00 AM', event: 'Slow walking — monitoring',              riskLevel: 'Low Risk',      riskScore: 36, duration: '3:00' },
+  ],
+  P023: [
+    { time: '10:30:46 AM', event: 'Prolonged imbalance while standing',     riskLevel: 'High Risk',     riskScore: 73, duration: '0:18' },
+    { time: '10:29:10 AM', event: 'Repeated balance correction movements',  riskLevel: 'High Risk',     riskScore: 66, duration: '0:25' },
+    { time: '10:27:30 AM', event: 'Standing still but swaying',             riskLevel: 'Moderate Risk', riskScore: 55, duration: '0:40' },
+    { time: '10:25:00 AM', event: 'Standing — stable position',             riskLevel: 'Low Risk',      riskScore: 30, duration: '4:00' },
   ],
 }
 
