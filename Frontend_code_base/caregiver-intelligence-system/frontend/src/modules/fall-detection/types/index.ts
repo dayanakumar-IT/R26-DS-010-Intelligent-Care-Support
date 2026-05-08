@@ -4,6 +4,8 @@ export type PatientStatus = 'Normal' | 'Monitoring' | 'Alert' | 'Recovery'
 export type AlertStatus = 'New' | 'Acknowledged' | 'Resolved'
 export type FallTab = 'dashboard' | 'room-overview' | 'alerts-risk' | 'event-replay' | 'reports' | 'settings'
 export type PatientDetailTab = 'overview' | 'live-view' | 'history' | 'replay' | 'analytics'
+export type PoseQuality = 'Good' | 'Degraded' | 'Unavailable'
+export type ZoneType = 'Bed' | 'Chair' | 'Walking'
 
 export interface Patient {
   id: string
@@ -23,6 +25,11 @@ export interface Patient {
   trendChange: number
   bodyTilt: number
   speed: number
+  poseQuality: PoseQuality
+  zone: ZoneType
+  acceleration: number
+  verticalDrop: number
+  balanceAsymmetry: number
 }
 
 export interface RoomData {

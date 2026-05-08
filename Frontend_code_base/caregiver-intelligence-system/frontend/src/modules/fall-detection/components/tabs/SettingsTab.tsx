@@ -32,12 +32,48 @@ export function SettingsTab() {
   const [saved, setSaved] = useState(false)
   const [pwChange, setPwChange] = useState(false)
 
+  // ── Calibration state ───────────────────────────────────────────────────
+  const [calibRoom, setCalibRoom]         = useState<'Room 01' | 'Room 02'>('Room 01')
+  const [calibrating, setCalibrating]     = useState(false)
+  const [calibProgress, setCalibProgress] = useState(0)
+  const [calibrations, setCalibrations]   = useState<Record<string, { date: string; bed: number; chair: number; walking: number }>>({
+    'Room 01': { date: '03-05-2026 09:14 AM', bed: 28, chair: 22, walking: 50 },
+    'Room 02': { date: '02-05-2026 04:48 PM', bed: 31, chair: 19, walking: 50 },
+  })
+
+  const startCalibration = () => {
+    if (calibrating) return
+    setCalibrating(true); setCalibProgress(0)
+    const t = setInterval(() => {
+      setCalibProgress(p => {
+        if (p >= 100) {
+          clearInterval(t)
+          setCalibrating(false)
+          // Persist a fresh "learned" zone split
+          const rand = (lo: number, hi: number) => Math.round(lo + Math.random() * (hi - lo))
+          const bed = rand(25, 33), chair = rand(18, 25), walking = 100 - bed - chair
+          setCalibrations(c => ({
+            ...c,
+            [calibRoom]: {
+              date: new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\//g, '-'),
+              bed, chair, walking,
+            },
+          }))
+          return 100
+        }
+        return p + 4
+      })
+    }, 80)
+  }
+
   const handleSave = () => {
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
 
   const toggle = (key: keyof typeof notifs) => setNotifs(n => ({ ...n, [key]: !n[key] }))
+
+  const currentCalib = calibrations[calibRoom]
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
@@ -260,6 +296,117 @@ export function SettingsTab() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Room Zone Calibration — spans full width */}
+      <div style={{ gridColumn: '1/-1', background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>🗺</span> Room Zone Calibration
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>Room:</span>
+            {(['Room 01', 'Room 02'] as const).map(r => (
+              <button key={r} onClick={() => setCalibRoom(r)} disabled={calibrating}
+                style={{
+                  padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: calibrating ? 'not-allowed' : 'pointer',
+                  border: '1px solid', borderColor: calibRoom === r ? '#1E3A8A' : '#E5E7EB',
+                  background: calibRoom === r ? '#1E3A8A' : 'transparent',
+                  color: calibRoom === r ? 'white' : '#64748B', opacity: calibrating ? 0.5 : 1,
+                }}>{r}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+          {/* ── Visual layout — learned zones over the room rectangle ──── */}
+          <div style={{ background: 'rgba(30,58,138,0.03)', border: '1px solid rgba(30,58,138,0.12)', borderRadius: 12, padding: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#1E3A8A', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              Learned Zones · {calibRoom}
+            </div>
+            <svg viewBox="0 0 200 120" style={{ width: '100%', height: 160, borderRadius: 8, background: '#F9FAFB', border: '1px dashed #CBD5E1' }}>
+              {/* Camera marker */}
+              <g>
+                <circle cx="100" cy="6" r="3.5" fill="#7C3AED" />
+                <text x="106" y="9" fontSize="6" fill="#7C3AED" fontWeight="700">CAM</text>
+              </g>
+              {/* Bed zone */}
+              <rect x="12" y="22" width="64" height="48" rx="6" fill="rgba(20,184,166,0.18)" stroke="#14B8A6" strokeWidth="1.4" strokeDasharray="3 2" />
+              <text x="44" y="48" fontSize="7" fill="#0F766E" fontWeight="800" textAnchor="middle">🛏 Bed</text>
+              <text x="44" y="58" fontSize="6" fill="#0F766E" textAnchor="middle">{currentCalib.bed}%</text>
+              {/* Chair zone */}
+              <rect x="124" y="22" width="58" height="38" rx="6" fill="rgba(245,158,11,0.18)" stroke="#F59E0B" strokeWidth="1.4" strokeDasharray="3 2" />
+              <text x="153" y="42" fontSize="7" fill="#B45309" fontWeight="800" textAnchor="middle">🪑 Chair</text>
+              <text x="153" y="52" fontSize="6" fill="#B45309" textAnchor="middle">{currentCalib.chair}%</text>
+              {/* Walking zone (the rest, lower band) */}
+              <rect x="12" y="78" width="170" height="32" rx="6" fill="rgba(124,58,237,0.14)" stroke="#7C3AED" strokeWidth="1.4" strokeDasharray="3 2" />
+              <text x="97" y="98" fontSize="7" fill="#5B21B6" fontWeight="800" textAnchor="middle">🚶 Walking · {currentCalib.walking}%</text>
+              {/* Sample trajectory dots — illustrative */}
+              {[
+                [44, 46], [58, 62], [70, 76], [90, 88], [110, 95], [128, 92], [145, 80], [156, 60], [148, 42],
+              ].map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y} r="1.4" fill="#1E3A8A" opacity={0.25 + (i / 10) * 0.6} />
+              ))}
+            </svg>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>
+              <span>Top edge = camera</span>
+              <span>Last calibrated: <b style={{ color: '#374151' }}>{currentCalib.date}</b></span>
+            </div>
+          </div>
+
+          {/* ── Zone breakdown + run-calibration controls ──────────────── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                Zone Distribution (learned)
+              </div>
+              {[
+                { label: 'Bed area',     value: currentCalib.bed,     color: '#14B8A6', icon: '🛏' },
+                { label: 'Chair area',   value: currentCalib.chair,   color: '#F59E0B', icon: '🪑' },
+                { label: 'Walking area', value: currentCalib.walking, color: '#7C3AED', icon: '🚶' },
+              ].map(z => (
+                <div key={z.label} style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                    <span style={{ color: '#374151' }}>{z.icon} {z.label}</span>
+                    <span style={{ fontWeight: 800, color: z.color }}>{z.value}%</span>
+                  </div>
+                  <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${z.value}%`, background: z.color, borderRadius: 3, transition: 'width 0.6s ease' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: 'rgba(124,58,237,0.04)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.5, marginBottom: 10 }}>
+                Calibration passively observes the patient's stationary clusters and walking trajectories
+                for ~5 seconds to learn each zone from data. No manual zone definition required.
+              </div>
+              {calibrating ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 6 }}>
+                    <span style={{ color: '#7C3AED', fontWeight: 700 }}>Calibrating {calibRoom}…</span>
+                    <span style={{ color: '#7C3AED', fontWeight: 800 }}>{calibProgress}%</span>
+                  </div>
+                  <div style={{ height: 8, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${calibProgress}%`, background: 'linear-gradient(90deg,#1E3A8A,#7C3AED)', borderRadius: 4, transition: 'width 0.1s linear' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>
+                    Observing skeletal clusters · do not move the camera
+                  </div>
+                </>
+              ) : (
+                <button onClick={startCalibration}
+                  style={{ width: '100%', padding: '10px', borderRadius: 9, border: 'none',
+                    background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)', color: 'white',
+                    fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                  ▶ Run Calibration for {calibRoom}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

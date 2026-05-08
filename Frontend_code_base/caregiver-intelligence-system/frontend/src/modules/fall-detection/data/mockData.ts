@@ -1,6 +1,35 @@
 import type { Patient, RoomData, FallAlert, RecordedEvent, HistoryEntry } from '../types'
 
-export const PATIENTS: Patient[] = [
+// ── Helpers: derive context from posture (deterministic mock) ────────────────
+const zoneFromPosture = (p: 'Lying' | 'Sitting' | 'Standing' | 'Walking'): 'Bed' | 'Chair' | 'Walking' =>
+  p === 'Lying' ? 'Bed' : p === 'Sitting' ? 'Chair' : 'Walking'
+
+// Pose quality mostly Good; a few Degraded/Unavailable to demo the UI states
+const QUALITY_OVERRIDES: Record<string, 'Degraded' | 'Unavailable'> = {
+  P006: 'Degraded',     // partial occlusion mock
+  P018: 'Unavailable',  // heavy occlusion mock
+}
+
+// Motion dynamics derived from base risk so the panel shows believable values
+const dynamicsFor = (riskScore: number, speed: number) => ({
+  acceleration:     +(0.05 + (riskScore / 100) * 0.95 + speed * 0.4).toFixed(2),    // m/s²
+  verticalDrop:     +((riskScore >= 71 ? 0.18 : riskScore >= 41 ? 0.08 : 0.02) + speed * 0.05).toFixed(2),  // m
+  balanceAsymmetry: Math.round((riskScore >= 71 ? 32 : riskScore >= 41 ? 18 : 6) + (Math.random() * 4)),   // %
+})
+
+type SeedPatient = Omit<Patient, 'poseQuality' | 'zone' | 'acceleration' | 'verticalDrop' | 'balanceAsymmetry'>
+
+const enrich = (p: SeedPatient): Patient => {
+  const dyn = dynamicsFor(p.riskScore, p.speed)
+  return {
+    ...p,
+    poseQuality: QUALITY_OVERRIDES[p.id] ?? 'Good',
+    zone: zoneFromPosture(p.posture),
+    ...dyn,
+  }
+}
+
+const SEED: SeedPatient[] = [
   // Room 01 — 6 Low, 4 Moderate, 2 High
   { id: 'P001', name: 'Patient 01', age: 72, gender: 'Male',   room: 'Room 01', roomId: 'R01', bed: 'Bed 1',  riskLevel: 'Low Risk',      riskScore: 25, posture: 'Lying',    status: 'Normal',     lastUpdated: '10:30:40 AM', confidence: 0.94, trend: [22,24,23,25,24,26,25,27,25,26], trendChange:  1, bodyTilt:  2, speed: 0.00 },
   { id: 'P002', name: 'Patient 02', age: 65, gender: 'Female', room: 'Room 01', roomId: 'R01', bed: 'Bed 2',  riskLevel: 'Moderate Risk', riskScore: 58, posture: 'Sitting',  status: 'Monitoring', lastUpdated: '10:30:38 AM', confidence: 0.87, trend: [50,52,55,53,57,56,58,57,59,58], trendChange:  8, bodyTilt:  8, speed: 0.00 },
@@ -29,6 +58,8 @@ export const PATIENTS: Patient[] = [
   { id: 'P023', name: 'Patient 23', age: 83, gender: 'Male',   room: 'Room 02', roomId: 'R02', bed: 'Bed 11', riskLevel: 'High Risk',     riskScore: 73, posture: 'Standing', status: 'Alert',      lastUpdated: '10:30:46 AM', confidence: 0.81, trend: [56,58,60,62,64,66,68,70,71,73], trendChange: 17, bodyTilt: 16, speed: 0.15 },
   { id: 'P024', name: 'Patient 24', age: 58, gender: 'Female', room: 'Room 02', roomId: 'R02', bed: 'Bed 12', riskLevel: 'Moderate Risk', riskScore: 45, posture: 'Standing', status: 'Monitoring', lastUpdated: '10:30:40 AM', confidence: 0.83, trend: [34,36,38,39,40,41,42,43,44,45], trendChange: 11, bodyTilt:  9, speed: 0.35 },
 ]
+
+export const PATIENTS: Patient[] = SEED.map(enrich)
 
 export const ROOMS: RoomData[] = [
   { id: 'R01', name: 'Room 01', totalBeds: 12, lowRisk: 6, moderateRisk: 4, highRisk: 2, alerts: 3, bedsOccupied: 12, bedsAvailable: 0 },

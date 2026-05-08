@@ -89,8 +89,6 @@ export function SkeletonPose({ posture, riskLevel, animated = true, size = 200 }
     Object.entries(base).map(([k, v]) => [k, { x: addNoise(v.x, amp), y: addNoise(v.y, amp) }])
   )
 
-  const scale = size / 100
-
   return (
     <svg
       width={size} height={size}

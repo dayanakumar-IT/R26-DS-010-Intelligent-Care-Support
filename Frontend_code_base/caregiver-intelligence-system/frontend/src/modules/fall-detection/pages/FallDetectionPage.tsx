@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { FallTab } from '../types'
 import { useFallStore } from '../store/useFallStore'
+import { getStoredUser } from '../../../config/auth'
 import { DashboardTab }    from '../components/tabs/DashboardTab'
 import { RoomOverviewTab } from '../components/tabs/RoomOverviewTab'
 import { AlertsRiskTab }   from '../components/tabs/AlertsRiskTab'
@@ -11,13 +12,13 @@ import { SettingsTab }     from '../components/tabs/SettingsTab'
 // ─── Color palette ────────────────────────────────────────────────────────────
 // #1E3A8A navy  #2563EB blue  #14B8A6 teal  #7C3AED purple  #1F2937 dark  #F3F4F6 light
 
-const TABS: { id: FallTab; label: string; num: number }[] = [
+const TABS: { id: FallTab; label: string; num: number; adminOnly?: boolean }[] = [
   { id: 'dashboard',    label: 'Dashboard',     num: 1 },
   { id: 'room-overview',label: 'Room Overview', num: 2 },
   { id: 'alerts-risk',  label: 'Alerts & Risk', num: 3 },
   { id: 'event-replay', label: 'Event Replay',  num: 4 },
   { id: 'reports',      label: 'Reports',       num: 5 },
-  { id: 'settings',     label: 'Settings',      num: 6 },
+  { id: 'settings',     label: 'Settings',      num: 6, adminOnly: true },
 ]
 
 export function FallDetectionPage() {
@@ -25,9 +26,13 @@ export function FallDetectionPage() {
   const [now, setNow] = useState(new Date())
   const [showNotifPanel, setShowNotifPanel] = useState(false)
   const [search, setSearch] = useState('')
+  const [flashCritical, setFlashCritical] = useState(false)
 
-  const { alerts, patients, startLive, lastUpdate } = useFallStore()
+  const { alerts, patients, startLive, lastUpdate, highAlertCount } = useFallStore()
   const newAlertCount = alerts.filter(a => a.status === 'New').length
+
+  const user = getStoredUser()
+  const visibleTabs = TABS.filter(t => !t.adminOnly || user?.role === 'admin')
 
   // Live clock
   useEffect(() => {
@@ -41,11 +46,39 @@ export function FallDetectionPage() {
     return stop
   }, [startLive])
 
+  // Visual-only flash on new High Risk alert.
+  // Audio cue is intentionally NOT on the supervisor web dashboard — per the
+  // proposal, audio fires from the edge device in the patient's room, and
+  // mobile notifications + vibration go to the caregiver's phone.
+  // The supervisor is monitoring many patients at once and only needs visual cues.
+  const prevHighCount = useRef(highAlertCount)
+  useEffect(() => {
+    if (highAlertCount > prevHighCount.current) {
+      setFlashCritical(true)
+      const t = setTimeout(() => setFlashCritical(false), 1500)
+      prevHighCount.current = highAlertCount
+      return () => clearTimeout(t)
+    }
+    prevHighCount.current = highAlertCount
+  }, [highAlertCount])
+
   const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
 
   return (
-    <div className="flex flex-col min-h-full" style={{ background: '#F3F4F6', fontFamily: 'var(--font-sans)' }}>
+    <div className="flex flex-col min-h-full relative" style={{ background: '#F3F4F6', fontFamily: 'var(--font-sans)' }}>
+
+      {/* ── Critical-alert flash overlay (full-screen pulse) ─────────────── */}
+      {flashCritical && (
+        <div className="fixed inset-0 pointer-events-none z-[200]"
+          style={{
+            background: 'radial-gradient(circle at center, rgba(239,68,68,0.0) 0%, rgba(239,68,68,0.18) 100%)',
+            animation: 'critFlash 1.5s ease-out',
+            boxShadow: 'inset 0 0 0 4px rgba(239,68,68,0.55)',
+          }}>
+          <style>{`@keyframes critFlash { 0% { opacity: 0 } 18% { opacity: 1 } 100% { opacity: 0 } }`}</style>
+        </div>
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header style={{ background: 'white', borderBottom: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -87,12 +120,17 @@ export function FallDetectionPage() {
                 </span>
               )}
             </button>
-            {/* Supervisor */}
+            {/* Logged-in user — role-aware label */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer"
-              style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+              style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
+              title={user ? `${user.name} · ${user.email}` : 'Not signed in'}>
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-black"
-                style={{ background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)' }}>S</div>
-              <span className="text-xs font-semibold" style={{ color: '#374151' }}>Supervisor</span>
+                style={{ background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)' }}>
+                {user?.role === 'admin' ? 'A' : 'S'}
+              </div>
+              <span className="text-xs font-semibold capitalize" style={{ color: '#374151' }}>
+                {user?.role ?? 'Supervisor'}
+              </span>
               <span className="text-xs" style={{ color: '#9CA3AF' }}>▾</span>
             </div>
           </div>
@@ -100,7 +138,7 @@ export function FallDetectionPage() {
 
         {/* Nav tabs */}
         <div className="flex items-center px-5">
-          {TABS.map(tab => {
+          {visibleTabs.map(tab => {
             const active = activeTab === tab.id
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -179,7 +217,14 @@ export function FallDetectionPage() {
         {activeTab === 'alerts-risk'   && <AlertsRiskTab   />}
         {activeTab === 'event-replay'  && <EventReplayTab  />}
         {activeTab === 'reports'       && <ReportsTab      />}
-        {activeTab === 'settings'      && <SettingsTab     />}
+        {activeTab === 'settings'      && (user?.role === 'admin'
+          ? <SettingsTab />
+          : <div className="bg-white rounded-2xl p-10 text-center" style={{ border: '1px solid #E5E7EB' }}>
+              <div className="text-3xl mb-3">🔒</div>
+              <div className="text-sm font-black mb-1" style={{ color: '#1F2937' }}>Admin access required</div>
+              <div className="text-xs" style={{ color: '#6B7280' }}>System Settings are restricted to admin users.</div>
+            </div>
+        )}
       </main>
 
       {/* ── Status bar ────────────────────────────────────────────────── */}

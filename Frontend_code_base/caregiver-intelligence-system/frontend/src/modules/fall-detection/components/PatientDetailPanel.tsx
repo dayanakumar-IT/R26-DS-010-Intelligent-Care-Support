@@ -262,7 +262,16 @@ function OverviewTab({ patient }: { patient: Patient }) {
     ['Last Updated', patient.lastUpdated],
   ]
 
+  // Pose-quality + zone helpers reused across the panel
+  const qStyle = patient.poseQuality === 'Good'        ? { color: '#14B8A6', bg: 'rgba(20,184,166,0.10)', icon: '●' }
+               : patient.poseQuality === 'Degraded'    ? { color: '#F59E0B', bg: 'rgba(245,158,11,0.10)', icon: '◐' }
+               :                                         { color: '#9CA3AF', bg: 'rgba(156,163,175,0.16)', icon: '✕' }
+  const zStyle = patient.zone === 'Bed'   ? { color: '#14B8A6', bg: 'rgba(20,184,166,0.10)', icon: '🛏' }
+               : patient.zone === 'Chair' ? { color: '#F59E0B', bg: 'rgba(245,158,11,0.10)', icon: '🪑' }
+               :                            { color: '#7C3AED', bg: 'rgba(124,58,237,0.10)', icon: '🚶' }
+
   return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:18, alignItems:'start' }}>
 
       {/* ── Left: Patient info ── */}
@@ -290,6 +299,28 @@ function OverviewTab({ patient }: { patient: Patient }) {
 
       {/* ── Right: Skeleton + trend ── */}
       <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+        {/* Context strip — Posture / Zone / Pose Quality */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+          <div style={{ background:'white', borderRadius:12, border:'1px solid #E5E7EB', padding:'10px 12px' }}>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Posture</div>
+            <div style={{ fontSize:13, fontWeight:800, color:'#1F2937' }}>
+              {patient.posture === 'Walking' ? '🚶' : patient.posture === 'Standing' ? '🧍' : patient.posture === 'Sitting' ? '🪑' : '🛏'} {patient.posture}
+            </div>
+          </div>
+          <div style={{ background:'white', borderRadius:12, border:'1px solid #E5E7EB', padding:'10px 12px' }}>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Zone</div>
+            <div style={{ fontSize:13, fontWeight:800, color: zStyle.color }}>
+              {zStyle.icon} {patient.zone}
+            </div>
+          </div>
+          <div style={{ background:'white', borderRadius:12, border:'1px solid #E5E7EB', padding:'10px 12px' }}>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Pose Quality</div>
+            <div style={{ fontSize:13, fontWeight:800, color: qStyle.color }}>
+              {qStyle.icon} {patient.poseQuality}
+            </div>
+          </div>
+        </div>
 
         {/* Skeleton analysis card */}
         <div style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
@@ -388,11 +419,75 @@ function OverviewTab({ patient }: { patient: Patient }) {
         </div>
       </div>
     </div>
+
+    {/* ── Motion Dynamics — full-width contextual panel ─────────────────── */}
+    <div style={{ background:'white', borderRadius:14, border:'1px solid #E5E7EB', overflow:'hidden' }}>
+      <div style={{ padding:'12px 16px', borderBottom:'1px solid #F3F4F6',
+        background:'linear-gradient(90deg,rgba(124,58,237,0.05),transparent)',
+        display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div>
+          <div style={{ fontSize:11, fontWeight:800, color:'#1F2937', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+            Motion Dynamics
+          </div>
+          <div style={{ fontSize:11, color:'#94A3B8', marginTop:2 }}>
+            Derived from skeletal joint motion — speed, drop, tilt, asymmetry
+          </div>
+        </div>
+        <span style={{ fontSize:10, fontWeight:800, padding:'3px 9px', borderRadius:6,
+          background:'rgba(124,58,237,0.12)', color:'#7C3AED' }}>ST-GCN · Edge AI</span>
+      </div>
+
+      {patient.poseQuality === 'Unavailable' ? (
+        <div style={{ padding:'24px', textAlign:'center', background:'rgba(156,163,175,0.05)' }}>
+          <div style={{ fontSize:24, marginBottom:6 }}>⏸</div>
+          <div style={{ fontSize:13, fontWeight:800, color:'#374151', marginBottom:4 }}>Monitoring unavailable</div>
+          <div style={{ fontSize:11, color:'#6B7280' }}>
+            Pose quality is unusable (heavy occlusion or low light). Motion dynamics suppressed.
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding:'14px 16px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10 }}>
+          {(() => {
+            const items = [
+              { label:'Speed',             value:`${patient.speed.toFixed(2)} m/s`, raw: patient.speed,           max: 1.5,  color:'#2563EB', icon:'➡' },
+              { label:'Acceleration',      value:`${patient.acceleration.toFixed(2)} m/s²`, raw: patient.acceleration, max: 2.5, color:'#7C3AED', icon:'⚡' },
+              { label:'Body Tilt',         value:`${patient.bodyTilt}°`,            raw: patient.bodyTilt,        max: 30,   color:'#F59E0B', icon:'⤢' },
+              { label:'Vertical Drop',     value:`${patient.verticalDrop.toFixed(2)} m`, raw: patient.verticalDrop, max: 0.5, color:'#EF4444', icon:'⬇' },
+              { label:'Balance Asymmetry', value:`${patient.balanceAsymmetry}%`,    raw: patient.balanceAsymmetry, max: 60,  color:'#14B8A6', icon:'⚖' },
+            ]
+            return items.map(m => {
+              const pct = Math.min(100, (m.raw / m.max) * 100)
+              return (
+                <div key={m.label} style={{ background:'#F9FAFB', border:'1px solid #F3F4F6', borderRadius:10, padding:'10px 12px' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                      {m.icon} {m.label}
+                    </span>
+                  </div>
+                  <div style={{ fontSize:14, fontWeight:900, color:m.color, marginBottom:6 }}>{m.value}</div>
+                  <div style={{ height:4, background:'#E5E7EB', borderRadius:2, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${pct}%`, background:m.color, borderRadius:2, transition:'width 0.5s ease' }} />
+                  </div>
+                </div>
+              )
+            })
+          })()}
+        </div>
+      )}
+
+      {patient.poseQuality === 'Degraded' && (
+        <div style={{ padding:'8px 16px', background:'rgba(245,158,11,0.06)', borderTop:'1px solid rgba(245,158,11,0.18)',
+          fontSize:11, color:'#B45309', display:'flex', alignItems:'center', gap:6 }}>
+          <span>⚠</span> Pose quality degraded — micro-instability features suppressed and alert threshold raised.
+        </div>
+      )}
+    </div>
+    </div>
   )
 }
 
 // ── Live View Tab ─────────────────────────────────────────────────────────────
-function LiveViewTab({ patient, onViewLive }: { patient: Patient; onViewLive: (p: Patient) => void }) {
+function LiveViewTab({ patient }: { patient: Patient; onViewLive: (p: Patient) => void }) {
   const [liveScore, setLiveScore] = useState(patient.riskScore)
   const [liveConf,  setLiveConf]  = useState(patient.confidence)
   const [liveTrend, setLiveTrend] = useState(patient.trend)

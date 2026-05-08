@@ -1,14 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import type { FallTab, Patient } from '../../types'
 import { useFallStore } from '../../store/useFallStore'
-import { DonutChart, Sparkline, MiniArea } from '../Charts'
+import { DonutChart, Sparkline } from '../Charts'
 import { PatientDetailPanel } from '../PatientDetailPanel'
 
 // ── Palette helpers ─────────────────────────────────────────────────────────
 const riskColor = (l: string) => l === 'High Risk' ? '#EF4444' : l === 'Moderate Risk' ? '#F59E0B' : '#14B8A6'
 const riskBg    = (l: string) => l === 'High Risk' ? 'rgba(239,68,68,0.08)' : l === 'Moderate Risk' ? 'rgba(245,158,11,0.08)' : 'rgba(20,184,166,0.08)'
 const scoreColor = (s: number) => s >= 71 ? '#EF4444' : s >= 41 ? '#F59E0B' : '#14B8A6'
-const statusDot  = (s: string) => s === 'Alert' ? '#EF4444' : s === 'Monitoring' ? '#F59E0B' : s === 'Recovery' ? '#2563EB' : '#14B8A6'
+
+const zoneStyle = (z: string) => z === 'Bed'    ? { color: '#14B8A6', bg: 'rgba(20,184,166,0.08)', icon: '🛏' }
+                              : z === 'Chair'  ? { color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', icon: '🪑' }
+                              :                  { color: '#7C3AED', bg: 'rgba(124,58,237,0.08)', icon: '🚶' }
+
+const qualityStyle = (q: string) => q === 'Good'        ? { color: '#14B8A6', bg: 'rgba(20,184,166,0.10)', icon: '●', label: 'Good' }
+                                  : q === 'Degraded'    ? { color: '#F59E0B', bg: 'rgba(245,158,11,0.10)', icon: '◐', label: 'Degraded' }
+                                  :                       { color: '#9CA3AF', bg: 'rgba(156,163,175,0.14)', icon: '✕', label: 'Unavailable' }
 
 interface Props { onNavigate: (tab: FallTab) => void }
 
@@ -16,7 +23,6 @@ export function DashboardTab({ onNavigate }: Props) {
   const { patients, alerts } = useFallStore()
   const [selected, setSelected]     = useState<Patient | null>(null)
   const [page, setPage]             = useState(1)
-  const [search, setSearch]         = useState('')
   const [alertIdx, setAlertIdx]     = useState(0)
   const [recentAlertIdx, setRecentAlertIdx] = useState(0)
   const [secsSinceUpdate, setSecsSinceUpdate] = useState(0)
@@ -364,6 +370,23 @@ export function DashboardTab({ onNavigate }: Props) {
                   <div className="text-[10px] mt-0.5 font-medium" style={{ color: '#9CA3AF' }}>{p.id} · {p.room} · {p.bed}</div>
                 </div>
 
+                {/* Zone + Quality strip */}
+                <div style={{ minWidth: 108, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {(() => { const z = zoneStyle(p.zone); const q = qualityStyle(p.poseQuality); return (
+                    <>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold inline-flex items-center gap-1"
+                        style={{ background: z.bg, color: z.color, alignSelf: 'flex-start' }}>
+                        {z.icon} {p.zone}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold inline-flex items-center gap-1"
+                        style={{ background: q.bg, color: q.color, alignSelf: 'flex-start' }}
+                        title={p.poseQuality === 'Unavailable' ? 'Monitoring unavailable' : p.poseQuality === 'Degraded' ? 'Pose quality degraded' : 'Pose quality good'}>
+                        {q.icon} {q.label}
+                      </span>
+                    </>
+                  )})()}
+                </div>
+
                 {/* Risk badge */}
                 <div style={{ minWidth: 110 }}>
                   <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1"
@@ -452,7 +475,7 @@ export function DashboardTab({ onNavigate }: Props) {
           <table className="w-full text-xs" style={{ minWidth: 800 }}>
             <thead>
               <tr style={{ background: '#F9FAFB' }}>
-                {['Patient ID', 'Name', 'Room', 'Bed', 'Posture', 'Risk Level', 'Score', 'Alert', 'Last Updated', 'Trend (30s)', 'Action'].map(h => (
+                {['Patient ID', 'Name', 'Room', 'Bed', 'Posture', 'Zone', 'Pose Q', 'Risk Level', 'Score', 'Alert', 'Last Updated', 'Trend (30s)', 'Action'].map(h => (
                   <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: '#94A3B8', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                 ))}
               </tr>
@@ -481,7 +504,30 @@ export function DashboardTab({ onNavigate }: Props) {
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: riskBg(p.riskLevel), color: rc }}>{p.riskLevel}</span>
+                      {(() => { const z = zoneStyle(p.zone); return (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: z.bg, color: z.color }}>
+                          {z.icon} {p.zone}
+                        </span>
+                      )})()}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {(() => { const q = qualityStyle(p.poseQuality); return (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1"
+                          style={{ background: q.bg, color: q.color }}
+                          title={p.poseQuality === 'Unavailable' ? 'Pose quality unusable — monitoring suspended' : p.poseQuality === 'Degraded' ? 'Pose quality degraded — micro-instability features suppressed' : 'Pose quality good'}>
+                          <span>{q.icon}</span>{q.label}
+                        </span>
+                      )})()}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {p.poseQuality === 'Unavailable' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1"
+                          style={{ background: 'rgba(156,163,175,0.16)', color: '#6B7280' }} title="Monitoring unavailable">
+                          ⏸ Unavailable
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: riskBg(p.riskLevel), color: rc }}>{p.riskLevel}</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
