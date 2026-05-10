@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { FallTab } from '../types'
 import { useFallStore } from '../store/useFallStore'
 import { getStoredUser } from '../../../config/auth'
+import { AdminAvatarImg } from '../../../shared/components/AdminAvatar'
 import { DashboardTab }    from '../components/tabs/DashboardTab'
 import { RoomOverviewTab } from '../components/tabs/RoomOverviewTab'
 import { AlertsRiskTab }   from '../components/tabs/AlertsRiskTab'
@@ -124,9 +125,13 @@ export function FallDetectionPage() {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer"
               style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
               title={user ? `${user.name} · ${user.email}` : 'Not signed in'}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-black"
-                style={{ background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)' }}>
-                {user?.role === 'admin' ? 'A' : 'S'}
+              <div className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden text-white text-xs font-black"
+                style={
+                  user?.role === 'admin'
+                    ? { background: 'transparent' }
+                    : { background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)' }
+                }>
+                {user?.role === 'admin' ? <AdminAvatarImg size={24} /> : 'S'}
               </div>
               <span className="text-xs font-semibold capitalize" style={{ color: '#374151' }}>
                 {user?.role ?? 'Supervisor'}
