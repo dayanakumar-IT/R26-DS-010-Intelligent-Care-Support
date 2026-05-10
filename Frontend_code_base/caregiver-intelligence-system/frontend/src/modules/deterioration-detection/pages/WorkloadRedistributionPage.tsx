@@ -72,7 +72,7 @@ export function WorkloadRedistributionPage() {
             <h1 className="text-2xl font-bold text-[#1F2937]">Adaptive Workload Redistribution</h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-              Simulation Mode
+              Hosseini Nurse Dataset
             </span>
           </div>
           <p className="mt-1 text-sm text-gray-500">

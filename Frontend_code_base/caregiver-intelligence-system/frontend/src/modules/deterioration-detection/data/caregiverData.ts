@@ -91,10 +91,10 @@ export const CAREGIVERS: CaregiverProfile[] = [
     wearableHRV: 48,
     consecutiveHighRiskShifts: 4,
     dataSource: 'Multimodal fusion · trajectory CRITICAL ↑↑ · slope +1.86',
-    ward14DayHistory: [
-      63.72, 65.58, 67.44, 69.3, 71.16, 73.02, 74.88, 76.74, 78.6, 80.46, 82.32, 84.18, 86.04, 87.9,
-    ],
-    populationAverage: Array(14).fill(75.81) as number[],
+    ward14DayHistory: Array.from({ length: 19 }, (_, i) =>
+      Number((63.72 + (i * (87.9 - 63.72)) / 18).toFixed(2)),
+    ) as number[],
+    populationAverage: Array(19).fill(75.81) as number[],
   },
   {
     id: 'CG-005',
@@ -126,7 +126,7 @@ export const CAREGIVERS: CaregiverProfile[] = [
     role: 'Staff Nurse',
     shift: 'Day Shift',
     riskScore: 84.3,
-    riskLevel: 'high',
+    riskLevel: 'moderate',
     trend: 'stable',
     baselineScore: 84.11,
     deviationFromBaseline: 0.19,
@@ -136,11 +136,11 @@ export const CAREGIVERS: CaregiverProfile[] = [
     surveyScore: 84,
     wearableHRV: 50,
     consecutiveHighRiskShifts: 0,
-    dataSource: 'Multimodal fusion · trajectory STABLE → · slope +0.03 · >30 days',
-    ward14DayHistory: [
-      83.94, 83.97, 84.0, 84.03, 84.06, 84.09, 84.12, 84.15, 84.18, 84.21, 84.24, 84.27, 84.3, 84.3,
-    ],
-    populationAverage: Array(14).fill(84.11) as number[],
+    dataSource: 'Multimodal fusion · alert NONE · trajectory STABLE → · slope +0.03 · >30 days',
+    ward14DayHistory: Array.from({ length: 7 }, (_, i) =>
+      Number((83.94 + (i * (84.3 - 83.94)) / 6).toFixed(2)),
+    ) as number[],
+    populationAverage: Array(7).fill(84.11) as number[],
   },
   {
     id: 'CG-007',
@@ -160,10 +160,10 @@ export const CAREGIVERS: CaregiverProfile[] = [
     wearableHRV: 52,
     consecutiveHighRiskShifts: 0,
     dataSource: 'Multimodal fusion · trajectory STABLE → · slope +0.51 · threshold ~8 days',
-    ward14DayHistory: [
-      74.47, 74.98, 75.49, 76.0, 76.51, 77.02, 77.53, 78.04, 78.55, 79.06, 79.57, 80.08, 80.59, 81.1,
-    ],
-    populationAverage: Array(14).fill(77.79) as number[],
+    ward14DayHistory: Array.from({ length: 32 }, (_, i) =>
+      Number((74.47 + (i * (81.1 - 74.47)) / 31).toFixed(2)),
+    ) as number[],
+    populationAverage: Array(32).fill(77.79) as number[],
   },
   {
     id: 'CG-008',
@@ -183,10 +183,10 @@ export const CAREGIVERS: CaregiverProfile[] = [
     wearableHRV: 78,
     consecutiveHighRiskShifts: 0,
     dataSource: 'Multimodal fusion · trajectory RECOVERING ↓ · slope -1.77',
-    ward14DayHistory: [
-      60.51, 58.74, 56.97, 55.2, 53.43, 51.66, 49.89, 48.12, 46.35, 44.58, 42.81, 41.04, 39.27, 37.5,
-    ],
-    populationAverage: Array(14).fill(49) as number[],
+    ward14DayHistory: Array.from({ length: 13 }, (_, i) =>
+      Number((60.51 + (i * (37.5 - 60.51)) / 12).toFixed(2)),
+    ) as number[],
+    populationAverage: Array(13).fill(49) as number[],
   },
   {
     id: 'CG-009',
@@ -206,10 +206,10 @@ export const CAREGIVERS: CaregiverProfile[] = [
     wearableHRV: 64,
     consecutiveHighRiskShifts: 0,
     dataSource: 'Multimodal fusion · trajectory STABLE → · slope -0.50',
-    ward14DayHistory: [
-      68.1, 67.6, 67.1, 66.6, 66.1, 65.6, 65.1, 64.6, 64.1, 63.6, 63.1, 62.6, 62.1, 61.6,
-    ],
-    populationAverage: Array(14).fill(64.85) as number[],
+    ward14DayHistory: Array.from({ length: 15 }, (_, i) =>
+      Number((68.1 + (i * (61.6 - 68.1)) / 14).toFixed(2)),
+    ) as number[],
+    populationAverage: Array(15).fill(64.85) as number[],
   },
   {
     id: 'CG-010',
@@ -230,10 +230,10 @@ export const CAREGIVERS: CaregiverProfile[] = [
     consecutiveHighRiskShifts: 0,
     dataSource:
       'F1_phys 0.861 · F1_audio 0.804 · ROC-AUC_audio 0.889 · Macro-F1_3cls 0.305 · Fusion 51.7%/48.3% physio/audio · 15 nurses · 13,287 windows · 1,250h · Global eda_peaks_count SHAP 0.4427 · Burnout threshold 85%',
-    ward14DayHistory: [
-      66.8, 67.1, 67.4, 67.7, 68.0, 68.2, 67.9, 68.3, 68.1, 68.4, 68.0, 68.2, 68.1, 68.2,
-    ],
-    populationAverage: Array(14).fill(67.5) as number[],
+    ward14DayHistory: Array.from({ length: 8 }, (_, i) =>
+      Number((69.4 + (i * (68.2 - 69.4)) / 7).toFixed(2)),
+    ) as number[],
+    populationAverage: Array(8).fill(67.5) as number[],
   },
 ]
 
@@ -245,7 +245,7 @@ export const ALERTS: AlertItem[] = [
     ward: 'ICU Ward 3',
     severity: 'critical',
     message:
-      'Risk score 88.9/100 · HIGH alert · CRITICAL ↑↑ · Already critical · temp_mean SHAP 0.5305',
+      'Risk score 88.9/100 · HIGH alert · CRITICAL ↑↑ · Already critical · top feature temp_mean SHAP 0.5305 · slope +2.73 · 19 days observed',
     timestamp: '30m ago',
   },
   {
@@ -254,7 +254,8 @@ export const ALERTS: AlertItem[] = [
     caregiverName: 'Nurse 94',
     ward: 'ICU Ward 3',
     severity: 'critical',
-    message: 'Risk score 93.1/100 · HIGH alert · CRITICAL ↑↑ · Already critical',
+    message:
+      'Risk score 93.1/100 · HIGH alert · CRITICAL ↑↑ · Already critical · slope +0.58 · 14 days observed',
     timestamp: '4h ago',
   },
   {
@@ -263,7 +264,8 @@ export const ALERTS: AlertItem[] = [
     caregiverName: 'Nurse 6B',
     ward: 'ICU Ward 3',
     severity: 'critical',
-    message: 'Risk score 87.9/100 · HIGH alert · CRITICAL ↑↑ · slope +1.86 vs baseline',
+    message:
+      'Risk score 87.9/100 · HIGH alert · CRITICAL ↑↑ · Already critical · slope +1.86 · 19 days observed',
     timestamp: '3h ago',
   },
   {
@@ -273,7 +275,7 @@ export const ALERTS: AlertItem[] = [
     ward: 'General Ward 7',
     severity: 'moderate',
     message:
-      'Risk score 81.1/100 · alert NONE · STABLE → · slope +0.51 · ~8 days to threshold projection',
+      'Risk score 81.1/100 · alert NONE · STABLE → · slope +0.51 · 8 days to threshold projection · 32 days observed',
     timestamp: '5h ago',
   },
   {

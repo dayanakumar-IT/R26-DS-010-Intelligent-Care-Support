@@ -1,14 +1,12 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { MODALITY_CONTRIBUTION_SUBTITLE } from '../data/caregiverDetailData'
 import type { ModalitySlice } from '../types/deterioration.types'
 
 export function ModalityBreakdown({ slices }: { slices: ModalitySlice[] }) {
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
       <h3 className="font-semibold text-[#1F2937]">Modality contribution</h3>
-      <p className="mt-0.5 text-xs text-gray-400">
-        Normalized share of the composite risk signal by data stream (illustrative split for this
-        prototype)
-      </p>
+      <p className="mt-0.5 text-xs text-gray-400">{MODALITY_CONTRIBUTION_SUBTITLE}</p>
 
       <div className="mt-2 h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">

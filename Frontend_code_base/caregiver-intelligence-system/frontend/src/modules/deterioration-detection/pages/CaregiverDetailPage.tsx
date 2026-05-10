@@ -22,7 +22,7 @@ import { CAREGIVERS } from '../data/caregiverData'
 import {
   buildBaselineSeries,
   getModalitySlices,
-  getShapContributions,
+  getPhysiologicalShapBundle,
   getVoiceLogs,
 } from '../data/caregiverDetailData'
 import { getRiskColor } from '../data/caregiverData'
@@ -52,7 +52,7 @@ export function CaregiverDetailPage() {
     caregiver.ward !== user.ward
 
   const baselineData = caregiver ? buildBaselineSeries(caregiver) : []
-  const shapData = caregiver ? getShapContributions(caregiver) : []
+  const shapBundle = caregiver ? getPhysiologicalShapBundle(caregiver) : null
   const modalitySlices = caregiver ? getModalitySlices(caregiver) : []
   const voiceLogs = caregiver ? getVoiceLogs(caregiver) : []
 
@@ -148,7 +148,7 @@ export function CaregiverDetailPage() {
             {trendDisplay}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-              Simulation Mode
+              Hosseini Nurse Dataset
             </span>
           </div>
         </div>
@@ -244,7 +244,11 @@ export function CaregiverDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <BaselineTrajectoryChart data={baselineData} subjectLabel={caregiver.dataSource} />
-          <ShapExplanationChart contributions={shapData} />
+          <ShapExplanationChart
+            contributions={shapBundle?.contributions ?? []}
+            nurseId={shapBundle?.nurseId ?? ''}
+            nWindows={shapBundle?.nWindows ?? 0}
+          />
         </div>
         <div className="space-y-6 lg:col-span-1">
           <ModalityBreakdown slices={modalitySlices} />

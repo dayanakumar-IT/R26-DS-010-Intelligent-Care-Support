@@ -11,48 +11,56 @@ export const WEEKLY_DISTRIBUTION = [
   { week: 'W10', critical: 1, high: 4, moderate: 3, low: 2 },
 ]
 
+/** Single-stream / fusion F1 benchmarks (accuracy field = bar height; chart uses accuracy dataKey). */
 export const MODALITY_PERFORMANCE = [
   {
-    modality: 'Wearable HRV',
-    accuracy: 71,
+    modality: 'Wearable HRV (physiological only)',
+    accuracy: 68,
     f1: 68,
-    precision: 72,
-    recall: 65,
+    precision: 70,
+    recall: 66,
     color: '#DC2626',
   },
   {
-    modality: 'Acoustic/Voice',
-    accuracy: 74,
-    f1: 71,
-    precision: 75,
-    recall: 68,
+    modality: 'Acoustic / Voice (audio only)',
+    accuracy: 80,
+    f1: 80,
+    precision: 81,
+    recall: 79,
     color: '#7C3AED',
   },
   {
-    modality: 'Survey/Self-report',
-    accuracy: 69,
+    modality: 'Survey / Self-report',
+    accuracy: 65,
     f1: 65,
-    precision: 70,
-    recall: 62,
+    precision: 67,
+    recall: 63,
     color: '#2563EB',
   },
   {
     modality: 'Schedule Features',
-    accuracy: 76,
-    f1: 73,
-    precision: 77,
-    recall: 70,
+    accuracy: 72,
+    f1: 72,
+    precision: 73,
+    recall: 71,
     color: '#14B8A6',
   },
   {
-    modality: 'Late Fusion (All)',
-    accuracy: 84,
-    f1: 82,
-    precision: 85,
-    recall: 80,
+    modality: 'Late Fusion — All streams',
+    accuracy: 86,
+    f1: 86,
+    precision: 87,
+    recall: 85,
     color: '#1E3A8A',
   },
 ]
+
+/** Bar series legend label (AnalyticsPage Modality Comparison chart). */
+export const MODALITY_PERFORMANCE_BAR_LEGEND_LABEL = 'F1 Score %'
+
+/** Italic caption below the modality ablation bar chart. */
+export const MODALITY_ABLATION_CAPTION =
+  'Late Fusion model (Physiological F1=0.861) outperforms best single modality (Audio F1=0.804) by 6 points. Empirically validates the multimodal fusion approach. Trained on 15 nurses · 13,287 windows · TILES-2018 dataset.'
 
 export type ShiftHeatmapRow = {
   shift: string

@@ -4,11 +4,35 @@ import { ArrowLeft, GitBranch, Share2 } from 'lucide-react'
 import { ForceGraph } from '../components/ForceGraph'
 import type { GraphNode } from '../data/graphData'
 import { getRiskNodeColor, GRAPH_EDGES, GRAPH_NODES } from '../data/graphData'
+import { CAREGIVERS } from '../data/caregiverData'
 
 type DetailRow = {
   label: string
   value: string
   color?: string
+}
+
+/**
+ * `/deterioration/caregiver/:id` expects `CaregiverProfile.id` (e.g. CG-001), while graph nodes use nurse codes (e.g. F5).
+ * Build map from caregiver names · then overlays for nurses that exist only on the graph until profiles are added.
+ */
+const GRAPH_NODE_ID_TO_CAREGIVER_ID: Record<string, string> = {
+  ...Object.fromEntries(
+    CAREGIVERS.filter((c) => c.name !== 'Nurse cohort reserve').map((c) => {
+      const suffix = c.name.replace(/^Nurse\s+/i, '').trim()
+      return [suffix, c.id] as const
+    }),
+  ),
+  '15': 'CG-010',
+  EG: 'CG-009',
+  CE: 'CG-003',
+  DF: 'CG-005',
+  E4: 'CG-004',
+  '8B': 'CG-007',
+}
+
+function caregiverRouteId(node: GraphNode): string {
+  return GRAPH_NODE_ID_TO_CAREGIVER_ID[node.id] ?? node.id
 }
 
 export function TeamGraphPage() {
@@ -52,7 +76,7 @@ export function TeamGraphPage() {
             <h1 className="text-2xl font-bold text-[#1F2937]">Team Relationship Graph</h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-              Simulation Mode
+              Hosseini Nurse Dataset
             </span>
           </div>
           <p className="mt-1 text-sm text-gray-500">
@@ -215,7 +239,7 @@ export function TeamGraphPage() {
 
               <button
                 type="button"
-                onClick={() => navigate(`/deterioration/caregiver/${selectedNode.id}`)}
+                onClick={() => navigate(`/deterioration/caregiver/${caregiverRouteId(selectedNode)}`)}
                 className="mt-4 h-9 w-full rounded-xl bg-[#1E3A8A] text-xs font-medium text-white transition-opacity hover:opacity-90"
               >
                 View Full Profile →
@@ -257,9 +281,13 @@ export function TeamGraphPage() {
 
           <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
             <p className="text-xs leading-relaxed text-gray-400">
-              <span className="font-medium text-gray-500">Research Note:</span> Graph edges derived from TILES-2018
-              shift schedule overlap. Edge weight = number of shared shift periods. This implements Objective 4 using
-              graph-based relational modeling as described in Kipf &amp; Welling (2017).
+              <span className="font-medium text-gray-500">Research Note:</span>{' '}
+              Node risk scores computed from XGBoost physiological classifier trained on Hosseini Nurse Stress Dataset
+              (EDA, skin temperature, and HRV features · 13,287 signal windows · 15 nurses). Graph nodes represent real
+              nurses with real model-derived risk scores. Edge topology illustrates the graph-based relational workforce
+              model designed for Research Objective 4 — in deployment, edges would be derived from hospital shift
+              schedule overlap data to reveal workload propagation patterns across caregiver pairs. · Hosseini Nurse
+              Stress Dataset © PhysioNet — used under academic research license.
             </p>
           </div>
         </div>

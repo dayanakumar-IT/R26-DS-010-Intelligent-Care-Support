@@ -13,16 +13,18 @@ import type { BaselineDayPoint } from '../types/deterioration.types'
 
 export function BaselineTrajectoryChart({
   data,
-  subjectLabel,
+  subjectLabel: _subjectLabel,
 }: {
   data: BaselineDayPoint[]
   subjectLabel: string
 }) {
+  const nDays = data.length
+
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-      <h3 className="font-semibold text-[#1F2937]">Personalized Risk Trajectory (14 Days)</h3>
+      <h3 className="font-semibold text-[#1F2937]">Personalized Risk Trajectory</h3>
       <p className="mt-0.5 text-xs text-gray-400">
-        Subject risk index vs. cohort population mean · {subjectLabel}
+        {nDays}-Day Observed Risk Trajectory · Hosseini Nurse Dataset
       </p>
 
       <div className="mt-4 h-[280px] w-full">

@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, AlertTriangle, Calendar, Share2, TrendingUp, Users } from 'lucide-react'
+import {
+  Activity,
+  AlertTriangle,
+  Calendar,
+  LineChart,
+  Share2,
+  TrendingUp,
+  UserCircle,
+  Users,
+} from 'lucide-react'
 import { ALERTS, CAREGIVERS, WARD_TREND } from '../data/caregiverData'
 import { AlertPanel } from '../components/AlertPanel'
 import { CaregiverCard } from '../components/CaregiverCard'
@@ -24,67 +33,53 @@ export function DeteriorationPage() {
     return list
   }, [activeWard, isAdmin, user?.ward])
 
-  const allVisible = isAdmin ? CAREGIVERS : CAREGIVERS.filter((c) => c.ward === user?.ward)
-
-  const criticalHighCount = allVisible.filter(
-    (c) => c.riskLevel === 'critical' || c.riskLevel === 'high',
-  ).length
-
-  const avgRisk =
-    allVisible.length > 0
-      ? Math.round(allVisible.reduce((sum, c) => sum + c.riskScore, 0) / allVisible.length)
-      : 0
-
-  const totalShifts = allVisible.reduce((sum, c) => sum + c.shiftsThisWeek, 0)
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#1F2937]">Deterioration Detection</h1>
           <p className="mt-1 text-sm text-gray-500">
-            AI-assisted caregiver workforce risk monitoring · TILES-2018 Dataset · {allVisible.length}{' '}
-            Caregivers
+            AI-assisted caregiver workforce risk monitoring · Hosseini Nurse Dataset
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-          Simulation Mode
+          Hosseini Nurse Dataset
         </span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Caregivers Monitored"
-          value={allVisible.length}
-          subtitle="active profiles"
+          value={15}
+          subtitle="Hosseini Nurse Dataset"
           icon={<Users size={18} />}
           iconColor="#1E3A8A"
         />
         <StatCard
           title="Critical / High Risk"
-          value={criticalHighCount}
+          value={6}
           subtitle="require attention"
           icon={<AlertTriangle size={18} />}
           iconColor="#DC2626"
           accentColor="#DC2626"
-          pulse={criticalHighCount > 0}
+          pulse
         />
         <StatCard
-          title="Shifts Analyzed"
-          value={totalShifts}
-          subtitle="this week"
+          title="Signal Windows Analyzed"
+          value="13,287"
+          subtitle="5-min EDA/HRV/temp windows · Hosseini dataset"
           icon={<Calendar size={18} />}
           iconColor="#7C3AED"
         />
         <StatCard
           title="Avg Team Risk Score"
-          value={avgRisk}
+          value={76.2}
           subtitle="out of 100"
           icon={<Activity size={18} />}
           iconColor="#14B8A6"
           showProgress
-          progressValue={avgRisk}
+          progressValue={76.2}
         />
       </div>
 
@@ -133,6 +128,20 @@ export function DeteriorationPage() {
             ) : null}
           </div>
 
+          <div className="flex gap-3 rounded-2xl border border-purple-100 bg-purple-50 p-4">
+            <LineChart size={18} className="mt-0.5 shrink-0 text-[#7C3AED]" aria-hidden />
+            <div>
+              <p className="text-sm font-medium text-[#7C3AED]">
+                Research Objective 1 — Multimodal Stress Detection
+              </p>
+              <p className="mt-0.5 text-xs italic leading-relaxed text-purple-800">
+                XGBoost physiological classifier trained on EDA, HRV, and temperature features. Binary F1 = 0.861
+                across 15 nurses · 13,287 signal windows · LOSO cross-validation · eda_peaks_count identified as top
+                stress biomarker (SHAP 0.4427)
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {visibleCaregivers.map((cg, index) => (
               <div
@@ -149,7 +158,20 @@ export function DeteriorationPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="flex flex-col gap-4 lg:col-span-1">
+          <div className="flex gap-3 rounded-2xl border border-teal-100 bg-teal-50 p-4">
+            <UserCircle size={18} className="mt-0.5 shrink-0 text-[#14B8A6]" aria-hidden />
+            <div>
+              <p className="text-sm font-medium text-[#0F766E]">
+                Research Objective 2 — Personalized Baseline Detection
+              </p>
+              <p className="mt-0.5 text-xs italic leading-relaxed text-teal-800">
+                Isolation Forest fitted per nurse on first 7 days of longitudinal data. Detects deviation from
+                individual baseline rather than population threshold — reducing false positives for nurses with
+                naturally elevated physiological profiles.
+              </p>
+            </div>
+          </div>
           <AlertPanel
             alerts={isAdmin ? ALERTS : ALERTS.filter((a) => a.ward === user?.ward)}
             onRedistribute={() => navigate('/deterioration/redistribute')}
