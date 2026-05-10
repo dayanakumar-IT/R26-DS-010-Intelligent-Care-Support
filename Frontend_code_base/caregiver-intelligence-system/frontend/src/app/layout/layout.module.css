@@ -1,9 +1,12 @@
 .shell {
   min-height: 100svh;
+  height: 100svh;
   display: grid;
   grid-template-columns: 290px 1fr;
+  grid-template-rows: 1fr;
   background: var(--bg);
   transition: grid-template-columns 180ms ease;
+  overflow: hidden;
 }
 
 .shellCollapsed {
@@ -11,6 +14,10 @@
 }
 
 .sidebar {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  align-self: stretch;
   border-right: 1px solid var(--border);
   background:
     radial-gradient(900px 460px at 10% 0%, color-mix(in oklab, var(--brand-purple) 14%, transparent 86%) 0%, transparent 60%),
@@ -28,13 +35,22 @@
 
 .brand {
   display: flex;
-  gap: 12px;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 10px;
   border-radius: var(--radius-xl);
   border: 1px solid color-mix(in oklab, var(--border) 70%, var(--brand-purple) 30%);
   background: color-mix(in oklab, var(--surface) 92%, white 8%);
   box-shadow: var(--shadow-sm);
+}
+
+.brandLeft {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
 }
 
 .brandMark {
@@ -174,6 +190,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .topbar {
@@ -185,8 +203,8 @@
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--surface) 80%, transparent 20%);
   backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
+  position: relative;
+  flex-shrink: 0;
   z-index: 5;
 }
 
@@ -208,19 +226,25 @@
 }
 
 .content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 20px;
 }
 
 @media (max-width: 980px) {
   .shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .shellCollapsed {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .sidebar {
-    position: sticky;
-    top: 0;
+    position: relative;
+    height: auto;
+    max-height: min(52vh, 420px);
     z-index: 10;
     border-right: none;
     border-bottom: 1px solid var(--border);
