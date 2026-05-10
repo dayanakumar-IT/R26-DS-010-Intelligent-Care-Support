@@ -1,0 +1,17 @@
+RandomForest baseline — summary
+================================
+Protocol            : Cross-Subject (CS)
+Training            : combined NTU + UR
+Random seed         : 42
+Train samples       : 3121
+Val   samples       : 877
+Test  samples       : 799
+
+Val   accuracy      : 0.8506
+Val   macro F1      : 0.8410
+
+Test  accuracy      : 0.8748
+Test  macro F1      : 0.8618
+Test  high-risk recall : 0.7485
+
+Train CV accuracy   : 0.8731 ± 0.0068  (5-fold)
