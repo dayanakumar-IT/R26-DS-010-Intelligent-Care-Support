@@ -22,7 +22,7 @@ export const router = createBrowserRouter([
       </PrivateRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="dashboard" replace /> },
+      { index: true, element: <Navigate to="deterioration" replace /> },
       { path: 'dashboard', element: <Home /> },
       ...DeteriorationRoutes,
       ...VoiceLogRoutes,
@@ -31,6 +31,6 @@ export const router = createBrowserRouter([
       { path: '*', element: <NotFound /> },
     ],
   },
-  { path: '*', element: <Navigate to="/dashboard" replace /> },
+  { path: '*', element: <Navigate to="/deterioration" replace /> },
 ])
 

@@ -35,7 +35,7 @@ export function Login() {
     const frame = window.setTimeout(() => setShowLeft(true), 60)
     const user = getStoredUser()
     if (user) {
-      navigate('/dashboard', { replace: true })
+      navigate('/deterioration', { replace: true })
     }
     return () => window.clearTimeout(frame)
   }, [navigate])
@@ -79,7 +79,7 @@ export function Login() {
     setSuccess(true)
 
     await new Promise((resolve) => setTimeout(resolve, 800))
-    navigate('/dashboard', { replace: true })
+    navigate('/deterioration', { replace: true })
   }
 
   return (
