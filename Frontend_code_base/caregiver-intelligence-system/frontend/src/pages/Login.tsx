@@ -157,7 +157,7 @@ export function Login() {
           <p className="mt-2 text-sm">TILES-2018 Dataset · 212 Healthcare Workers · 10-Week Study</p>
           <div className="mt-3 inline-flex items-center gap-2 text-xs text-white/90">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
-            Simulation Mode Active
+            Hosseini Nurse Dataset Active
           </div>
         </div>
       </div>
