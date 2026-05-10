@@ -10,6 +10,8 @@ import { TopNavTabs } from './TopNavTabs'
 import '../styles/voice-log.css'
 import { api } from '../../../shared/services/api'
 import { usePolling } from '../../../shared/hooks/usePolling'
+import { getStoredUser } from '../../../config/auth'
+import { AdminAvatarImg } from '../../../shared/components/AdminAvatar'
 
 export type DesignMode = 'classic' | 'soft' | 'compact'
 
@@ -82,7 +84,9 @@ export function VoiceLogLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state])
 
-  const currentUser = useMemo(() => ({ name: 'Admin', gender: 'Female' as const }), [])
+  const sessionUser = getStoredUser()
+  const displayUserName = sessionUser?.name?.trim() || 'CareSense User'
+  const isAdmin = sessionUser?.role === 'admin'
 
   const ctx: VoiceLogUIState = useMemo(
     () => ({
@@ -133,12 +137,12 @@ export function VoiceLogLayout() {
             boxShadow: '0 2px 14px rgba(15,23,42,0.04)',
           }}
         >
-          {/* gradient accent line at the very top */}
+          {/* thin top accent bar */}
           <div
             aria-hidden
             style={{
               height: 3,
-              background: 'linear-gradient(90deg,#7C3AED 0%,#1E3A8A 55%,#14B8A6 100%)',
+              background: '#ffffff',
             }}
           />
           <div className="vl-container" style={{ paddingBottom: 0 }}>
@@ -253,8 +257,12 @@ export function VoiceLogLayout() {
 
                 <Button className="vl-btn" variant="ghost" onClick={() => navigate('/voice-log/settings')}>
                   <span className="inline-flex items-center gap-2">
-                    <PatientAvatar name={currentUser.name} gender={currentUser.gender} size={34} />
-                    <span className="hidden text-sm font-semibold md:inline">{currentUser.name}</span>
+                    {isAdmin ? (
+                      <AdminAvatarImg size={34} />
+                    ) : (
+                      <PatientAvatar name={displayUserName} gender="Female" size={34} />
+                    )}
+                    <span className="hidden text-sm font-semibold md:inline">{displayUserName}</span>
                     <ChevronDown size={16} />
                   </span>
                 </Button>
