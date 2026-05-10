@@ -90,11 +90,24 @@
 }
 
 .cardTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--surface) 92%, var(--brand-blue) 8%);
   font-weight: 700;
   color: var(--text-strong);
+}
+
+.cardTitleMain {
+  min-width: 0;
+}
+
+.cardTitleAside {
+  flex-shrink: 0;
+  font-weight: 600;
 }
 
 .cardBody {
