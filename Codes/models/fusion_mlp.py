@@ -499,9 +499,19 @@ def write_comparison(test_acc_fusion, test_macro_f1_fusion, hr_fusion):
                     pass
         return out
 
-    rf_summary = parse_summary(
-        Path(__file__).resolve().parent / "baseline_results" / "summary.txt"
-    )
+    # Pick the protocol-specific sibling folders so the comparison
+    # table actually compares apples-to-apples within one protocol.
+    if _PROTOCOL == "cv":
+        rf_dir = Path(__file__).resolve().parent / "baseline_results_cv"
+        stgcn_dir = Path(__file__).resolve().parent / "stgcn_results_cv"
+    elif _PROTOCOL == "cd_ntu2ur":
+        rf_dir = Path(__file__).resolve().parent / "baseline_results"
+        stgcn_dir = Path(__file__).resolve().parent / "stgcn_results_cd_ntu2ur"
+    else:
+        rf_dir = Path(__file__).resolve().parent / "baseline_results"
+        stgcn_dir = Path(__file__).resolve().parent / "stgcn_results"
+
+    rf_summary = parse_summary(rf_dir / "summary.txt")
     rows.append({
         "model": "Baseline RandomForest (18 motion features)",
         "test_accuracy": rf_summary.get("test_accuracy"),
@@ -510,10 +520,7 @@ def write_comparison(test_acc_fusion, test_macro_f1_fusion, hr_fusion):
     })
 
     # ST-GCN — read its test_classification_report.json for headline
-    stgcn_report = (
-        Path(__file__).resolve().parent / "stgcn_results"
-        / "test_classification_report.json"
-    )
+    stgcn_report = stgcn_dir / "test_classification_report.json"
     stgcn_acc, stgcn_macro = None, None
     stgcn_hr = None
     if stgcn_report.exists():

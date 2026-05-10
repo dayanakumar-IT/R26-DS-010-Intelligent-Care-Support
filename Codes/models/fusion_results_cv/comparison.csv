@@ -1,0 +1,4 @@
+model,test_accuracy,test_macro_f1,high_risk_recall
+Baseline RandomForest (18 motion features),0.9091,0.8995,0.8291
+"ST-GCN (3M params, 14-joint skeleton)",0.8888888888888888,0.8767412110992491,0.8829113924050633
+Fusion MLP (ST-GCN + RF + features),0.9407,0.9346,0.9019
