@@ -229,7 +229,7 @@ export const CAREGIVERS: CaregiverProfile[] = [
     wearableHRV: 60,
     consecutiveHighRiskShifts: 0,
     dataSource:
-      'F1_phys 0.861 · F1_audio 0.804 · ROC-AUC_audio 0.889 · Macro-F1_3cls 0.305 · Fusion 51.7%/48.3% physio/audio · 15 nurses · 13287 windows · 1250h · Global eda_peaks_count SHAP 0.4427 · Burnout threshold 85',
+      'F1_phys 0.861 · F1_audio 0.804 · ROC-AUC_audio 0.889 · Macro-F1_3cls 0.305 · Fusion 51.7%/48.3% physio/audio · 15 nurses · 13,287 windows · 1,250h · Global eda_peaks_count SHAP 0.4427 · Burnout threshold 85%',
     ward14DayHistory: [
       66.8, 67.1, 67.4, 67.7, 68.0, 68.2, 67.9, 68.3, 68.1, 68.4, 68.0, 68.2, 68.1, 68.2,
     ],
