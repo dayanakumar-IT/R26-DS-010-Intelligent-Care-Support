@@ -1,0 +1,173 @@
+/* Premium semi-3D caregiver — consistent character across Sign & Vitals */
+.root {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  filter: drop-shadow(0 12px 28px rgba(91, 33, 182, 0.12));
+}
+
+.side .svg {
+  transform: perspective(520px) rotateY(-14deg) scaleX(0.94);
+  transform-origin: center bottom;
+}
+
+/* Motion arcs near active hand */
+.arc {
+  fill: none;
+  stroke: rgba(124, 58, 237, 0.35);
+  stroke-width: 2;
+  stroke-dasharray: 6 9;
+  opacity: 0.9;
+}
+
+.arcAnim {
+  animation: arcDash 2.2s linear infinite;
+}
+
+@keyframes arcDash {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+.handGlow {
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.45));
+}
+
+/* Right arm / hand motion per pose */
+.armR {
+  transform-origin: 118px 132px;
+  transition: transform 0.45s ease;
+}
+
+.slow .armR {
+  animation-duration: 2.8s !important;
+}
+
+.poseNeutral .armR {
+  animation: none;
+  transform: rotate(4deg);
+}
+
+.poseRaisedHand .armR,
+.poseHelp .armR {
+  animation: armLift 1.5s ease-in-out infinite alternate;
+}
+
+.poseThankYou .armR {
+  transform-origin: 112px 124px;
+  animation: thankPush 1.35s ease-in-out infinite alternate;
+}
+
+.poseEat .armR {
+  transform-origin: 124px 140px;
+  animation: eatToMouth 1.2s ease-in-out infinite alternate;
+}
+
+.poseDrink .armR {
+  transform-origin: 122px 136px;
+  animation: drinkTilt 1.4s ease-in-out infinite alternate;
+}
+
+.poseTeaching .armR {
+  animation: teachNod 2s ease-in-out infinite alternate;
+}
+
+@keyframes armLift {
+  from {
+    transform: rotate(-2deg) translateY(4px);
+  }
+  to {
+    transform: rotate(12deg) translateY(-22px);
+  }
+}
+
+@keyframes thankPush {
+  from {
+    transform: rotate(-8deg);
+  }
+  to {
+    transform: rotate(2deg) translateX(14px);
+  }
+}
+
+@keyframes eatToMouth {
+  from {
+    transform: rotate(18deg);
+  }
+  to {
+    transform: rotate(6deg) translateY(-12px);
+  }
+}
+
+@keyframes drinkTilt {
+  from {
+    transform: rotate(10deg);
+  }
+  to {
+    transform: rotate(-4deg) translateY(-10px);
+  }
+}
+
+@keyframes teachNod {
+  from {
+    transform: rotate(2deg);
+  }
+  to {
+    transform: rotate(-4deg);
+  }
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+  margin-top: 0.65rem;
+}
+
+.btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+.btnActive {
+  border-color: rgba(124, 58, 237, 0.55);
+  background: linear-gradient(135deg, #f5f3ff, #faf5ff);
+  color: #5b21b6;
+}
+
+.compact .svg {
+  max-height: 200px;
+}
+.compact .controls {
+  margin-top: 0.35rem;
+}
+.compact .btn {
+  font-size: 0.62rem;
+  padding: 0.25rem 0.45rem;
+}

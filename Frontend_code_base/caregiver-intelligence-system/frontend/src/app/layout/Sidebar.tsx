@@ -43,7 +43,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
                 .filter(Boolean)
                 .join(' ')
             }
-            end={item.to === '/dashboard'}
+            end={item.to === '/dashboard' || item.to === '/sign-vitals'}
           >
             <span className={cls.navIcon}>
               <Icon name={item.icon} />
