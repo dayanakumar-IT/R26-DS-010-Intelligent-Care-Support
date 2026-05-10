@@ -5,6 +5,7 @@ import cls from './layout.module.css'
 import { Button } from '../../shared/components/Button'
 import { Icon } from '../../shared/components/Icons'
 import { clearStoredUser, getStoredUser } from '../../config/auth'
+import { Mic } from 'lucide-react'
 
 export function MainLayout() {
   const [collapsed, setCollapsed] = useState(false)
@@ -13,8 +14,16 @@ export function MainLayout() {
 
   const handleLogout = () => {
     clearStoredUser()
-    navigate('/', { replace: true })
+    navigate('/login', { replace: true })
   }
+
+  const displayName = currentUser?.name?.trim() || 'CareSense User'
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join('')
 
   return (
     <div className={[cls.shell, collapsed ? cls.shellCollapsed : null].filter(Boolean).join(' ')}>
@@ -36,27 +45,46 @@ export function MainLayout() {
           </div>
           <div className={cls.topbarRight}>
             <div className="hidden items-center gap-3 sm:inline-flex">
-              <div className="relative h-10 w-10 animate-pulse rounded-full bg-gradient-to-br from-[#2563EB] via-[#7C3AED] to-[#14B8A6] p-[2px] shadow-lg">
+              <div className="relative grid h-10 w-10 place-items-center rounded-full bg-white p-[2px] shadow-sm">
                 <div
-                  className="relative flex h-full w-full items-center justify-center rounded-full bg-white"
-                  style={{ transform: 'perspective(240px) rotateY(-8deg)' }}
-                >
-                  <div className="absolute top-[11px] flex items-center gap-[8px]">
-                    <span className="h-[3px] w-[3px] rounded-full bg-[#1F2937]" />
-                    <span className="h-[3px] w-[3px] rounded-full bg-[#1F2937]" />
-                  </div>
-                  <span className="mt-3 h-[6px] w-[12px] rounded-b-full border-b border-[#1F2937]" />
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      'conic-gradient(from 220deg, var(--brand-blue), var(--brand-purple), var(--brand-accent), var(--brand-blue))',
+                    filter: 'blur(0px)',
+                  }}
+                />
+                <div className="relative grid h-full w-full place-items-center rounded-full bg-white">
+                  <span
+                    className="select-none text-xs font-extrabold tracking-wide"
+                    style={{ color: 'var(--text-strong)' }}
+                    aria-hidden
+                  >
+                    {initials || 'CS'}
+                  </span>
                 </div>
               </div>
               <div className="leading-tight">
-                <p className="max-w-[180px] truncate text-sm font-semibold text-[#1F2937]">
-                  {currentUser?.name ?? 'CareSense User'}
+                <p className="max-w-[180px] truncate text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
+                  {displayName}
                 </p>
-                <p className="text-xs uppercase tracking-wide text-gray-500">
+                <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text)' }}>
                   {currentUser?.role ?? 'User'}
                 </p>
               </div>
             </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label="Open Voice Log recorder"
+              onClick={() => navigate('/voice-log/dashboard', { state: { openRecorder: true } })}
+              title="Voice Log"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Mic size={16} />
+                <span className="hidden md:inline">Mic</span>
+              </span>
+            </Button>
             <Button variant="secondary" size="sm" onClick={handleLogout}>
               Logout
             </Button>

@@ -5,18 +5,18 @@ import { Icon } from '../../shared/components/Icons'
 import cls from './layout.module.css'
 
 const nav = [
-  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard', color: '#1E3A8A' },
+  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard', color: 'var(--brand-blue)' },
   {
     to: '/deterioration',
     label: 'Deterioration Detection',
     icon: 'deterioration',
-    color: '#7C3AED',
+    color: 'var(--brand-purple)',
   },
-  { to: '/voice-log', label: 'Voice Log', icon: 'voice', color: '#0EA5E9' },
-  { to: '/fall-detection', label: 'Fall Detection', icon: 'fall', color: '#F97316' },
-  { to: '/sign-vitals', label: 'Sign & Vitals', icon: 'vitals', color: '#10B981' },
-  { to: '/reports', label: 'Reports', icon: 'reports', color: '#6366F1' },
-  { to: '/settings', label: 'Settings', icon: 'settings', color: '#64748B' },
+  { to: '/voice-log', label: 'Voice Log', icon: 'voice', color: 'var(--brand-blue)' },
+  { to: '/fall-detection', label: 'Fall Detection', icon: 'fall', color: 'var(--brand-accent)' },
+  { to: '/sign-vitals', label: 'Sign & Vitals', icon: 'vitals', color: 'var(--brand-purple)' },
+  { to: '/reports', label: 'Reports', icon: 'reports', color: 'var(--brand-blue)' },
+  { to: '/settings', label: 'Settings', icon: 'settings', color: 'var(--brand-purple)' },
 ] as const
 
 export function Sidebar({ collapsed }: { collapsed: boolean }) {
