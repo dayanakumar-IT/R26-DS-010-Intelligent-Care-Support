@@ -69,7 +69,7 @@ def main():
 
     rows = []
 
-    # ---- Cross-Subject results (the main protocol) ----
+    # ---- Cross-Subject results ----
     cs_models = [
         ("Baseline RandomForest (18 motion features)",
          "Cross-Subject",
@@ -89,8 +89,28 @@ def main():
          MODELS_DIR / "fusion_results" / "per_dataset_metrics.csv"),
     ]
 
+    # ---- Cross-View results (NTU only) ----
+    cv_models = [
+        ("Baseline RandomForest (18 motion features)",
+         "Cross-View",
+         MODELS_DIR / "baseline_results_cv" / "test_classification_report.json",
+         MODELS_DIR / "baseline_results_cv" / "per_dataset_metrics.csv"),
+        ("Posture RandomForest (4-class: Lying/Sitting/Standing/Walking)",
+         "Cross-View",
+         MODELS_DIR / "posture_results_cv" / "test_classification_report.json",
+         None),
+        ("ST-GCN (3M params, 14-joint skeleton)",
+         "Cross-View",
+         MODELS_DIR / "stgcn_results_cv" / "test_classification_report.json",
+         MODELS_DIR / "stgcn_results_cv" / "per_dataset_metrics.csv"),
+        ("Fusion MLP (ST-GCN + RF + 18 features)",
+         "Cross-View",
+         MODELS_DIR / "fusion_results_cv" / "test_classification_report.json",
+         MODELS_DIR / "fusion_results_cv" / "per_dataset_metrics.csv"),
+    ]
+
     per_dataset_rows = []
-    for name, protocol, report_path, per_ds_path in cs_models:
+    for name, protocol, report_path, per_ds_path in cs_models + cv_models:
         m = load_classification_report(report_path)
         rows.append({
             "model": name,
@@ -114,7 +134,8 @@ def main():
                     "high_risk_recall": r.get("high_risk_recall"),
                 })
 
-    # ---- Cross-Dataset stress test (RF only) ----
+    # ---- Cross-Dataset stress tests ----
+    # 1. RF — both directions, from cross_dataset_results/summary.csv
     cd_summary_path = MODELS_DIR / "cross_dataset_results" / "summary.csv"
     if cd_summary_path.exists():
         cd_df = pd.read_csv(cd_summary_path)
@@ -128,6 +149,44 @@ def main():
                 "high_risk_recall": r.get("high_risk_recall"),
                 "high_risk_support": None,
             })
+
+    # 2. Posture + Fusion — NTU->UR only, from cross_dataset_results/extended_summary.csv
+    extended_summary_path = MODELS_DIR / "cross_dataset_results" / "extended_summary.csv"
+    if extended_summary_path.exists():
+        ext_df = pd.read_csv(extended_summary_path)
+        for _, r in ext_df.iterrows():
+            model_label = (
+                "Posture RandomForest (4-class: Lying/Sitting/Standing/Walking)"
+                if r["model"] == "Posture RandomForest"
+                else "Fusion MLP (ST-GCN + RF + 18 features)"
+                if r["model"] == "Fusion MLP"
+                else r["model"]
+            )
+            rows.append({
+                "model": model_label,
+                "protocol": f"Cross-Dataset ({r['direction']})",
+                "accuracy": r.get("accuracy"),
+                "macro_f1": r.get("macro_f1"),
+                "weighted_f1": None,
+                "high_risk_recall": r.get("high_risk_recall"),
+                "high_risk_support": None,
+            })
+
+    # 3. ST-GCN under CD — NTU->UR only, from stgcn_results_cd_ntu2ur
+    stgcn_cd_report = (
+        MODELS_DIR / "stgcn_results_cd_ntu2ur" / "test_classification_report.json"
+    )
+    if stgcn_cd_report.exists():
+        m = load_classification_report(stgcn_cd_report)
+        rows.append({
+            "model": "ST-GCN (3M params, 14-joint skeleton)",
+            "protocol": "Cross-Dataset (NTU -> UR)",
+            "accuracy": m.get("accuracy"),
+            "macro_f1": m.get("macro_f1"),
+            "weighted_f1": m.get("weighted_f1"),
+            "high_risk_recall": m.get("high_risk_recall"),
+            "high_risk_support": m.get("high_risk_support"),
+        })
 
     # ---- Persist comparison_all.csv ----
     df_all = pd.DataFrame(rows)

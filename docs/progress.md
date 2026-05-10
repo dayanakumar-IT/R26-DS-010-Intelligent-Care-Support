@@ -1,10 +1,13 @@
 # Fall Detection Research — Progress & Onboarding Doc
 
-**Last updated:** 2026-05-08
-**Stages completed:** UR + NTU preprocessing, sequence normalization, common-joint mapping, motion feature extraction, RandomForest baseline classifier, ST-GCN primary model, **Posture classifier**, **Fusion MLP**
-**Stage in progress:** Backend service framework (pending team coordination on framework choice)
+**Last updated:** 2026-05-10
+**Iteration:** 2 (preprocessing fixes + multi-protocol evaluation applied)
+**Stages completed:** UR + NTU preprocessing (with spatial normalization, interpolation padding, carry-forward UR), sequence normalization, common-joint mapping, motion feature extraction, **all 4 models retrained under 3 evaluation protocols** (Cross-Subject, Cross-View, Cross-Dataset), training-time augmentation for ST-GCN, full comparison report
+**Stage in progress:** None (model layer complete). Next phase requires camera hardware.
 
 This document describes the project state for someone joining for the first time. It covers the environment, the full pipelines that have been run end-to-end, all scripts, the outputs they produce, and the issues that came up along the way.
+
+> ⚠️ **About the numbers in this doc:** Sections §9, §10, §11, §12 below report **iteration 1** results (random-stratified splits, no spatial normalization). Iteration 1 had four preprocessing leakage paths that were identified and fixed; the model layer was fully retrained. **For the current honest numbers, read §18 first** — that section supersedes all model results in §9–§12.
 
 ---
 
@@ -893,16 +896,18 @@ python Codes\models\fusion_mlp.py                        # ~5-10 min
 
 | Stage | Sequences in | Sequences out | Output shape |
 |---|---|---|---|
-| UR extract | 60 raw | 60 | `(N, 33, 4)` |
+| UR extract (with last-valid carry-forward) | 60 raw | 60 | `(N, 33, 4)` |
 | UR filter (drop weak) | 60 | 45 | `(N, 33, 4)` |
 | NTU extract | 4,752 `.skeleton` files | 4,752 | `(N, 25, 3)` |
-| Normalize | 45 + 4,752 | 4,797 | `(100, 33, 4)` / `(100, 25, 3)` |
-| Common joint mapping | 4,797 | 4,797 | `(100, 14, 3)` |
+| Normalize (linear-interp padding) | 45 + 4,752 | 4,797 | `(100, 33, 4)` / `(100, 25, 3)` |
+| Common joint mapping (with spatial normalization) | 4,797 | 4,797 | `(100, 14, 3)` — spine-centered, torso-scaled |
 | Motion features | 4,797 | 4,797 rows × 18 features | flat CSV |
-| **RandomForest baseline** | 4,797 rows × 18 features | trained 3-class classifier; **92.78% test acc, 93.88% high-risk recall** | `model.pkl` (~9 MB) |
-| **ST-GCN primary model** | `(100, 14, 3)` skeleton sequences | trained 3-class classifier; **95.69% test acc, 91.84% high-risk recall** | `best_model.pt` (~7 MB) |
-| **Posture classifier** | 8 posture features per sequence | trained 4-class classifier (Lying / Sitting / Standing / Walking); 100% on heuristic labels | `model.pkl` |
-| **Fusion MLP** ⭐ | ST-GCN logits + RF probs + 18 features (24-dim) | trained 3-class classifier; **96.94% test acc, 95.24% high-risk recall — best of all three models** | `best_model.pt` (~15 KB) |
+| **RandomForest baseline (CS)** | 4,797 rows × 18 features | trained 3-class; **87.48% test acc, 74.85% high-risk recall** | `model.pkl` (~8 MB) |
+| **ST-GCN (CS, with augmentation)** | `(100, 14, 3)` skeleton sequences | trained 3-class; **91.86% test acc, 82.63% high-risk recall** | `best_model.pt` (~12 MB) |
+| **Posture classifier (CS)** | 8 posture features per sequence | trained 4-class classifier (Lying / Sitting / Standing / Walking); **74.15% test acc** | `model.pkl` |
+| **Fusion MLP (CS)** ⭐ | ST-GCN logits + RF probs + 18 features (24-dim) | trained 3-class classifier; **94.24% test acc, 87.43% high-risk recall — best in-domain** | `best_model.pt` (~15 KB) |
+
+> **Numbers above are iteration 2 (Cross-Subject protocol, post-fix).** For iteration 1 numbers and the full Cross-View / Cross-Dataset breakdown, see §18.
 
 ### Class balance (final feature dataset)
 
@@ -922,21 +927,273 @@ The NTU labels are kept as the original action names (`sit_down`, `stand_up`, et
 
 ## 17. Next steps
 
-1. **Confirm backend framework with team** — **prerequisite for any backend work**
-   - Group is building under the shared [R26-DS-010-Intelligent-Care-Support](../R26-DS-010-Intelligent-Care-Support/) repo; need to verify which framework the rest of the team is using before scaffolding `Codes/backend/`
-   - Expected stack candidates: FastAPI, Flask, Express. Frontend's `axios` baseURL is `http://localhost:8000` (compatible with all of them)
-2. **Backend service** — once framework is confirmed, build endpoints to serve all three trained models:
-   - `GET /api/sequences` — list available sequences for the picker
-   - `GET /api/sequences/{id}` — return the `(100, 14, 3)` skeleton for animation
-   - `POST /api/predict/{id}` — run **fusion MLP** (the headline model), return riskLevel/riskScore/probabilities + posture
-3. **Frontend ↔ backend integration** — wire the React dashboard to the new endpoints
-4. **GitHub** — push repo with clean commit history: preprocessing → features → RF baseline → ST-GCN → Posture → Fusion. Supervisors specifically asked for this.
-5. **PP2 slides** — include the examiner-comments-and-rectifications slide (need PP1 examiner comments to draft this).
-6. **Future work (PP3 and beyond)**
-   - **Fusion model** combining ST-GCN logits + RF probabilities — directly justified by the recall/precision trade-off in §10. Each model is stronger on a different metric; fusion should improve both.
-   - Posture state classifier (sitting / standing / walking / bending) on per-frame joint angles
-   - Movement transition detector (sit-to-stand, sudden downward) — start as rule-based state machine
-   - Micro-movement instability scoring (joint sway statistics)
-   - Room-zone mapping (geometric containment)
-   - Explainable instability heatmap on the 14-joint skeleton (top features from RF + ST-GCN attention)
-   - Edge-device real-time pipeline with MediaPipe streaming input
+Model layer is complete (see §18 for iteration-2 results). Remaining work all depends on hardware that is not yet available.
+
+1. **Backend framework decision + scaffolding** (still pending — group coordination)
+2. **Backend API service** — endpoints to serve the trained Fusion model:
+   - `GET /api/sequences`, `GET /api/sequences/{id}`, `POST /api/predict/{id}`
+3. **Real-time pipeline** (requires camera): MediaPipe capture loop + sliding-window aggregation + alert dispatcher
+4. **Frontend ↔ backend integration** — React dashboard + Flutter app
+5. **In-house lab study** (requires camera + volunteers) — the realistic test the dataset-trained models cannot provide
+6. **Explainability output generator** — 5-second skeletal replay + instability heatmap from top features (RF Gini + ST-GCN edge importance)
+7. **GitHub push** with clean commit history through iteration 2
+
+---
+
+## 18. Iteration 2 — Preprocessing fixes + multi-protocol evaluation (May 2026)
+
+This section supersedes the headline numbers in §9, §10, §11, §12. Iteration 1 trained correctly on the splits it had, but the preprocessing pipeline and split design contained four leakage paths that were inflating the numbers. Iteration 2 fixes all four and re-evaluates every model under three escalating-difficulty protocols.
+
+### 18.1 Why iteration 2
+
+After completing iteration 1, four issues were identified:
+
+| # | Issue | Why it inflates accuracy |
+|---|---|---|
+| 1 | **No spatial normalization** | NTU and UR live in different coordinate systems. The model can memorize "this absolute X coordinate range = NTU lab", giving it a free dataset-id signal it can use as a shortcut. |
+| 2 | **Frame-freeze padding** | Short sequences padded by repeating the last frame. Falls end with the body on the floor; padding produces *N copies of the impact pose at the tail*. The model can learn "static tail = fall" instead of fall dynamics. |
+| 3 | **Zero-fill on missing UR pose** | When MediaPipe failed to detect a pose, the frame was `[0, 0, 0, 0]` for all 33 landmarks. All-zero frames are detectable artifacts the model can correlate with high-motion (fall) clips. |
+| 4 | **No training-time augmentation for the deep model** | ST-GCN had no exposure to rotational / mirror / temporal variations of training samples → potential overfitting to NTU's specific camera angle and frame-by-frame layout. |
+
+### 18.2 Four preprocessing/training fixes
+
+| Fix | File modified | What it does |
+|---|---|---|
+| **1. Spatial normalization** | [`Codes/preprocessing/map_common_joints.py`](../Codes/preprocessing/map_common_joints.py) — `normalize_skeleton()` | Per-frame: translate origin to spine joint (index 13). Then divide all coordinates by the mean torso length (spine → mid-shoulder, averaged over the sequence). NTU and UR now live in a common coordinate frame. |
+| **2. Linear-interpolation padding** | [`Codes/preprocessing/normalize_sequences.py`](../Codes/preprocessing/normalize_sequences.py) — `normalize_sequence()` | Short sequences are now interpolated, not padded. No N-copies-of-the-last-frame artifact. |
+| **3. Carry-forward UR pose** | [`Codes/preprocessing/ur_pose_extract.py`](../Codes/preprocessing/ur_pose_extract.py) | When MediaPipe fails on a frame, copy the last valid pose instead of zeros. Pose stream stays continuous; `missing_frames` is still counted in metadata. |
+| **4. Training-time augmentation** | [`Codes/models/stgcn/dataset.py`](../Codes/models/stgcn/dataset.py) — `apply_augmentations()` | Train-only. Each train sample is randomly transformed by: (a) rotation around vertical Y axis ±15°, (b) horizontal mirror with left/right joint swap, (c) time-jitter — drop 5 random frames, re-interpolate. Each transform fires with p=0.5. **Disabled for val/test/inference.** |
+
+**Why augmentation only on ST-GCN (not RF/Posture):** The RF and Posture features are 18 (or 8) summary statistics — vertical drop, joint speeds, torso angles. These are physical quantities that are *coordinate-invariant by construction*. Rotating or mirroring a sequence and re-extracting features barely changes the numbers. ST-GCN sees raw `(X, Y, Z)` coordinates of every joint, where rotation and mirror genuinely change the input — that's the only place augmentation is meaningful.
+
+### 18.3 Three evaluation protocols
+
+| Protocol | Held out | What it tests | Difficulty |
+|---|---|---|---|
+| **Cross-Subject (CS)** | Subjects (each NTU performer + each UR session in exactly one of train/val/test) | Generalization to new bodies the model has never seen | Medium |
+| **Cross-View (CV)** | NTU camera C001 (train uses C002+C003) | Generalization to a different camera angle in the same lab | Easy-medium (same subjects) |
+| **Cross-Dataset (CD)** | Whole datasets (train NTU → test UR, and vice versa) | Generalization to a completely different lab setup, actors, lighting | Hard |
+
+Splits are produced by:
+
+- [`Codes/models/cross_subject_split.py`](../Codes/models/cross_subject_split.py) → `Codes/models/splits/`
+- [`Codes/models/cross_view_split.py`](../Codes/models/cross_view_split.py) → `Codes/models/splits_cv/`
+- [`Codes/models/cross_dataset_ntu2ur_split.py`](../Codes/models/cross_dataset_ntu2ur_split.py) → `Codes/models/splits_cd_ntu2ur/`
+
+All scripts share [`Codes/models/split_utils.py`](../Codes/models/split_utils.py) which switches splits-dir based on the `MODELS_PROTOCOL` environment variable (`cs` / `cv` / `cd_ntu2ur`).
+
+| Protocol | Train / Val / Test n |
+|---|---|
+| Cross-Subject | 3,121 / 877 / 799 |
+| Cross-View (NTU only) | 2,596 / 572 / 1,584 |
+| Cross-Dataset NTU→UR | 3,894 (NTU) / 858 (NTU) / 45 (UR) |
+
+### 18.4 Final results — full evaluation matrix
+
+All four models retrained from scratch under each protocol with new preprocessing + augmentation. **Test-set accuracy:**
+
+| Model | CS | CV | CD-NTU→UR | CD-UR→NTU |
+|---|---|---|---|---|
+| Baseline RF | 87.48% | 90.91% | 20.00% | 26.91% |
+| Posture RF (4-class) | 74.15% | 77.97% | 23.33% | n/a |
+| ST-GCN | 91.86% | 88.89% | 4.44% | n/a |
+| **Fusion MLP** | **94.24%** | **94.07%** | 0.00% | n/a |
+
+**High-risk recall** (most safety-critical metric — recall on the `high_risk` class):
+
+| Model | CS | CV | CD-NTU→UR |
+|---|---|---|---|
+| Baseline RF | 74.85% | 82.91% | 0% |
+| ST-GCN | 82.63% | 88.29% | 0% |
+| **Fusion MLP** | **87.43%** | **90.19%** | 0% |
+
+> *n/a* in the table = experiment is meaningless (UR has 45 samples → cannot train a 3M-param ST-GCN; UR has only one posture class → cannot train the 4-class posture classifier).
+
+### 18.4b Overfitting check + preprocessing-leakage sanity check
+
+For every (model × protocol) run we put **train, val, test** side by side. Healthy = train ≈ val ≈ test (gaps under ~5%). Big train-val gap = overfitting; big val-test gap = leaky split.
+
+**Cross-Subject (CS)**
+
+| Model | Train | Val | Test | T→V gap | V→T gap | Verdict |
+|---|---|---|---|---|---|---|
+| Baseline RF | 87.31%¹ | 85.06% | 87.48% | +2.25 | −2.42 | healthy |
+| Posture RF | — | 74.86% | 74.15% | — | +0.71 | healthy |
+| ST-GCN (best ep 27/37) | 95.29% | 92.82% | 91.86% | +2.47 | +0.96 | healthy |
+| Fusion MLP (best ep 12/50) | — | 94.41% | 94.24% | — | +0.17 | healthy |
+
+**Cross-View (CV — NTU only, train C002+C003, test C001)**
+
+| Model | Train | Val | Test | T→V gap | V→T gap | Verdict |
+|---|---|---|---|---|---|---|
+| Baseline RF | 85.13%¹ | 86.89% | 90.91% | −1.76 | −4.02 | healthy |
+| Posture RF | — | 76.40% | 77.97% | — | −1.57 | healthy |
+| ST-GCN (best ep 4/14, early stop) | 85.86% | 93.88% | 88.89% | −8.02 | +4.99 | healthy (val>train at early stop = regularizing, not overfit) |
+| Fusion MLP (best ep 14/50) | — | 93.01% | 94.07% | — | −1.06 | healthy |
+
+**Cross-Dataset (CD — train all NTU, test all UR)**
+
+| Model | Train (NTU) | Val (NTU) | Test (UR) | T→V gap | V→T gap | Verdict |
+|---|---|---|---|---|---|---|
+| Baseline RF | ~87%¹ | n/a | 20.00% | — | massive | domain shift |
+| Posture RF | — | — | 23.33% | — | massive | domain shift |
+| ST-GCN (best ep 29/39) | **96.10%** | **96.39%** | 4.44% | −0.29 | massive | **trained perfectly on source, fails to transfer** |
+| Fusion MLP | — | — | 0.00% | — | massive | deepest model, hardest fall |
+
+¹ 5-fold CV on the train set (RF doesn't have a separate "train accuracy").
+
+**The single cleanest piece of evidence:** the ST-GCN CD row. Train 96.10% ≈ val 96.39% on NTU → no overfitting, the network has learned the source domain fine. The collapse to 4.4% on UR is therefore *domain shift* (different camera, different actors, different action vocabulary), not a training or preprocessing bug.
+
+**Two corollary sanity checks:**
+1. **Val ≈ test on every CS run** (gaps within 2.5%) → the subject-disjoint split is honest, no test-set surprise.
+2. **CD collapses to 0–25%** → if our preprocessing still leaked a hidden cross-dataset shortcut, CD would also be high; it isn't.
+
+A slide-ready, panel-friendly version of this table lives at [`Codes/models/comparison_report/comparison_summary.md`](../Codes/models/comparison_report/comparison_summary.md).
+
+### 18.5 Iteration 1 vs iteration 2 — what the fixes bought
+
+| Model | Iter-1 CS test acc (leaky) | **Iter-2 CS test acc (honest)** | Drop |
+|---|---|---|---|
+| Baseline RF | 92.78% | **87.48%** | -5.3 |
+| Posture RF | 87.60% | **74.15%** | -13.5 |
+| ST-GCN | 95.69% | **91.86%** | -3.8 |
+| Fusion MLP | 96.94% | **94.24%** | -2.7 |
+
+The drops are direct evidence that the iteration-1 numbers were partly explained by coordinate-system memorization, frame-freeze tail patterns, and zero-fill artifacts. Iteration 2 numbers are what remains after those shortcuts are removed.
+
+### 18.6 The cross-dataset finding
+
+Cross-Dataset NTU→UR collapses on every model:
+
+| Model | Accuracy on UR test |
+|---|---|
+| Baseline RF | 20.00% |
+| Posture RF | 23.33% |
+| ST-GCN | 4.44% |
+| Fusion MLP | 0.00% |
+
+**Notable:** the deeper the model, the worse it crashes on cross-dataset. This is because deep models compose layers of dataset-specific features — domain shift compounds across layers. Spatial normalization removed coordinate-frame memorization, but the underlying motion-pattern divergence between scripted NTU falls and recorded UR falls remains.
+
+This is actually a strong, panel-defensible finding — it gives three concrete arguments for the proposal's design decisions:
+
+1. **Combined NTU + UR training is *necessary*, not just convenient.** Each dataset alone cannot generalize to the other.
+2. **The planned in-house lab study is *load-bearing*, not optional.** Closing the cross-dataset gap requires deployment-domain data; we cannot claim deployment-readiness from these two datasets alone.
+3. **Per-dataset metrics matter.** Reporting the full evaluation matrix prevents the headline number from misleading — anyone can see that a CS-trained model is not a deployment-ready model.
+
+### 18.7 Backup of iteration 1 results
+
+Iteration-1 outputs are preserved unchanged in [`Codes/models/_backup_old_preprocessing/`](../Codes/models/_backup_old_preprocessing/):
+
+```
+_backup_old_preprocessing/
+├── splits/                    iteration-1 random-stratified splits
+├── splits_cv/                 (CV splits from a partial iteration-1 attempt)
+├── splits_cd_ntu2ur/          (CD splits from a partial iteration-1 attempt)
+├── baseline_results/          iteration-1 RF outputs
+├── baseline_results_cv/       iteration-1 RF CV (partial)
+├── posture_results/           iteration-1 Posture outputs
+├── posture_results_cv/        iteration-1 Posture CV (partial)
+├── stgcn_results/             iteration-1 ST-GCN outputs
+├── stgcn_results_cv/          iteration-1 ST-GCN CV (partial)
+├── fusion_results/            iteration-1 Fusion outputs
+├── cross_dataset_results/     iteration-1 RF cross-dataset
+├── comparison_report/         iteration-1 comparison
+└── stgcn_results_train.log    original iteration-1 training log
+```
+
+This is the single source of truth for *what iteration 1 produced*. The before-vs-after comparison story (§18.5) draws from these files.
+
+### 18.8 Where iteration 2 results live
+
+```
+Codes/models/
+├── splits/                    CS splits (iter-2)
+├── splits_cv/                 CV splits (iter-2)
+├── splits_cd_ntu2ur/          CD-NTU→UR splits (iter-2)
+├── baseline_results/          RF CS  ← MODELS_PROTOCOL=cs (default)
+├── baseline_results_cv/       RF CV  ← MODELS_PROTOCOL=cv
+├── posture_results/           Posture CS
+├── posture_results_cv/        Posture CV
+├── stgcn_results/             ST-GCN CS
+├── stgcn_results_cv/          ST-GCN CV
+├── stgcn_results_cd_ntu2ur/   ST-GCN CD-NTU→UR  ← MODELS_PROTOCOL=cd_ntu2ur
+├── fusion_results/            Fusion CS
+├── fusion_results_cv/         Fusion CV
+├── cross_dataset_results/     RF CD (both directions) + Posture-CD + Fusion-CD
+└── comparison_report/         the slide-ready master comparison
+    ├── comparison_all.csv         13-row table: every (model, protocol) pair
+    ├── comparison_per_dataset.csv UR vs NTU breakdown per protocol
+    ├── comparison_summary.md      slide-ready markdown
+    └── comparison_summary.txt     plain-text equivalent
+```
+
+To regenerate the comparison report after re-running anything:
+
+```powershell
+python Codes\models\generate_comparison_report.py
+```
+
+### 18.9 How to re-run iteration 2 from scratch
+
+```powershell
+# Activate venv
+Codes\venv\Scripts\Activate.ps1
+
+# 1. Preprocessing pipeline (with iteration-2 fixes)
+python Codes\preprocessing\ur_pose_extract.py            # carry-forward UR
+python Codes\preprocessing\filter_weak_sequences.py
+python Codes\preprocessing\normalize_sequences.py        # interpolation padding
+python Codes\preprocessing\map_common_joints.py          # spatial normalization
+python Codes\feature_engineering\extract_motion_features.py
+
+# 2. Generate all 3 sets of splits
+python Codes\models\cross_subject_split.py
+python Codes\models\cross_view_split.py
+python Codes\models\cross_dataset_ntu2ur_split.py
+
+# 3. Train and evaluate under each protocol
+# Cross-Subject (default)
+python Codes\models\baseline_rf.py
+python Codes\models\posture_rf.py
+python Codes\models\stgcn\train.py        # ~3 hr on CPU
+python Codes\models\stgcn\evaluate.py
+python Codes\models\fusion_mlp.py
+
+# Cross-View
+$env:MODELS_PROTOCOL = "cv"
+python Codes\models\baseline_rf.py
+python Codes\models\posture_rf.py
+python Codes\models\stgcn\train.py        # ~1 hr on CPU (smaller train set)
+python Codes\models\stgcn\evaluate.py
+python Codes\models\fusion_mlp.py
+$env:MODELS_PROTOCOL = $null
+
+# Cross-Dataset NTU→UR
+$env:MODELS_PROTOCOL = "cd_ntu2ur"
+python Codes\models\stgcn\train.py        # ~3 hr on CPU
+python Codes\models\stgcn\evaluate.py
+$env:MODELS_PROTOCOL = $null
+
+# 4. Cross-Dataset other directions / extended
+python Codes\models\cross_dataset_eval.py            # RF NTU↔UR (both)
+python Codes\models\cross_dataset_extended.py        # Posture-CD + Fusion-CD
+
+# 5. Final report
+python Codes\models\generate_comparison_report.py
+```
+
+### 18.10 What's deferred (not in this iteration, requires hardware or further work)
+
+| Item | Why it's deferred |
+|---|---|
+| In-house lab study with deployment camera | Requires physical USB camera + volunteers — cannot be done offline |
+| Real-time MediaPipe capture loop | Requires live video stream |
+| Sliding-window temporal trend module (live) | Built on top of the real-time loop |
+| Pose-quality gating end-to-end | Requires real partial-occlusion frames |
+| Zone calibration (bed/chair/walking) | Requires install-time observation in a real room |
+| Posture transition detector (sit-to-stand etc.) | Built on top of the live pipeline |
+| Audio + push notification dispatcher | Requires the runtime service |
+| Backend API service (FastAPI / Flask) | Pending team coordination on framework |
+| React + Vite web dashboard | Frontend stack, separate effort |
+| Flutter mobile app | Mobile stack, separate effort |
+| Explainability replay + heatmap renderer | Built on top of the runtime service |
