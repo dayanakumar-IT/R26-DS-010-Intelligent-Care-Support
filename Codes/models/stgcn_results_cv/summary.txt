@@ -1,0 +1,21 @@
+ST-GCN training summary (CV protocol)
+================================================
+Random seed         : 42
+Device              : cpu
+Trainable params    : 3,071,247
+Train samples       : 2596
+Val samples         : 572
+Batch size          : 32
+Max epochs          : 50
+Early stopping      : patience 10
+Initial LR          : 0.001
+Weight decay        : 0.0001
+
+Best epoch          : 4
+Best val accuracy   : 0.9388
+Final epoch run     : 14
+Total wall time     : 45.7 min
+
+Best checkpoint     : C:\Users\VICTUS\Downloads\Research\Codes\models\stgcn_results_cv\best_model.pt
+Final checkpoint    : C:\Users\VICTUS\Downloads\Research\Codes\models\stgcn_results_cv\last_model.pt
+Training log        : C:\Users\VICTUS\Downloads\Research\Codes\models\stgcn_results_cv\training_log.csv

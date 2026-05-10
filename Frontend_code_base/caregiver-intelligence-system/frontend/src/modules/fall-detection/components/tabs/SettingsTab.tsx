@@ -1,0 +1,426 @@
+import { useState } from 'react'
+
+interface ToggleProps { checked: boolean; onChange: () => void; color?: string }
+function Toggle({ checked, onChange, color = '#2563EB' }: ToggleProps) {
+  return (
+    <div onClick={onChange} style={{ width: 42, height: 24, borderRadius: 12, background: checked ? color : '#D1D5DB', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+      <div style={{ position: 'absolute', top: 3, left: checked ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 4px rgba(0,0,0,0.25)', transition: 'left 0.2s' }} />
+    </div>
+  )
+}
+
+interface SliderProps { value: number; min: number; max: number; color?: string; onChange: (v: number) => void }
+function Slider({ value, min, max, color = '#2563EB', onChange }: SliderProps) {
+  const pct = ((value - min) / (max - min)) * 100
+  return (
+    <input type="range" min={min} max={max} value={value}
+      onChange={e => onChange(Number(e.target.value))}
+      style={{ width: '100%', height: 4, appearance: 'none', background: `linear-gradient(to right, ${color} ${pct}%, #E5E7EB ${pct}%)`, borderRadius: 2, cursor: 'pointer', outline: 'none' }} />
+  )
+}
+
+export function SettingsTab() {
+  const [notifs, setNotifs] = useState({ highRisk: true, moderateRisk: true, lowRisk: false, email: true, sound: true, vibration: true, desktop: true })
+  const [cam, setCam] = useState('USB Camera 01')
+  const [fps, setFps] = useState(25)
+  const [thresholds, setThresholds] = useState({ low: 40, moderate: 70 })
+  const [autoDelete, setAutoDelete] = useState(true)
+  const [retention, setRetention] = useState(30)
+  const [name, setName] = useState('Supervisor')
+  const [email, setEmail] = useState('supervisor@hospital.com')
+  const [role] = useState('Supervisor')
+  const [saved, setSaved] = useState(false)
+  const [pwChange, setPwChange] = useState(false)
+
+  // ── Calibration state ───────────────────────────────────────────────────
+  const [calibRoom, setCalibRoom]         = useState<'Room 01' | 'Room 02'>('Room 01')
+  const [calibrating, setCalibrating]     = useState(false)
+  const [calibProgress, setCalibProgress] = useState(0)
+  const [calibrations, setCalibrations]   = useState<Record<string, { date: string; bed: number; chair: number; walking: number }>>({
+    'Room 01': { date: '03-05-2026 09:14 AM', bed: 28, chair: 22, walking: 50 },
+    'Room 02': { date: '02-05-2026 04:48 PM', bed: 31, chair: 19, walking: 50 },
+  })
+
+  const startCalibration = () => {
+    if (calibrating) return
+    setCalibrating(true); setCalibProgress(0)
+    const t = setInterval(() => {
+      setCalibProgress(p => {
+        if (p >= 100) {
+          clearInterval(t)
+          setCalibrating(false)
+          // Persist a fresh "learned" zone split
+          const rand = (lo: number, hi: number) => Math.round(lo + Math.random() * (hi - lo))
+          const bed = rand(25, 33), chair = rand(18, 25), walking = 100 - bed - chair
+          setCalibrations(c => ({
+            ...c,
+            [calibRoom]: {
+              date: new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\//g, '-'),
+              bed, chair, walking,
+            },
+          }))
+          return 100
+        }
+        return p + 4
+      })
+    }, 80)
+  }
+
+  const handleSave = () => {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  const toggle = (key: keyof typeof notifs) => setNotifs(n => ({ ...n, [key]: !n[key] }))
+
+  const currentCalib = calibrations[calibRoom]
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+      {/* User Settings */}
+      <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>👤</span> User Settings
+        </div>
+        {[
+          { label: 'Name',  value: name,  setValue: setName  as ((v: string) => void) | undefined, type: 'text'  },
+          { label: 'Email', value: email, setValue: setEmail as ((v: string) => void) | undefined, type: 'email' },
+          { label: 'Role',  value: role,  setValue: undefined, type: 'text' },
+        ].map(f => (
+          <div key={f.label} style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>{f.label}</div>
+            {f.setValue ? (
+              <input type={f.type} value={f.value} onChange={e => f.setValue!(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, color: '#111827', background: '#F9FAFB', outline: 'none', boxSizing: 'border-box' }} />
+            ) : (
+              <div style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, color: '#6B7280', background: '#F3F4F6', opacity: 0.9 }}>{f.value}</div>
+            )}
+          </div>
+        ))}
+        {!pwChange ? (
+          <button onClick={() => setPwChange(true)}
+            style={{ padding: '9px 18px', borderRadius: 9, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 13, cursor: 'pointer', fontWeight: 700 }}>
+            🔑 Change Password
+          </button>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input type="password" placeholder="Current password"
+              style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, color: '#111827', background: '#F9FAFB', outline: 'none' }} />
+            <input type="password" placeholder="New password"
+              style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, color: '#111827', background: '#F9FAFB', outline: 'none' }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setPwChange(false)}
+                style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: '#2563EB', color: 'white', fontSize: 13, cursor: 'pointer', fontWeight: 700 }}>Update</button>
+              <button onClick={() => setPwChange(false)}
+                style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Notification Settings */}
+      <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🔔</span> Notification Settings
+        </div>
+        {[
+          { key: 'highRisk',     label: 'High Risk Alerts',      desc: 'Immediate alerts for high-risk patients', color: '#EF4444' },
+          { key: 'moderateRisk', label: 'Moderate Risk Alerts',  desc: 'Warnings for moderate risk events',        color: '#F59E0B' },
+          { key: 'lowRisk',      label: 'Low Risk Alerts',       desc: 'Informational low-risk notifications',     color: '#14B8A6' },
+          { key: 'email',        label: 'Email Notifications',   desc: 'Send alerts to registered email',          color: '#2563EB' },
+          { key: 'sound',        label: 'Sound Alerts',          desc: 'Play audio on edge device when alert triggers', color: '#7C3AED' },
+          { key: 'vibration',    label: 'Vibration Alerts',      desc: 'Vibrate mobile device for high-risk events', color: '#EF4444' },
+          { key: 'desktop',      label: 'Desktop Notifications', desc: 'Browser push notifications',                  color: '#1E3A8A' },
+        ].map(item => (
+          <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{item.label}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>{item.desc}</div>
+            </div>
+            <Toggle checked={notifs[item.key as keyof typeof notifs]} onChange={() => toggle(item.key as keyof typeof notifs)} color={item.color} />
+          </div>
+        ))}
+      </div>
+
+      {/* System Settings */}
+      <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>⚙️</span> System Settings
+        </div>
+        {/* Camera Source */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Camera Source</div>
+          <select value={cam} onChange={e => setCam(e.target.value)}
+            style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid #E5E7EB', fontSize: 13, color: '#111827', background: '#F9FAFB', cursor: 'pointer', outline: 'none' }}>
+            {['USB Camera 01', 'USB Camera 02', 'IP Camera 01', 'IP Camera 02'].map(v => <option key={v}>{v}</option>)}
+          </select>
+        </div>
+        {/* FPS */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+            <span>Refresh Rate</span>
+            <span style={{ color: '#2563EB', fontWeight: 800 }}>{fps} FPS</span>
+          </div>
+          <Slider value={fps} min={10} max={60} onChange={setFps} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6B7280', marginTop: 4 }}>
+            <span>10 FPS</span><span>30 FPS</span><span>60 FPS</span>
+          </div>
+        </div>
+        {/* Risk Thresholds */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10 }}>Risk Thresholds</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#374151', marginBottom: 4 }}>
+                <span>Low Risk</span>
+                <span style={{ fontWeight: 700, color: '#14B8A6' }}>0 – {thresholds.low}</span>
+              </div>
+              <Slider value={thresholds.low} min={10} max={60} color="#14B8A6" onChange={v => setThresholds(t => ({ ...t, low: Math.min(v, t.moderate - 5) }))} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#374151', marginBottom: 4 }}>
+                <span>Moderate Risk</span>
+                <span style={{ fontWeight: 700, color: '#F59E0B' }}>{thresholds.low + 1} – {thresholds.moderate}</span>
+              </div>
+              <Slider value={thresholds.moderate} min={50} max={90} color="#F59E0B" onChange={v => setThresholds(t => ({ ...t, moderate: Math.max(v, t.low + 5) }))} />
+            </div>
+            <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.06)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#374151' }}>
+                <span>High Risk</span>
+                <span style={{ fontWeight: 700, color: '#EF4444' }}>{thresholds.moderate + 1} – 100</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Data & Privacy */}
+      <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🔒</span> Data & Privacy
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Auto Delete Old Data</div>
+            <div style={{ fontSize: 11, color: '#6B7280' }}>Automatically delete recordings beyond retention period</div>
+          </div>
+          <Toggle checked={autoDelete} onChange={() => setAutoDelete(v => !v)} />
+        </div>
+        <div style={{ padding: '14px 0', borderBottom: '1px solid #F3F4F6' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+            <span>Retention Period</span>
+            <span style={{ color: '#2563EB', fontWeight: 800 }}>{retention} Days</span>
+          </div>
+          <Slider value={retention} min={7} max={180} onChange={setRetention} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6B7280', marginTop: 4 }}>
+            <span>7 days</span><span>90 days</span><span>180 days</span>
+          </div>
+        </div>
+        <div style={{ padding: '14px 0', borderBottom: '1px solid #F3F4F6' }}>
+          <div style={{ fontSize: 12, color: '#374151', marginBottom: 4 }}>Storage used: <b style={{ color: '#111827' }}>12.4 GB</b> of 50 GB</div>
+          <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: '24.8%', background: '#1E3A8A', borderRadius: 3 }} />
+          </div>
+        </div>
+        <div style={{ paddingTop: 14, display: 'flex', gap: 10 }}>
+          <button style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid rgba(30,58,138,0.3)', background: 'rgba(30,58,138,0.08)', color: '#1E3A8A', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>
+            ⬇ Export Data
+          </button>
+          <button style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>
+            🗑 Clear Cache
+          </button>
+        </div>
+      </div>
+
+      {/* Edge Device & Privacy — spans full width */}
+      <div style={{ gridColumn: '1/-1', background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>⚡</span> Edge Device &amp; Privacy
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+
+          {/* Device Status */}
+          <div style={{ background: 'rgba(20,184,166,0.05)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#14B8A6', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Device Status</div>
+            {[
+              { label: 'Processing Mode', value: 'Local Edge',        icon: '⚡', ok: true  },
+              { label: 'Camera',          value: 'USB Camera 01',     icon: '📷', ok: true  },
+              { label: 'AI Model',        value: 'ST-GCN Active',     icon: '🤖', ok: true  },
+              { label: 'Cloud Sync',      value: 'Disabled',          icon: '☁',  ok: false },
+            ].map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 13 }}>{item.icon}</span>
+                <span style={{ flex: 1, fontSize: 12, color: '#374151' }}>{item.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 5,
+                  background: item.ok ? 'rgba(20,184,166,0.1)' : 'rgba(100,116,139,0.1)',
+                  color: item.ok ? '#14B8A6' : '#64748B' }}>
+                  {item.value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Privacy Guarantees */}
+          <div style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.15)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Privacy Guarantees</div>
+            {[
+              'No video data is stored or transmitted',
+              'Skeleton data only — patient identity protected',
+              'All processing happens on local edge device',
+              'No cloud upload — Wi-Fi not required',
+              'Raw frames discarded immediately after pose extraction',
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 7 }}>
+                <span style={{ color: '#2563EB', fontWeight: 900, flexShrink: 0, marginTop: 1 }}>✓</span>
+                <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* System Performance */}
+          <div style={{ background: 'rgba(124,58,237,0.04)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>System Performance</div>
+            {[
+              { label: 'Inference Latency',  value: '~18 ms',   bar: 18,  color: '#14B8A6' },
+              { label: 'Detection FPS',      value: '25 FPS',   bar: 42,  color: '#2563EB' },
+              { label: 'Model Confidence',   value: '≥ 85%',    bar: 85,  color: '#7C3AED' },
+              { label: 'CPU Usage',          value: '34%',      bar: 34,  color: '#F59E0B' },
+            ].map(item => (
+              <div key={item.label} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                  <span style={{ color: '#374151' }}>{item.label}</span>
+                  <span style={{ fontWeight: 700, color: item.color }}>{item.value}</span>
+                </div>
+                <div style={{ height: 4, background: '#E5E7EB', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${item.bar}%`, background: item.color, borderRadius: 2 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Room Zone Calibration — spans full width */}
+      <div style={{ gridColumn: '1/-1', background: 'white', border: '1px solid #E5E7EB', borderRadius: 14, padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>🗺</span> Room Zone Calibration
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>Room:</span>
+            {(['Room 01', 'Room 02'] as const).map(r => (
+              <button key={r} onClick={() => setCalibRoom(r)} disabled={calibrating}
+                style={{
+                  padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: calibrating ? 'not-allowed' : 'pointer',
+                  border: '1px solid', borderColor: calibRoom === r ? '#1E3A8A' : '#E5E7EB',
+                  background: calibRoom === r ? '#1E3A8A' : 'transparent',
+                  color: calibRoom === r ? 'white' : '#64748B', opacity: calibrating ? 0.5 : 1,
+                }}>{r}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+          {/* ── Visual layout — learned zones over the room rectangle ──── */}
+          <div style={{ background: 'rgba(30,58,138,0.03)', border: '1px solid rgba(30,58,138,0.12)', borderRadius: 12, padding: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#1E3A8A', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              Learned Zones · {calibRoom}
+            </div>
+            <svg viewBox="0 0 200 120" style={{ width: '100%', height: 160, borderRadius: 8, background: '#F9FAFB', border: '1px dashed #CBD5E1' }}>
+              {/* Camera marker */}
+              <g>
+                <circle cx="100" cy="6" r="3.5" fill="#7C3AED" />
+                <text x="106" y="9" fontSize="6" fill="#7C3AED" fontWeight="700">CAM</text>
+              </g>
+              {/* Bed zone */}
+              <rect x="12" y="22" width="64" height="48" rx="6" fill="rgba(20,184,166,0.18)" stroke="#14B8A6" strokeWidth="1.4" strokeDasharray="3 2" />
+              <text x="44" y="48" fontSize="7" fill="#0F766E" fontWeight="800" textAnchor="middle">🛏 Bed</text>
+              <text x="44" y="58" fontSize="6" fill="#0F766E" textAnchor="middle">{currentCalib.bed}%</text>
+              {/* Chair zone */}
+              <rect x="124" y="22" width="58" height="38" rx="6" fill="rgba(245,158,11,0.18)" stroke="#F59E0B" strokeWidth="1.4" strokeDasharray="3 2" />
+              <text x="153" y="42" fontSize="7" fill="#B45309" fontWeight="800" textAnchor="middle">🪑 Chair</text>
+              <text x="153" y="52" fontSize="6" fill="#B45309" textAnchor="middle">{currentCalib.chair}%</text>
+              {/* Walking zone (the rest, lower band) */}
+              <rect x="12" y="78" width="170" height="32" rx="6" fill="rgba(124,58,237,0.14)" stroke="#7C3AED" strokeWidth="1.4" strokeDasharray="3 2" />
+              <text x="97" y="98" fontSize="7" fill="#5B21B6" fontWeight="800" textAnchor="middle">🚶 Walking · {currentCalib.walking}%</text>
+              {/* Sample trajectory dots — illustrative */}
+              {[
+                [44, 46], [58, 62], [70, 76], [90, 88], [110, 95], [128, 92], [145, 80], [156, 60], [148, 42],
+              ].map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y} r="1.4" fill="#1E3A8A" opacity={0.25 + (i / 10) * 0.6} />
+              ))}
+            </svg>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>
+              <span>Top edge = camera</span>
+              <span>Last calibrated: <b style={{ color: '#374151' }}>{currentCalib.date}</b></span>
+            </div>
+          </div>
+
+          {/* ── Zone breakdown + run-calibration controls ──────────────── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                Zone Distribution (learned)
+              </div>
+              {[
+                { label: 'Bed area',     value: currentCalib.bed,     color: '#14B8A6', icon: '🛏' },
+                { label: 'Chair area',   value: currentCalib.chair,   color: '#F59E0B', icon: '🪑' },
+                { label: 'Walking area', value: currentCalib.walking, color: '#7C3AED', icon: '🚶' },
+              ].map(z => (
+                <div key={z.label} style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                    <span style={{ color: '#374151' }}>{z.icon} {z.label}</span>
+                    <span style={{ fontWeight: 800, color: z.color }}>{z.value}%</span>
+                  </div>
+                  <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${z.value}%`, background: z.color, borderRadius: 3, transition: 'width 0.6s ease' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: 'rgba(124,58,237,0.04)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.5, marginBottom: 10 }}>
+                Calibration passively observes the patient's stationary clusters and walking trajectories
+                for ~5 seconds to learn each zone from data. No manual zone definition required.
+              </div>
+              {calibrating ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 6 }}>
+                    <span style={{ color: '#7C3AED', fontWeight: 700 }}>Calibrating {calibRoom}…</span>
+                    <span style={{ color: '#7C3AED', fontWeight: 800 }}>{calibProgress}%</span>
+                  </div>
+                  <div style={{ height: 8, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${calibProgress}%`, background: 'linear-gradient(90deg,#1E3A8A,#7C3AED)', borderRadius: 4, transition: 'width 0.1s linear' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>
+                    Observing skeletal clusters · do not move the camera
+                  </div>
+                </>
+              ) : (
+                <button onClick={startCalibration}
+                  style={{ width: '100%', padding: '10px', borderRadius: 9, border: 'none',
+                    background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)', color: 'white',
+                    fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                  ▶ Run Calibration for {calibRoom}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button style={{ padding: '10px 24px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
+          Reset to Defaults
+        </button>
+        <button onClick={handleSave}
+          style={{ padding: '10px 28px', borderRadius: 10, border: 'none', background: saved ? '#14B8A6' : 'linear-gradient(135deg,#1E3A8A,#2563EB)', color: 'white', fontSize: 13, cursor: 'pointer', fontWeight: 800, transition: 'all 0.2s' }}>
+          {saved ? '✓ Saved!' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  )
+}

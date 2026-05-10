@@ -1,0 +1,33 @@
+{
+  "low_risk": {
+    "precision": 0.36,
+    "recall": 0.6,
+    "f1-score": 0.45,
+    "support": 15.0
+  },
+  "moderate_risk": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 0.0
+  },
+  "high_risk": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 30.0
+  },
+  "accuracy": 0.2,
+  "macro avg": {
+    "precision": 0.12,
+    "recall": 0.19999999999999998,
+    "f1-score": 0.15,
+    "support": 45.0
+  },
+  "weighted avg": {
+    "precision": 0.11999999999999998,
+    "recall": 0.2,
+    "f1-score": 0.15,
+    "support": 45.0
+  }
+}

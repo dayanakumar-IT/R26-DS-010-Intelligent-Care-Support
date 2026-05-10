@@ -1,0 +1,6 @@
+dataset,posture,count
+NTU,Lying,948
+NTU,Sitting,1908
+NTU,Standing,948
+NTU,Walking,948
+UR,Lying,30

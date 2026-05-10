@@ -1,0 +1,5 @@
+High-risk class (n=316) recall = 0.8829
+
+Of 316 actual high-risk events in the test set,
+  279 were correctly flagged.
+  The remaining 37 would be MISSED FALLS.

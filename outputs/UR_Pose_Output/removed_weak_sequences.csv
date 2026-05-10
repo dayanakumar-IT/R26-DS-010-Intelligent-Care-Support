@@ -1,0 +1,16 @@
+sequence_id,dataset,category,camera,label,risk_level,frame_count,detected_frames,missing_frames,pose_shape,pose_array_path,missing_ratio,quality
+adl-13-cam0-rgb,UR,adl,cam0,normal,low_risk,265,136,129,"(265, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\adl\adl-13-cam0-rgb.npy,0.487,weak
+adl-16-cam0-rgb,UR,adl,cam0,normal,low_risk,240,127,113,"(240, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\adl\adl-16-cam0-rgb.npy,0.471,weak
+adl-18-cam0-rgb,UR,adl,cam0,normal,low_risk,265,131,134,"(265, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\adl\adl-18-cam0-rgb.npy,0.506,weak
+adl-19-cam0-rgb,UR,adl,cam0,normal,low_risk,250,102,148,"(250, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\adl\adl-19-cam0-rgb.npy,0.592,weak
+adl-20-cam0-rgb,UR,adl,cam0,normal,low_risk,270,140,130,"(270, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\adl\adl-20-cam0-rgb.npy,0.481,weak
+fall-04-cam0-rgb,UR,fall_cam0,cam0,fall,high_risk,96,56,40,"(96, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam0\fall-04-cam0-rgb.npy,0.417,weak
+fall-19-cam0-rgb,UR,fall_cam0,cam0,fall,high_risk,100,51,49,"(100, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam0\fall-19-cam0-rgb.npy,0.49,weak
+fall-01-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,160,65,95,"(160, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-01-cam1-rgb.npy,0.594,weak
+fall-03-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,216,93,123,"(216, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-03-cam1-rgb.npy,0.569,weak
+fall-05-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,151,62,89,"(151, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-05-cam1-rgb.npy,0.589,weak
+fall-13-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,85,19,66,"(85, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-13-cam1-rgb.npy,0.776,weak
+fall-15-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,71,20,51,"(71, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-15-cam1-rgb.npy,0.718,weak
+fall-16-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,55,31,24,"(55, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-16-cam1-rgb.npy,0.436,weak
+fall-17-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,95,20,75,"(95, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-17-cam1-rgb.npy,0.789,weak
+fall-19-cam1-rgb,UR,fall_cam1,cam1,fall,high_risk,100,50,50,"(100, 33, 4)",C:\Users\VICTUS\Downloads\Research\outputs\UR_Pose_Output\fall_cam1\fall-19-cam1-rgb.npy,0.5,weak
