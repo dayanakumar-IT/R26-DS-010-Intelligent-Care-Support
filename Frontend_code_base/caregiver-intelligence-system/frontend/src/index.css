@@ -58,3 +58,35 @@ body {
 a {
   color: inherit;
 }
+
+/* ─── Fall-Detection module — supervisor-glanceable font bumps ─────────
+   Scaled up across the board so every label, button, and number reads
+   without squinting. Targets both Tailwind utility classes and inline
+   pixel-value styles that React emits as `style="font-size: 12px"`. */
+
+.fall-detection-page .text-xs   { font-size: 13.5px !important; line-height: 1.45 !important; }
+.fall-detection-page .text-sm   { font-size: 15.5px !important; line-height: 1.5  !important; }
+.fall-detection-page .text-base { font-size: 17px   !important; line-height: 1.55 !important; }
+.fall-detection-page .text-lg   { font-size: 19px   !important; line-height: 1.4  !important; }
+.fall-detection-page .text-xl   { font-size: 22px   !important; }
+.fall-detection-page .text-2xl  { font-size: 26px   !important; }
+.fall-detection-page .text-3xl  { font-size: 32px   !important; }
+
+/* Inline pixel font sizes used heavily across the tab components.
+   Bumped by roughly +2-3px each so the eye can read them at a glance. */
+.fall-detection-page [style*="font-size: 9px"]   { font-size: 12px !important; }
+.fall-detection-page [style*="font-size:9px"]    { font-size: 12px !important; }
+.fall-detection-page [style*="font-size: 10px"]  { font-size: 13px !important; }
+.fall-detection-page [style*="font-size:10px"]   { font-size: 13px !important; }
+.fall-detection-page [style*="font-size: 11px"]  { font-size: 14px !important; }
+.fall-detection-page [style*="font-size:11px"]   { font-size: 14px !important; }
+.fall-detection-page [style*="font-size: 12px"]  { font-size: 15px !important; }
+.fall-detection-page [style*="font-size:12px"]   { font-size: 15px !important; }
+.fall-detection-page [style*="font-size: 13px"]  { font-size: 16px !important; }
+.fall-detection-page [style*="font-size:13px"]   { font-size: 16px !important; }
+.fall-detection-page [style*="font-size: 14px"]  { font-size: 17px !important; }
+.fall-detection-page [style*="font-size:14px"]   { font-size: 17px !important; }
+
+/* Buttons and inputs */
+.fall-detection-page button { font-size: 15px; }
+.fall-detection-page input  { font-size: 15px; }
