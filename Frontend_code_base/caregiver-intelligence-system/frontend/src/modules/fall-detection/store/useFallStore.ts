@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Patient, FallAlert, RiskLevel, PatientStatus, PoseQuality, ZoneType } from '../types'
 import { PATIENTS as SEED_PATIENTS, ALERTS as SEED_ALERTS } from '../data/mockData'
+import { loadManifest, type DemoManifest, type DemoEntry } from '../data/demoFeed'
 
 let alertSeq = SEED_ALERTS.length + 1
 
@@ -89,6 +90,8 @@ interface FallStore {
   moderateTicks: Record<string, number>
   // Total count of high-risk alerts ever generated (used by UI to detect new ones for audio cue)
   highAlertCount: number
+  // Real backend model output for each patient (loaded from /demo_data/manifest.json)
+  demoManifest: DemoManifest | null
 
   acknowledgeAlert: (id: string) => void
   resolveAlert: (id: string) => void
@@ -96,6 +99,37 @@ interface FallStore {
 
   tick: () => void
   startLive: () => () => void
+  initFromManifest: () => Promise<void>
+}
+
+// Apply a DemoEntry's real model output to a seeded Patient. Keeps name,
+// age, room, bed (display labels) but overrides everything that came from
+// a backend model: riskLevel, riskScore, posture, confidence, status, zone.
+function applyDemoEntry(p: Patient, e: DemoEntry): Patient {
+  const status: PatientStatus =
+    e.riskLevel === 'High Risk' ? 'Alert' :
+    e.riskLevel === 'Moderate Risk' ? 'Monitoring' : 'Normal'
+  const zone: ZoneType =
+    e.posture === 'Lying' ? 'Bed' :
+    e.posture === 'Sitting' ? 'Chair' : 'Walking'
+  // Build a believable trend that lands on the real score
+  const trend: number[] = []
+  const start = Math.max(5, e.riskScore - 12 + Math.floor(Math.random() * 6))
+  for (let i = 0; i < 10; i++) {
+    const t = i / 9
+    trend.push(Math.round(start + (e.riskScore - start) * t + (Math.random() - 0.5) * 3))
+  }
+  return {
+    ...p,
+    riskLevel: e.riskLevel,
+    riskScore: e.riskScore,
+    posture: e.posture,
+    status,
+    zone,
+    confidence: e.confidence,
+    trend,
+    trendChange: e.riskScore - trend[0],
+  }
 }
 
 export const useFallStore = create<FallStore>((set, get) => ({
@@ -105,6 +139,20 @@ export const useFallStore = create<FallStore>((set, get) => ({
   edgeConnected: true,
   moderateTicks: {},
   highAlertCount: SEED_ALERTS.filter(a => a.riskLevel === 'High Risk').length,
+  demoManifest: null,
+
+  initFromManifest: async () => {
+    const m = await loadManifest()
+    if (!m) return
+    const byId = new Map(m.entries.map(e => [e.patientId, e]))
+    set(s => ({
+      demoManifest: m,
+      patients: s.patients.map(p => {
+        const e = byId.get(p.id)
+        return e ? applyDemoEntry(p, e) : p
+      }),
+    }))
+  },
 
   acknowledgeAlert: (id) =>
     set(s => ({ alerts: s.alerts.map(a => a.id === id ? { ...a, status: 'Acknowledged' as const } : a) })),
@@ -116,12 +164,27 @@ export const useFallStore = create<FallStore>((set, get) => ({
     set(s => ({ alerts: updater(s.alerts) })),
 
   tick: () => {
-    const { patients, alerts, moderateTicks, highAlertCount } = get()
+    const { patients, alerts, moderateTicks, highAlertCount, demoManifest } = get()
 
     const indices = new Set<number>()
     while (indices.size < 10) indices.add(Math.floor(Math.random() * patients.length))
 
-    const updatedPatients = patients.map((p, i) => indices.has(i) ? liveUpdate(p) : p)
+    const updatedPatients = patients.map((p, i) => {
+      if (!indices.has(i)) return p
+      const next = liveUpdate(p)
+      // If this patient has a real model anchor, keep the score within ±5 of it
+      const e = demoManifest?.entries.find(x => x.patientId === p.id)
+      if (e) {
+        const anchored = Math.max(e.riskScore - 5, Math.min(e.riskScore + 5, next.riskScore))
+        return {
+          ...next,
+          riskScore: anchored,
+          riskLevel: e.riskLevel,        // never drift across class boundaries
+          posture: e.posture,            // posture is fixed for this clip
+        }
+      }
+      return next
+    })
 
     const newAlerts: FallAlert[] = []
     const nextModerateTicks: Record<string, number> = { ...moderateTicks }

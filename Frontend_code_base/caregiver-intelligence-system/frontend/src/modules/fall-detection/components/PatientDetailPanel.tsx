@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import type { Patient, PatientDetailTab } from '../types'
 import { Sparkline, RiskArc, MiniArea } from './Charts'
 import { PATIENT_HISTORY } from '../data/mockData'
+import { DemoBackendPanel } from './DemoBackendPanel'
 import {
   getPatientScenario, computeJoints, BONES, ALL_JOINTS, JOINT_LABELS,
   STAGE_JUMPS, getLiveActivity, type Frame,
@@ -492,7 +493,7 @@ function LiveViewTab({ patient }: { patient: Patient; onViewLive: (p: Patient) =
   const [liveConf,  setLiveConf]  = useState(patient.confidence)
   const [liveTrend, setLiveTrend] = useState(patient.trend)
   const [isPlaying, setIsPlaying] = useState(true)
-  const [currentFrame, setCurrentFrame] = useState<Frame | null>(null)
+  const [currentFrame] = useState<Frame | null>(null)
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const eventRef  = useRef<ReturnType<typeof setTimeout>  | null>(null)
   const scenario  = useMemo(() => getPatientScenario(patient.id, patient.posture), [patient.id, patient.posture])
@@ -557,6 +558,8 @@ function LiveViewTab({ patient }: { patient: Patient; onViewLive: (p: Patient) =
   }, [patient.id, patient.riskLevel, patient.status, scenario.scenarioId, currentStage, patient.riskScore])
 
   return (
+    <div>
+    <DemoBackendPanel patientId={patient.id} />
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:18 }}>
 
       {/* ── Left: Live skeleton ── */}
@@ -576,20 +579,22 @@ function LiveViewTab({ patient }: { patient: Patient; onViewLive: (p: Patient) =
           <span style={{ fontSize:11, color:'#64748B' }}>25 FPS · ST-GCN</span>
         </div>
 
-        {/* Situation banner */}
-        <div style={{ padding:'7px 12px', borderRadius:8,
+        {/* Posture visualization banner (anatomical figure, driven by real model output) */}
+        <div style={{ padding:'8px 12px', borderRadius:8,
           background:`${scenario.categoryColor}18`, border:`1px solid ${scenario.categoryColor}30` }}>
-          <div style={{ fontSize:9, color:'#64748B', textTransform:'uppercase',
-            letterSpacing:'0.05em', marginBottom:2 }}>
-            {scenario.icon} {scenario.category}
+          <div style={{ fontSize:9, color:'#94A3B8', textTransform:'uppercase',
+            letterSpacing:'0.08em', marginBottom:3 }}>
+            Posture visualization · Model classified as {patient.posture}, {patient.riskLevel}
           </div>
           <div style={{ fontSize:12, fontWeight:700, color:scenario.categoryColor }}>
             {lvl === 'Low Risk' ? scenario.normalLabel : scenario.situation}
           </div>
         </div>
 
-        {/* Skeleton */}
-        <div style={{ display:'flex', justifyContent:'center' }}>
+        {/* Anatomical skeleton — visual representation of the classified posture/risk.
+            Raw motion-capture skeleton (the actual model input) is shown in the
+            "Trained-Model Output" panel above. */}
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
           <SkeletonCanvas
             patientId={patient.id}
             riskLevel={patient.riskLevel}
@@ -598,8 +603,11 @@ function LiveViewTab({ patient }: { patient: Patient; onViewLive: (p: Patient) =
             size={200}
             showStageLabel={true}
             showStats={true}
-            onFrameChange={setCurrentFrame}
           />
+          <div style={{ fontSize:9.5, color:'#64748B', textAlign:'center', maxWidth:260, lineHeight:1.4 }}>
+            Anatomical illustration of the model-classified posture and risk state.
+            Underlying test sequence and softmax outputs are shown in the trained-model panel above.
+          </div>
         </div>
 
         {/* Stats grid */}
@@ -756,6 +764,7 @@ function LiveViewTab({ patient }: { patient: Patient; onViewLive: (p: Patient) =
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }
