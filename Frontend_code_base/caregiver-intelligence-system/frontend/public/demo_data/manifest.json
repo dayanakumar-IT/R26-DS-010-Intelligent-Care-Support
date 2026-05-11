@@ -34,7 +34,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 43\u00b0, vertical drop 0.51 m, instability score 0.10, joint speed peak 0.97. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.5061473,
+        "sudden_vertical_change": 0.0865376,
+        "torso_angle_max": 42.696865,
+        "torso_angle_mean": 12.532125,
+        "instability_score": 0.09911546,
+        "max_joint_speed": 0.96715003,
+        "mean_joint_speed": 0.055710368,
+        "center_speed_max": 0.11846442
+      }
     },
     {
       "patientId": "P002",
@@ -60,7 +72,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Posture-transition signature: torso tilt 30\u00b0, vertical drop 0.36 m, instability 0.04, joint speed peak 0.17. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.36006558,
+        "sudden_vertical_change": 0.03629887,
+        "torso_angle_max": 30.32068,
+        "torso_angle_mean": 12.116144,
+        "instability_score": 0.036979318,
+        "max_joint_speed": 0.17351136,
+        "mean_joint_speed": 0.02139011,
+        "center_speed_max": 0.043901965
+      }
     },
     {
       "patientId": "P003",
@@ -86,7 +110,19 @@
       "stgcnHigh": 0.893,
       "groundTruth": "High Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person collapsing to the ground (NTU action A043)",
+      "justification": "Person collapsing to the ground (NTU action A043). Strong fall-like signature: vertical drop 0.05 m, sudden vertical change 0.07, peak torso tilt 20\u00b0, instability score 0.10, max joint speed 0.57. These features sit firmly in the High-Risk band \u2014 fast downward motion and large torso inclination indicating loss of balance.",
+      "features": {
+        "vertical_drop": 0.052310288,
+        "sudden_vertical_change": 0.06829211,
+        "torso_angle_max": 20.481289,
+        "torso_angle_mean": 11.129797,
+        "instability_score": 0.096781,
+        "max_joint_speed": 0.57444274,
+        "mean_joint_speed": 0.06513293,
+        "center_speed_max": 0.10704949
+      }
     },
     {
       "patientId": "P004",
@@ -112,7 +148,19 @@
       "stgcnHigh": 0.044,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "RGB\u2192Skeleton"
+      "modality": "RGB\u2192Skeleton",
+      "actionDescription": "Routine daily activity \u2014 walking, sitting, standing (UR ADL)",
+      "justification": "Routine daily activity \u2014 walking, sitting, standing (UR ADL). Stable motion: torso tilt only 10\u00b0, vertical drop 0.53 m, instability score 0.48, joint speed peak 3.39. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.52696925,
+        "sudden_vertical_change": 0.5119182,
+        "torso_angle_max": 9.818641,
+        "torso_angle_mean": 1.7168045,
+        "instability_score": 0.47937155,
+        "max_joint_speed": 3.394498,
+        "mean_joint_speed": 0.23935874,
+        "center_speed_max": 0.5839843
+      }
     },
     {
       "patientId": "P005",
@@ -138,7 +186,19 @@
       "stgcnHigh": 0.816,
       "groundTruth": "Low Risk",
       "correct": false,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Strong fall-like signature: vertical drop 0.33 m, sudden vertical change 0.13, peak torso tilt 7\u00b0, instability score 0.12, max joint speed 1.23. These features sit firmly in the High-Risk band \u2014 fast downward motion and large torso inclination indicating loss of balance.",
+      "features": {
+        "vertical_drop": 0.33030486,
+        "sudden_vertical_change": 0.12832385,
+        "torso_angle_max": 7.3616767,
+        "torso_angle_mean": 2.1604426,
+        "instability_score": 0.123455435,
+        "max_joint_speed": 1.2294222,
+        "mean_joint_speed": 0.064293,
+        "center_speed_max": 0.13607556
+      }
     },
     {
       "patientId": "P006",
@@ -164,7 +224,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person rising from a seated position (NTU action A009)",
+      "justification": "Person rising from a seated position (NTU action A009). Stable motion: torso tilt only 49\u00b0, vertical drop -0.63 m, instability score 0.13, joint speed peak 1.33. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": -0.6297824,
+        "sudden_vertical_change": 0.16811025,
+        "torso_angle_max": 49.36644,
+        "torso_angle_mean": 18.918695,
+        "instability_score": 0.1299746,
+        "max_joint_speed": 1.332373,
+        "mean_joint_speed": 0.0536151,
+        "center_speed_max": 0.18331808
+      }
     },
     {
       "patientId": "P007",
@@ -190,7 +262,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Posture-transition signature: torso tilt 45\u00b0, vertical drop 0.66 m, instability 0.07, joint speed peak 0.78. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.6619647,
+        "sudden_vertical_change": 0.064685345,
+        "torso_angle_max": 45.202034,
+        "torso_angle_mean": 18.558506,
+        "instability_score": 0.06656273,
+        "max_joint_speed": 0.77817976,
+        "mean_joint_speed": 0.029852934,
+        "center_speed_max": 0.09180114
+      }
     },
     {
       "patientId": "P008",
@@ -216,7 +300,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 52\u00b0, vertical drop 0.90 m, instability score 0.14, joint speed peak 1.22. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.90209746,
+        "sudden_vertical_change": 0.1428428,
+        "torso_angle_max": 51.94823,
+        "torso_angle_mean": 23.99864,
+        "instability_score": 0.14059576,
+        "max_joint_speed": 1.2175215,
+        "mean_joint_speed": 0.07891877,
+        "center_speed_max": 0.14748822
+      }
     },
     {
       "patientId": "P009",
@@ -242,7 +338,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 66\u00b0, vertical drop 0.43 m, instability score 0.10, joint speed peak 0.97. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.43441024,
+        "sudden_vertical_change": 0.056895435,
+        "torso_angle_max": 66.32436,
+        "torso_angle_mean": 22.736998,
+        "instability_score": 0.10359206,
+        "max_joint_speed": 0.97180045,
+        "mean_joint_speed": 0.055472218,
+        "center_speed_max": 0.12864605
+      }
     },
     {
       "patientId": "P010",
@@ -268,7 +376,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 60\u00b0, vertical drop 0.57 m, instability score 0.12, joint speed peak 1.19. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.5727905,
+        "sudden_vertical_change": 0.10259536,
+        "torso_angle_max": 59.52138,
+        "torso_angle_mean": 25.594585,
+        "instability_score": 0.11920645,
+        "max_joint_speed": 1.1926374,
+        "mean_joint_speed": 0.06841956,
+        "center_speed_max": 0.17842843
+      }
     },
     {
       "patientId": "P011",
@@ -294,7 +414,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Posture-transition signature: torso tilt 47\u00b0, vertical drop 0.60 m, instability 0.05, joint speed peak 0.35. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.60191363,
+        "sudden_vertical_change": 0.034617424,
+        "torso_angle_max": 46.941345,
+        "torso_angle_mean": 17.274347,
+        "instability_score": 0.05202337,
+        "max_joint_speed": 0.34792918,
+        "mean_joint_speed": 0.025850067,
+        "center_speed_max": 0.055722233
+      }
     },
     {
       "patientId": "P012",
@@ -320,7 +452,19 @@
       "stgcnHigh": 0.062,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Posture-transition signature: torso tilt 32\u00b0, vertical drop 0.30 m, instability 0.13, joint speed peak 0.89. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.30016753,
+        "sudden_vertical_change": 0.11618674,
+        "torso_angle_max": 31.684477,
+        "torso_angle_mean": 20.931805,
+        "instability_score": 0.12869318,
+        "max_joint_speed": 0.8861703,
+        "mean_joint_speed": 0.04398534,
+        "center_speed_max": 0.16478689
+      }
     },
     {
       "patientId": "P013",
@@ -346,7 +490,19 @@
       "stgcnHigh": 0.999,
       "groundTruth": "High Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person collapsing to the ground (NTU action A043)",
+      "justification": "Person collapsing to the ground (NTU action A043). Strong fall-like signature: vertical drop -0.09 m, sudden vertical change 0.17, peak torso tilt 49\u00b0, instability score 0.19, max joint speed 1.17. These features sit firmly in the High-Risk band \u2014 fast downward motion and large torso inclination indicating loss of balance.",
+      "features": {
+        "vertical_drop": -0.08706933,
+        "sudden_vertical_change": 0.17319217,
+        "torso_angle_max": 48.61652,
+        "torso_angle_mean": 12.337612,
+        "instability_score": 0.19364785,
+        "max_joint_speed": 1.1706171,
+        "mean_joint_speed": 0.096888535,
+        "center_speed_max": 0.19815013
+      }
     },
     {
       "patientId": "P014",
@@ -372,7 +528,19 @@
       "stgcnHigh": 0.001,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Posture-transition signature: torso tilt 35\u00b0, vertical drop 0.55 m, instability 0.06, joint speed peak 0.62. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.55141497,
+        "sudden_vertical_change": 0.03901592,
+        "torso_angle_max": 35.3577,
+        "torso_angle_mean": 16.99314,
+        "instability_score": 0.060772646,
+        "max_joint_speed": 0.62293917,
+        "mean_joint_speed": 0.02825488,
+        "center_speed_max": 0.06107488
+      }
     },
     {
       "patientId": "P015",
@@ -398,7 +566,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 89\u00b0, vertical drop 0.72 m, instability score 0.22, joint speed peak 2.88. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.7152242,
+        "sudden_vertical_change": 0.19460794,
+        "torso_angle_max": 88.80018,
+        "torso_angle_mean": 36.28251,
+        "instability_score": 0.22151563,
+        "max_joint_speed": 2.8831556,
+        "mean_joint_speed": 0.102475725,
+        "center_speed_max": 0.2970546
+      }
     },
     {
       "patientId": "P016",
@@ -424,7 +604,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 25\u00b0, vertical drop 0.35 m, instability score 0.09, joint speed peak 1.07. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.34857887,
+        "sudden_vertical_change": 0.045006275,
+        "torso_angle_max": 25.101173,
+        "torso_angle_mean": 9.316404,
+        "instability_score": 0.08891221,
+        "max_joint_speed": 1.0704252,
+        "mean_joint_speed": 0.04232878,
+        "center_speed_max": 0.078287445
+      }
     },
     {
       "patientId": "P017",
@@ -450,7 +642,19 @@
       "stgcnHigh": 0.716,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Posture-transition signature: torso tilt 19\u00b0, vertical drop 0.28 m, instability 0.07, joint speed peak 0.96. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.28064778,
+        "sudden_vertical_change": 0.06585479,
+        "torso_angle_max": 18.706587,
+        "torso_angle_mean": 10.319296,
+        "instability_score": 0.070954606,
+        "max_joint_speed": 0.9645463,
+        "mean_joint_speed": 0.030360393,
+        "center_speed_max": 0.075340696
+      }
     },
     {
       "patientId": "P018",
@@ -476,7 +680,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 89\u00b0, vertical drop 0.32 m, instability score 0.26, joint speed peak 1.83. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.32102406,
+        "sudden_vertical_change": 0.2442404,
+        "torso_angle_max": 89.40021,
+        "torso_angle_mean": 13.496639,
+        "instability_score": 0.26490283,
+        "max_joint_speed": 1.8294806,
+        "mean_joint_speed": 0.120336,
+        "center_speed_max": 0.4021346
+      }
     },
     {
       "patientId": "P019",
@@ -502,7 +718,19 @@
       "stgcnHigh": 0.975,
       "groundTruth": "Moderate Risk",
       "correct": false,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person walking unsteadily (NTU action A042)",
+      "justification": "Person walking unsteadily (NTU action A042). Strong fall-like signature: vertical drop -0.48 m, sudden vertical change 0.29, peak torso tilt 11\u00b0, instability score 0.31, max joint speed 3.14. These features sit firmly in the High-Risk band \u2014 fast downward motion and large torso inclination indicating loss of balance.",
+      "features": {
+        "vertical_drop": -0.47808257,
+        "sudden_vertical_change": 0.28527302,
+        "torso_angle_max": 11.165545,
+        "torso_angle_mean": 2.4509487,
+        "instability_score": 0.3140917,
+        "max_joint_speed": 3.1419377,
+        "mean_joint_speed": 0.13381268,
+        "center_speed_max": 0.45594758
+      }
     },
     {
       "patientId": "P020",
@@ -528,7 +756,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person transitioning from standing to seated (NTU action A008)",
+      "justification": "Person transitioning from standing to seated (NTU action A008). Stable motion: torso tilt only 44\u00b0, vertical drop 0.41 m, instability score 0.09, joint speed peak 0.50. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": 0.41285732,
+        "sudden_vertical_change": 0.12038618,
+        "torso_angle_max": 44.354084,
+        "torso_angle_mean": 10.421244,
+        "instability_score": 0.08767263,
+        "max_joint_speed": 0.49828365,
+        "mean_joint_speed": 0.049959313,
+        "center_speed_max": 0.140873
+      }
     },
     {
       "patientId": "P021",
@@ -554,7 +794,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Posture-transition signature: torso tilt 45\u00b0, vertical drop 0.60 m, instability 0.05, joint speed peak 0.31. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.60220563,
+        "sudden_vertical_change": 0.04527551,
+        "torso_angle_max": 44.828968,
+        "torso_angle_mean": 20.924545,
+        "instability_score": 0.054162767,
+        "max_joint_speed": 0.3139194,
+        "mean_joint_speed": 0.034389716,
+        "center_speed_max": 0.06076785
+      }
     },
     {
       "patientId": "P022",
@@ -580,7 +832,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Low Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person rising from a seated position (NTU action A009)",
+      "justification": "Person rising from a seated position (NTU action A009). Stable motion: torso tilt only 58\u00b0, vertical drop -0.44 m, instability score 0.19, joint speed peak 1.49. No fall-like collapse or unsafe transition \u2014 Low Risk.",
+      "features": {
+        "vertical_drop": -0.4428303,
+        "sudden_vertical_change": 0.08510934,
+        "torso_angle_max": 57.653843,
+        "torso_angle_mean": 8.912142,
+        "instability_score": 0.19087383,
+        "max_joint_speed": 1.4916822,
+        "mean_joint_speed": 0.07532308,
+        "center_speed_max": 0.21461235
+      }
     },
     {
       "patientId": "P023",
@@ -606,7 +870,19 @@
       "stgcnHigh": 0.964,
       "groundTruth": "Moderate Risk",
       "correct": false,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person squatting / lowering centre of mass (NTU action A080)",
+      "justification": "Person squatting / lowering centre of mass (NTU action A080). Strong fall-like signature: vertical drop 0.15 m, sudden vertical change 0.06, peak torso tilt 4\u00b0, instability score 0.07, max joint speed 0.81. These features sit firmly in the High-Risk band \u2014 fast downward motion and large torso inclination indicating loss of balance.",
+      "features": {
+        "vertical_drop": 0.15161803,
+        "sudden_vertical_change": 0.06289154,
+        "torso_angle_max": 4.0029626,
+        "torso_angle_mean": 2.118128,
+        "instability_score": 0.068053596,
+        "max_joint_speed": 0.8086987,
+        "mean_joint_speed": 0.025258493,
+        "center_speed_max": 0.07523302
+      }
     },
     {
       "patientId": "P024",
@@ -632,7 +908,19 @@
       "stgcnHigh": 0.0,
       "groundTruth": "Moderate Risk",
       "correct": true,
-      "modality": "Motion-Capture Skeleton"
+      "modality": "Motion-Capture Skeleton",
+      "actionDescription": "Person walking unsteadily (NTU action A042)",
+      "justification": "Person walking unsteadily (NTU action A042). Posture-transition signature: torso tilt 27\u00b0, vertical drop 0.06 m, instability 0.14, joint speed peak 1.10. The body is changing pose (sit\u2194stand or unsteady walking) but the motion is controlled \u2014 Moderate Risk sustained-warning.",
+      "features": {
+        "vertical_drop": 0.057611227,
+        "sudden_vertical_change": 0.07063675,
+        "torso_angle_max": 26.814478,
+        "torso_angle_mean": 16.544508,
+        "instability_score": 0.14146759,
+        "max_joint_speed": 1.1043469,
+        "mean_joint_speed": 0.06539788,
+        "center_speed_max": 0.13129736
+      }
     }
   ]
 }

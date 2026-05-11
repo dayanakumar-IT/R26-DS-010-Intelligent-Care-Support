@@ -12,6 +12,7 @@
 //
 // All numbers come from /demo_data/manifest.json (real test-set output).
 
+import { useState } from 'react'
 import { useFallStore } from '../store/useFallStore'
 
 interface Props { patientId: string }
@@ -27,6 +28,7 @@ interface ProbRow {
 export function DemoBackendPanel({ patientId }: Props) {
   const manifest = useFallStore(s => s.demoManifest)
   const entry = manifest?.entries.find(e => e.patientId === patientId)
+  const [whyOpen, setWhyOpen] = useState(false)
   if (!entry) return null
 
   const ok = entry.correct
@@ -136,6 +138,80 @@ export function DemoBackendPanel({ patientId }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Why this prediction? — click to expand per-patient justification ── */}
+      <div style={{ marginTop: 10 }}>
+        <button
+          onClick={() => setWhyOpen(o => !o)}
+          style={{
+            width: '100%', textAlign: 'left',
+            background: whyOpen ? '#1E293B' : '#172033',
+            border: '1px solid #1E293B', borderRadius: 10,
+            padding: '10px 14px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            color: '#E5E7EB', fontWeight: 700, fontSize: 14,
+          }}
+        >
+          <span>
+            <span style={{ color: '#14B8A6', marginRight: 8 }}>Why this prediction?</span>
+            <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>
+              click to see the per-patient justification
+            </span>
+          </span>
+          <span style={{ color: '#94A3B8', fontSize: 16 }}>{whyOpen ? '▴' : '▾'}</span>
+        </button>
+
+        {whyOpen && (
+          <div style={{
+            background: '#0B1220', border: '1px solid #1E293B', borderTop: 'none',
+            borderRadius: '0 0 10px 10px', padding: '14px 16px',
+          }}>
+            <div style={{ fontSize: 11, color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 4 }}>
+              SOURCE · ACTION ANNOTATION
+            </div>
+            <div style={{ fontSize: 13, color: '#E5E7EB', fontWeight: 600, marginBottom: 12 }}>
+              {entry.actionDescription || '—'}
+            </div>
+
+            <div style={{ fontSize: 11, color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 4 }}>
+              WHY THE MODEL CLASSIFIED IT THIS WAY
+            </div>
+            <div style={{ fontSize: 13, color: '#CBD5E1', lineHeight: 1.55, marginBottom: 14 }}>
+              {entry.justification}
+            </div>
+
+            {entry.features && (
+              <>
+                <div style={{ fontSize: 11, color: '#94A3B8', letterSpacing: '0.05em', marginBottom: 6 }}>
+                  KEY MOTION FEATURES (the model's evidence)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <FeatureChip label="Vertical drop"           value={entry.features.vertical_drop.toFixed(2)}            hint="Hip-Y drop over the clip" />
+                  <FeatureChip label="Sudden vert. change"     value={entry.features.sudden_vertical_change.toFixed(2)}   hint="Fast downward movement spike" />
+                  <FeatureChip label="Torso tilt (max)"        value={`${entry.features.torso_angle_max.toFixed(0)}°`}    hint="Largest body lean during the clip" />
+                  <FeatureChip label="Instability score"       value={entry.features.instability_score.toFixed(2)}        hint="Centre-of-mass deviation over time" />
+                  <FeatureChip label="Joint speed (max)"       value={entry.features.max_joint_speed.toFixed(2)}          hint="Fastest single-joint motion" />
+                  <FeatureChip label="Joint speed (mean)"      value={entry.features.mean_joint_speed.toFixed(2)}         hint="Average motion across all joints" />
+                  <FeatureChip label="Torso tilt (mean)"       value={`${entry.features.torso_angle_mean.toFixed(0)}°`}   hint="Average body lean" />
+                  <FeatureChip label="Center speed (max)"      value={entry.features.center_speed_max.toFixed(2)}         hint="Fastest centre-of-mass speed" />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function FeatureChip({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div title={hint} style={{
+      cursor: 'help', background: '#1E293B', borderRadius: 8, padding: '8px 10px',
+      borderLeft: '3px solid #14B8A6',
+    }}>
+      <div style={{ fontSize: 10, color: '#94A3B8', letterSpacing: '0.04em' }}>{label.toUpperCase()}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: '#E2E8F0', marginTop: 2 }}>{value}</div>
     </div>
   )
 }

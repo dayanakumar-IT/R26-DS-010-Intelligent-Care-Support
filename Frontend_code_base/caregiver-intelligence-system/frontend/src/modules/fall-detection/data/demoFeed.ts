@@ -34,6 +34,18 @@ export interface DemoEntry {
   groundTruth: RiskLevel
   correct: boolean
   modality: string            // 'RGB→Skeleton' or 'Motion-Capture Skeleton'
+  actionDescription: string   // plain-English description of the source action
+  justification: string       // why the model classified this sequence the way it did
+  features: {
+    vertical_drop: number
+    sudden_vertical_change: number
+    torso_angle_max: number
+    torso_angle_mean: number
+    instability_score: number
+    max_joint_speed: number
+    mean_joint_speed: number
+    center_speed_max: number
+  } | null
 }
 
 export interface DemoManifest {

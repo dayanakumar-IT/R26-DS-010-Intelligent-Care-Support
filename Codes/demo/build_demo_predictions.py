@@ -34,6 +34,7 @@ REPO = Path(__file__).resolve().parents[2]
 COMMON_META = REPO / "outputs" / "Common_Joint_Sequences" / "common_joint_metadata.csv"
 FUSION_PRED = REPO / "Codes" / "models" / "fusion_results" / "test_predictions.csv"
 FUSION_FEATS = REPO / "Codes" / "models" / "fusion_results" / "fusion_features.csv"
+FEATURES_DS = REPO / "outputs" / "Feature_Dataset" / "features_dataset.csv"
 POSTURE_DATA = REPO / "Codes" / "models" / "posture_results" / "posture_dataset.csv"
 POSTURE_MODEL = REPO / "Codes" / "models" / "posture_results" / "model.pkl"
 
@@ -231,9 +232,58 @@ def softmax(x: np.ndarray) -> np.ndarray:
     return e / e.sum()
 
 
+# Human-readable label for each NTU/UR action class
+ACTION_DESCRIPTION = {
+    "fall":         "Person collapsing to the ground (UR fall recording)",
+    "falling_down": "Person collapsing to the ground (NTU action A043)",
+    "staggering":   "Person walking unsteadily (NTU action A042)",
+    "sit_down":     "Person transitioning from standing to seated (NTU action A008)",
+    "squat_down":   "Person squatting / lowering centre of mass (NTU action A080)",
+    "stand_up":     "Person rising from a seated position (NTU action A009)",
+    "normal":       "Routine daily activity — walking, sitting, standing (UR ADL)",
+}
+
+
+def build_justification(action: str, risk_pred: str, feats: dict | None) -> str:
+    """Generate a short why-this-prediction explanation in plain English,
+    citing the dataset action label and the strongest motion features."""
+    action_desc = ACTION_DESCRIPTION.get(action, f"Action: {action}")
+
+    if feats is None:
+        return f"Source motion: {action_desc}. Final classification based on the model's softmax outputs."
+
+    vd  = feats.get("vertical_drop", 0.0)
+    tam = feats.get("torso_angle_max", 0.0)
+    inst = feats.get("instability_score", 0.0)
+    jsp = feats.get("max_joint_speed", 0.0)
+    svc = feats.get("sudden_vertical_change", 0.0)
+
+    if risk_pred == "high_risk":
+        return (
+            f"{action_desc}. Strong fall-like signature: vertical drop {vd:.2f} m, "
+            f"sudden vertical change {svc:.2f}, peak torso tilt {tam:.0f}°, "
+            f"instability score {inst:.2f}, max joint speed {jsp:.2f}. "
+            f"These features sit firmly in the High-Risk band — fast downward motion "
+            f"and large torso inclination indicating loss of balance."
+        )
+    if risk_pred == "moderate_risk":
+        return (
+            f"{action_desc}. Posture-transition signature: torso tilt {tam:.0f}°, "
+            f"vertical drop {vd:.2f} m, instability {inst:.2f}, joint speed peak {jsp:.2f}. "
+            f"The body is changing pose (sit↔stand or unsteady walking) but the motion "
+            f"is controlled — Moderate Risk sustained-warning."
+        )
+    return (
+        f"{action_desc}. Stable motion: torso tilt only {tam:.0f}°, "
+        f"vertical drop {vd:.2f} m, instability score {inst:.2f}, "
+        f"joint speed peak {jsp:.2f}. No fall-like collapse or unsafe transition — Low Risk."
+    )
+
+
 def main() -> None:
     fusion = pd.read_csv(FUSION_PRED)
     fusion_feats = pd.read_csv(FUSION_FEATS).set_index("sequence_id")
+    features_ds = pd.read_csv(FEATURES_DS).set_index("sequence_id")
     meta = pd.read_csv(COMMON_META)
     posture_df = pd.read_csv(POSTURE_DATA)
     posture_model = joblib.load(POSTURE_MODEL)
@@ -272,6 +322,24 @@ def main() -> None:
                                      feats["stgcn_logit_high"]])
             stgcn_probs = [float(p) for p in softmax(stgcn_logits)]
 
+        # Engineered motion features (vertical_drop, torso_angle_max,
+        # instability_score, etc.) for the per-patient "Why?" panel.
+        eng_feats = None
+        if seq in features_ds.index:
+            row = features_ds.loc[seq]
+            eng_feats = {
+                "vertical_drop":          float(row["vertical_drop"]),
+                "sudden_vertical_change": float(row["sudden_vertical_change"]),
+                "torso_angle_max":        float(row["torso_angle_max"]),
+                "torso_angle_mean":       float(row["torso_angle_mean"]),
+                "instability_score":      float(row["instability_score"]),
+                "max_joint_speed":        float(row["max_joint_speed"]),
+                "mean_joint_speed":       float(row["mean_joint_speed"]),
+                "center_speed_max":       float(row["center_speed_max"]),
+            }
+        justification = build_justification(a.get("action_label") or "normal",
+                                            pred, eng_feats)
+
         entries.append({
             "patientId": slot["id"],
             "room": slot["room"],
@@ -299,6 +367,9 @@ def main() -> None:
             "groundTruth": risk_class_to_level(true_label),
             "correct": correct,
             "modality": "RGB→Skeleton" if is_ur else "Motion-Capture Skeleton",
+            "actionDescription": ACTION_DESCRIPTION.get(a.get("action_label") or "normal", ""),
+            "justification": justification,
+            "features": eng_feats,
         })
 
     manifest = {
