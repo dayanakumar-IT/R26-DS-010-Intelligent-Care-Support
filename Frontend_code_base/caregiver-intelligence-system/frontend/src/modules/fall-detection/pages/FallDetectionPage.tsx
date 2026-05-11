@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { FallTab } from '../types'
 import { useFallStore } from '../store/useFallStore'
 import { getStoredUser, clearStoredUser } from '../../../config/auth'
+import { AdminAvatarImg } from '../../../shared/components/AdminAvatar'
 import { DashboardTab }    from '../components/tabs/DashboardTab'
 import { RoomOverviewTab } from '../components/tabs/RoomOverviewTab'
 import { AlertsRiskTab }   from '../components/tabs/AlertsRiskTab'
@@ -130,9 +131,13 @@ export function FallDetectionPage() {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
               style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
               title={user ? `${user.name} · ${user.email}` : 'Not signed in'}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black"
-                style={{ background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)', fontSize: 12 }}>
-                {user?.role === 'admin' ? 'A' : 'S'}
+              <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden text-white font-black"
+                style={
+                  user?.role === 'admin'
+                    ? { background: 'transparent' }
+                    : { background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)', fontSize: 12 }
+                }>
+                {user?.role === 'admin' ? <AdminAvatarImg size={28} /> : 'S'}
               </div>
               <div className="leading-tight">
                 <div className="font-semibold" style={{ color: '#1F2937', fontSize: 13 }}>

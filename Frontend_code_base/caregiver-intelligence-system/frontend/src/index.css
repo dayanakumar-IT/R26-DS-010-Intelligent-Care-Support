@@ -3,6 +3,7 @@
 :root {
   --brand-blue: #1e3a8a;
   --brand-purple: #7c3aed;
+  --brand-accent: #14b8a6;
 
   --bg: #fafafa;
   --surface: #ffffff;
@@ -90,3 +91,18 @@ a {
 /* Buttons and inputs */
 .fall-detection-page button { font-size: 15px; }
 .fall-detection-page input  { font-size: 15px; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.4s ease-out both;
+}

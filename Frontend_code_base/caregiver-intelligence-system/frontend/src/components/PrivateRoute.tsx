@@ -10,7 +10,7 @@ export function PrivateRoute({ children }: PrivateRouteProps) {
   const user = getStoredUser()
 
   if (!user) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/login" replace />
   }
 
   return <>{children}</>

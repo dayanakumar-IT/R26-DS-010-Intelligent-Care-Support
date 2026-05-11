@@ -11,7 +11,7 @@ import { SignVitalsRoutes } from '../modules/sign-vitals/routes'
 
 export const router = createBrowserRouter([
   {
-    path: '/',
+    path: '/login',
     element: <Login />,
   },
   {
@@ -22,8 +22,8 @@ export const router = createBrowserRouter([
       </PrivateRoute>
     ),
     children: [
+      { index: true, element: <Navigate to="deterioration" replace /> },
       { path: 'dashboard', element: <Home /> },
-      { path: 'Home', element: <Navigate to="/dashboard" replace /> },
       ...DeteriorationRoutes,
       ...VoiceLogRoutes,
       ...FallDetectionRoutes,
@@ -31,7 +31,6 @@ export const router = createBrowserRouter([
       { path: '*', element: <NotFound /> },
     ],
   },
-  { path: '/login', element: <Navigate to="/" replace /> },
-  { path: '*', element: <Navigate to="/dashboard" replace /> },
+  { path: '*', element: <Navigate to="/deterioration" replace /> },
 ])
 
