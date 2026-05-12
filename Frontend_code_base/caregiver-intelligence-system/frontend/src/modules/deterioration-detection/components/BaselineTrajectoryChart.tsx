@@ -56,7 +56,7 @@ export function BaselineTrajectoryChart({
             <Line
               type="monotone"
               dataKey="population"
-              name="Population mean (TILES-2018)"
+              name="Baseline score (individual)"
               stroke="#9CA3AF"
               strokeWidth={2}
               strokeDasharray="6 4"
