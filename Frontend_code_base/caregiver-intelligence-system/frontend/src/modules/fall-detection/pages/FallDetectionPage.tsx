@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { FallTab } from '../types'
 import { useFallStore } from '../store/useFallStore'
-import { getStoredUser } from '../../../config/auth'
+import { getStoredUser, clearStoredUser } from '../../../config/auth'
 import { AdminAvatarImg } from '../../../shared/components/AdminAvatar'
 import { DashboardTab }    from '../components/tabs/DashboardTab'
 import { RoomOverviewTab } from '../components/tabs/RoomOverviewTab'
@@ -29,10 +30,15 @@ export function FallDetectionPage() {
   const [search, setSearch] = useState('')
   const [flashCritical, setFlashCritical] = useState(false)
 
-  const { alerts, patients, startLive, lastUpdate, highAlertCount } = useFallStore()
+  const { alerts, patients, startLive, lastUpdate, highAlertCount, initFromManifest, demoManifest } = useFallStore()
   const newAlertCount = alerts.filter(a => a.status === 'New').length
 
+  // Load the backend manifest (real model output for 24 patients) once on mount.
+  useEffect(() => { initFromManifest() }, [initFromManifest])
+
   const user = getStoredUser()
+  const navigate = useNavigate()
+  const handleLogout = () => { clearStoredUser(); navigate('/', { replace: true }) }
   const visibleTabs = TABS.filter(t => !t.adminOnly || user?.role === 'admin')
 
   // Live clock
@@ -67,7 +73,7 @@ export function FallDetectionPage() {
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
 
   return (
-    <div className="flex flex-col min-h-full relative" style={{ background: '#F3F4F6', fontFamily: 'var(--font-sans)' }}>
+    <div className="fall-detection-page flex flex-col min-h-full relative" style={{ background: '#F3F4F6', fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Critical-alert flash overlay (full-screen pulse) ─────────────── */}
       {flashCritical && (
@@ -90,8 +96,8 @@ export function FallDetectionPage() {
             <div className="flex items-center justify-center w-9 h-9 rounded-xl text-lg"
               style={{ background: 'linear-gradient(135deg,#1E3A8A,#2563EB)' }}>🦴</div>
             <div>
-              <div className="text-sm font-black tracking-tight" style={{ color: '#111827' }}>FALL RISK MONITORING SYSTEM</div>
-              <div className="text-xs font-medium mt-0.5 flex items-center gap-1" style={{ color: '#6B7280' }}>
+              <div className="font-black tracking-tight" style={{ color: '#111827', fontSize: 17 }}>FALL RISK MONITORING SYSTEM</div>
+              <div className="font-medium mt-0.5 flex items-center gap-1" style={{ color: '#6B7280', fontSize: 13 }}>
                 ⚡ Edge AI &nbsp;·&nbsp; 🔒 Privacy First
               </div>
             </div>
@@ -122,22 +128,34 @@ export function FallDetectionPage() {
               )}
             </button>
             {/* Logged-in user — role-aware label */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer"
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
               style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
               title={user ? `${user.name} · ${user.email}` : 'Not signed in'}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden text-white text-xs font-black"
+              <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden text-white font-black"
                 style={
                   user?.role === 'admin'
                     ? { background: 'transparent' }
-                    : { background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)' }
+                    : { background: 'linear-gradient(135deg,#1E3A8A,#7C3AED)', fontSize: 12 }
                 }>
-                {user?.role === 'admin' ? <AdminAvatarImg size={24} /> : 'S'}
+                {user?.role === 'admin' ? <AdminAvatarImg size={28} /> : 'S'}
               </div>
-              <span className="text-xs font-semibold capitalize" style={{ color: '#374151' }}>
-                {user?.role ?? 'Supervisor'}
-              </span>
-              <span className="text-xs" style={{ color: '#9CA3AF' }}>▾</span>
+              <div className="leading-tight">
+                <div className="font-semibold" style={{ color: '#1F2937', fontSize: 13 }}>
+                  {user?.name ?? 'Supervisor'}
+                </div>
+                <div className="uppercase tracking-wide" style={{ color: '#6B7280', fontSize: 10 }}>
+                  {user?.role ?? 'Supervisor'}
+                </div>
+              </div>
             </div>
+            <button onClick={handleLogout}
+              className="px-3 py-1.5 rounded-lg font-semibold cursor-pointer"
+              style={{
+                background: '#1E3A8A', color: 'white', border: 'none',
+                fontSize: 13, letterSpacing: '0.02em',
+              }}>
+              Logout
+            </button>
           </div>
         </div>
 
@@ -147,12 +165,13 @@ export function FallDetectionPage() {
             const active = activeTab === tab.id
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-1.5 px-4 py-3 text-sm cursor-pointer transition-all whitespace-nowrap"
+                className="flex items-center gap-1.5 px-5 py-3 cursor-pointer transition-all whitespace-nowrap"
                 style={{
                   background: 'transparent', border: 'none',
                   fontWeight: active ? 700 : 500,
                   color: active ? '#1E3A8A' : '#6B7280',
                   borderBottom: active ? '2.5px solid #1E3A8A' : '2.5px solid transparent',
+                  fontSize: 15,
                 }}>
                 <span className="w-[18px] h-[18px] rounded flex items-center justify-center text-[10px] font-black transition-all"
                   style={{ background: active ? '#1E3A8A' : '#F3F4F6', color: active ? 'white' : '#9CA3AF' }}>
@@ -172,8 +191,8 @@ export function FallDetectionPage() {
             <div className="relative">
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search Patient ID / Name..."
-                className="text-xs py-1.5 pl-7 pr-3 rounded-lg outline-none"
-                style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', width: 200, color: '#111827' }} />
+                className="py-1.5 pl-8 pr-3 rounded-lg outline-none"
+                style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', width: 240, color: '#111827', fontSize: 13 }} />
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#9CA3AF' }}>🔍</span>
             </div>
             <button className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer text-base"
@@ -232,14 +251,33 @@ export function FallDetectionPage() {
         )}
       </main>
 
+      {/* ── Test-set accuracy banner (real backend → frontend integration) ── */}
+      {demoManifest && (
+        <div className="flex items-center gap-4 px-5 py-2"
+          style={{ background: '#0F172A', color: '#E2E8F0', borderTop: '1px solid #1E293B', fontSize: 12.5 }}>
+          <span style={{ color: '#14B8A6', fontWeight: 800, letterSpacing: '0.08em' }}>● BACKEND INTEGRATED</span>
+          <span style={{ color: '#94A3B8' }}>
+            Held-out test set ({demoManifest.testSetSize} seqs · {demoManifest.evaluationProtocol})
+          </span>
+          {Object.entries(demoManifest.modelAccuracy).map(([model, acc]) => (
+            <span key={model} style={{ color: '#94A3B8' }}>
+              {model}: <b style={{ color: '#E2E8F0' }}>{(acc * 100).toFixed(2)}%</b>
+            </span>
+          ))}
+          <span className="ml-auto" style={{ color: '#94A3B8' }}>
+            Demo ward: <b style={{ color: '#10B981' }}>{demoManifest.correctCount}/{demoManifest.totalPatients}</b> patients correctly classified
+          </span>
+        </div>
+      )}
+
       {/* ── Status bar ────────────────────────────────────────────────── */}
-      <footer className="flex items-center gap-4 px-5 py-2 text-xs"
-        style={{ background: 'white', borderTop: '1px solid #E5E7EB' }}>
+      <footer className="flex items-center gap-4 px-5 py-2.5"
+        style={{ background: 'white', borderTop: '1px solid #E5E7EB', fontSize: 12.5 }}>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full" style={{ background: '#14B8A6' }} />
-          <span style={{ color: '#64748B' }}>AI Model: <b style={{ color: '#1F2937' }}>ST-GCN Active</b></span>
+          <span style={{ color: '#64748B' }}>AI Model: <b style={{ color: '#1F2937' }}>ST-GCN + Fusion Active</b></span>
         </div>
-        <span style={{ color: '#64748B' }}>USB Camera 01 &nbsp;·&nbsp; <b style={{ color: '#2563EB' }}>25 FPS</b></span>
+        <span style={{ color: '#64748B' }}>Test-set replay &nbsp;·&nbsp; <b style={{ color: '#2563EB' }}>25 FPS</b></span>
         <span style={{ color: '#64748B' }}>{patients.length} patients monitored</span>
         <span style={{ color: '#64748B' }}>Active alerts: <b style={{ color: '#EF4444' }}>{newAlertCount}</b></span>
         <span className="ml-auto" style={{ color: '#94A3B8' }}>

@@ -27,6 +27,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebarCollapsed {
