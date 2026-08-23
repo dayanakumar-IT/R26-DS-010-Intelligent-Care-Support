@@ -88,3 +88,10 @@ datasets/**/*.rar
 # *.pth
 # *.onnx
 # *.joblib
+
+# Local-only folders — not for git
+.claude/
+Datasets/
+backend/
+Research Paper - Writing/
+Component Completion.xlsx
