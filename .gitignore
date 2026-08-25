@@ -1,7 +1,6 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 .Python
 
@@ -10,35 +9,22 @@ venv/
 env/
 ENV/
 .venv/
-.env/
 
 # Distribution / packaging
 build/
 dist/
 *.egg-info/
-*.egg
-.eggs/
-wheels/
-pip-wheel-metadata/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb_checkpoints
 
 # Testing / coverage
 .pytest_cache/
 .coverage
-.coverage.*
 htmlcov/
-.tox/
-.nox/
-nosetests.xml
-coverage.xml
 
 # Type checkers / linters
 .mypy_cache/
-.dmypy.json
-.pyre/
 .ruff_cache/
 
 # Environment / secrets
@@ -51,19 +37,14 @@ secrets.json
 credentials.json
 
 # IDE / editors
-.vscode/
 .idea/
 *.swp
-*.swo
 *~
-.project
-.pydevproject
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
-ehthumbs.db
 
 # Logs / temp
 *.log
@@ -71,25 +52,7 @@ logs/
 tmp/
 temp/
 
-# Versioned backups of old experiment runs — local only, not for git
-_backup_v*/
-
-# Dataset archives (too large for GitHub — keep folder structure & metadata only)
-datasets/**/*.zip
-datasets/**/*.tar
-datasets/**/*.tar.gz
-datasets/**/*.7z
-datasets/**/*.rar
-
-# Model / large artifacts (uncomment if you don't want these in git)
-# *.pkl
-# *.h5
-# *.pt
-# *.pth
-# *.onnx
-# *.joblib
-
-# Local-only folders — not for git
+# Local-only folders — never commit
 .claude/
 Datasets/
 backend/
@@ -98,8 +61,22 @@ Research Paper - Writing/
 # Local-only files
 Component Completion.xlsx
 *.lock
+*.xlsx
+*.xls
 
-# Large ML data files — local only
-**/*.npy
-**/*.npz
+# Large raw training data — too big for GitHub (72MB+)
+**/ntu_data.npy
+
+# Video files — too large
+**/*.mp4
+**/*.avi
+**/*.mov
+
+# Archive files
+**/*.tar
+**/*.tar.gz
+**/*.7z
+**/*.rar
+
+# Local database files
 **/*.db
