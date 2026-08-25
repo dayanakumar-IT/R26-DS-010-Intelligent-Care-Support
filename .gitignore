@@ -88,3 +88,10 @@ datasets/**/*.rar
 # *.pth
 # *.onnx
 # *.joblib
+
+# Large ML data files — local only
+**/*.npy
+**/*.npz
+**/*.db
+**/*.sqlite
+*.lock
