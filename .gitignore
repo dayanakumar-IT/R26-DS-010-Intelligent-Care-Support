@@ -54,25 +54,23 @@ Datasets/
 backend/
 Research Paper - Writing/
 
-# Large data files — too big for GitHub
-**/*.npy
-**/*.npz
-**/*.db
+# Large raw training data — too big for GitHub (72MB+)
+**/ntu_data.npy
+**/ntu_data.npy
+
+# Video files
 **/*.mp4
 **/*.avi
 **/*.mov
-**/*.zip
+
+# Archive files
 **/*.tar
 **/*.tar.gz
 **/*.7z
 **/*.rar
 
-# ML model weights — large binary files
-**/*.pth
-**/*.joblib
-**/*.pkl
-**/*.h5
-**/*.onnx
+# Local database
+**/*.db
 
 # Local-only files
 *.xlsx
