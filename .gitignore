@@ -95,3 +95,11 @@ datasets/**/*.rar
 **/*.db
 **/*.sqlite
 *.lock
+
+# Video files — local only
+**/*.mp4
+**/*.avi
+**/*.mov
+
+# Zip archives
+**/*.zip
