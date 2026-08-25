@@ -114,3 +114,11 @@ datasets/**/*.rar
 # Excel files
 *.xlsx
 *.xls
+
+# All other component folders — not for mobile branch
+Component2_v2/
+Datasets/
+*.csv
+*.md
+!caresense_mobile/**
+!README.md
