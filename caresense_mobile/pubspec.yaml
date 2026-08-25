@@ -1,0 +1,41 @@
+name: caresense_mobile
+description: CareSense — Integrated Patient Care Mobile App (SENTRY + ADL)
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Navigation
+  go_router: ^13.0.0
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # HTTP
+  dio: ^5.4.0
+
+  # WebSocket (for live data)
+  web_socket_channel: ^2.4.0
+
+  # Secure storage (token)
+  flutter_secure_storage: ^9.0.0
+
+  # Biometric auth
+  local_auth: ^2.1.8
+
+  # UI
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
