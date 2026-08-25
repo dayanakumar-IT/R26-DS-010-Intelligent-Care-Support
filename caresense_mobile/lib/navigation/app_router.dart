@@ -7,13 +7,11 @@ import '../features/auth/signup_screen.dart';
 import '../features/auth/otp_screen.dart';
 import '../features/module/module_select_screen.dart';
 import '../navigation/sentry_nav.dart';
-import '../navigation/adl_nav.dart';
+import '../navigation/scribe_nav.dart';
 import '../store/auth_store.dart';
-import '../store/module_store.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
-  final activeModule = ref.watch(moduleProvider);
 
   return GoRouter(
     initialLocation: '/splash',
@@ -22,9 +20,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final onAuth = state.matchedLocation.startsWith('/auth') ||
                      state.matchedLocation == '/splash' ||
                      state.matchedLocation == '/onboarding';
-
       if (!loggedIn && !onAuth) return '/auth/login';
-      if (loggedIn && onAuth)  return '/modules';
+      if (loggedIn && onAuth)   return '/modules';
       return null;
     },
     routes: [
@@ -35,7 +32,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/auth/otp',    builder: (c, s) => const OtpScreen()),
       GoRoute(path: '/modules',     builder: (c, s) => const ModuleSelectScreen()),
       GoRoute(path: '/sentry',      builder: (c, s) => const SentryNav()),
-      GoRoute(path: '/adl',         builder: (c, s) => const AdlNav()),
+      GoRoute(path: '/scribe',      builder: (c, s) => const ScribeNav()),
     ],
   );
 });

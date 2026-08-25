@@ -12,7 +12,7 @@ class SentryNav extends StatefulWidget {
 }
 
 class _SentryNavState extends State<SentryNav> {
-  int _currentIndex = 0;
+  int _index = 0;
 
   final List<Widget> _screens = const [
     SentryHomeScreen(),
@@ -24,19 +24,20 @@ class _SentryNavState extends State<SentryNav> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: _screens[_index],
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.accent,
-        unselectedItemColor: AppColors.muted,
+        currentIndex: _index,
+        onTap: (i) => setState(() => _index = i),
+        backgroundColor: Colors.white,
+        selectedItemColor: AppColors.sentry,
+        unselectedItemColor: AppColors.mutedLight,
         type: BottomNavigationBarType.fixed,
+        elevation: 8,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined),    label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.meeting_room_outlined), label: 'Rooms'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined),          label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.meeting_room_outlined),  label: 'Rooms'),
           BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Alerts'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline),   label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline),         label: 'Profile'),
         ],
       ),
     );
