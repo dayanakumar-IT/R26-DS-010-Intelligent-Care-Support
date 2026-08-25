@@ -174,9 +174,9 @@ class _CaregiverPainter extends CustomPainter {
   }
 
   void _drawBadge(Canvas canvas, Offset center, String emoji, String label, Color color) {
-    final bgPaint = Paint()..color = color.withOpacity(0.12);
+    final bgPaint = Paint()..color = color.withValues(alpha: 0.12);
     final borderPaint = Paint()
-      ..color = color.withOpacity(0.3)
+      ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     final rect = RRect.fromRectAndRadius(

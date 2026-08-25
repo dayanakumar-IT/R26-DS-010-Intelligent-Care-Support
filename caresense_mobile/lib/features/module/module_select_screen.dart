@@ -11,7 +11,7 @@ class ModuleSelectScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.brandGradientVertical),
+        decoration: const BoxDecoration(gradient: AppColors.bgGradient),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -116,16 +116,16 @@ class _ModuleCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [BoxShadow(
-            color: color.withOpacity(0.1), blurRadius: 16, offset: const Offset(0, 4))],
+            color: color.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 4))],
         ),
         child: Row(
           children: [
             Container(
               width: 56, height: 56,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Center(child: Text(emoji, style: const TextStyle(fontSize: 28))),
@@ -140,7 +140,7 @@ class _ModuleCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text('Active', style: TextStyle(fontSize: 9,

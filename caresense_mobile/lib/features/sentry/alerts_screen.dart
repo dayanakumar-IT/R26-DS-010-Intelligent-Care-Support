@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import '../../widgets/module_switcher_pill.dart';
@@ -35,15 +35,15 @@ class AlertsScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
-                      border: Border.all(color: AppColors.high.withOpacity(0.4)),
+                      border: Border.all(color: AppColors.high.withValues(alpha: 0.4)),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(children: [
-                      const Text('🚨', style: TextStyle(fontSize: 22)),
+                      const Text('??', style: TextStyle(fontSize: 22)),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(a['patientName'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
-                        Text(' · Score: ', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+                        Text(' � Score: ', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
                         Text(a['time'], style: TextStyle(fontSize: 10, color: AppColors.dimLight)),
                       ])),
                       ElevatedButton(

@@ -92,7 +92,7 @@ class _ModuleRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isActive ? color.withOpacity(0.06) : AppColors.bgLight,
+          color: isActive ? color.withValues(alpha: 0.06) : AppColors.bgLight,
           border: Border.all(
             color: isActive ? color : AppColors.borderLight,
             width: isActive ? 2 : 1,
@@ -103,7 +103,7 @@ class _ModuleRow extends StatelessWidget {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
@@ -117,7 +117,7 @@ class _ModuleRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('Active', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),

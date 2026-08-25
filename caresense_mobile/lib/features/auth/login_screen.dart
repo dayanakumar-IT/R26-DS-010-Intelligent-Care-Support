@@ -32,7 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.brandGradientVertical),
+        decoration: const BoxDecoration(gradient: AppColors.bgGradient),
         child: SafeArea(
           child: SingleChildScrollView(
             child: Column(
@@ -85,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.accent.withOpacity(0.08),
+                        color: AppColors.accent.withValues(alpha: 0.08),
                         blurRadius: 24, offset: const Offset(0, 8),
                       ),
                     ],
@@ -149,7 +149,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.accent.withOpacity(0.3),
+                                color: AppColors.accent.withValues(alpha: 0.3),
                                 blurRadius: 12, offset: const Offset(0, 4),
                               ),
                             ],

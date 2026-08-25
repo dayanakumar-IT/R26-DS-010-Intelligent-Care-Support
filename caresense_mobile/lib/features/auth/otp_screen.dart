@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/colors.dart';
+import '../../store/auth_store.dart';
 
-class OtpScreen extends StatefulWidget {
+class OtpScreen extends ConsumerStatefulWidget {
   const OtpScreen({super.key});
   @override
-  State<OtpScreen> createState() => _OtpScreenState();
+  ConsumerState<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> {
+class _OtpScreenState extends ConsumerState<OtpScreen> {
   final List<TextEditingController> _ctrls =
       List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _nodes = List.generate(6, (_) => FocusNode());
@@ -32,14 +34,21 @@ class _OtpScreenState extends State<OtpScreen> {
   void _verify() async {
     setState(() => _loading = true);
     await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) context.go('/modules');
+    if (mounted) {
+      ref.read(authProvider.notifier).login(
+        caregiverId: 'CG001',
+        caregiverName: 'Caregiver',
+        token: 'mock-token',
+      );
+      context.go('/modules');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.brandGradientVertical),
+        decoration: const BoxDecoration(gradient: AppColors.bgGradient),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(28),
@@ -70,7 +79,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [BoxShadow(
-                      color: AppColors.accent.withOpacity(0.3),
+                      color: AppColors.accent.withValues(alpha: 0.3),
                       blurRadius: 16, offset: const Offset(0, 6))],
                   ),
                   child: const Center(child: Text('📱', style: TextStyle(fontSize: 38))),
@@ -136,7 +145,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         colors: [AppColors.blueStart, AppColors.purpleEnd]),
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [BoxShadow(
-                        color: AppColors.accent.withOpacity(0.3),
+                        color: AppColors.accent.withValues(alpha: 0.3),
                         blurRadius: 12, offset: const Offset(0, 4))],
                     ),
                     child: Center(

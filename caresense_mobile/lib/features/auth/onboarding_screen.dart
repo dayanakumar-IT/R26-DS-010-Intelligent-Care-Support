@@ -80,11 +80,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             animation: _floatAnim,
             builder: (_, __) => Stack(children: [
               Positioned(top: -60 + _floatAnim.value, right: -40,
-                child: _BgCircle(120, AppColors.primary.withOpacity(0.06))),
+                child: _BgCircle(120, AppColors.primary.withValues(alpha: 0.06))),
               Positioned(bottom: 100 - _floatAnim.value, left: -50,
-                child: _BgCircle(160, AppColors.secondary.withOpacity(0.05))),
+                child: _BgCircle(160, AppColors.secondary.withValues(alpha: 0.05))),
               Positioned(top: 200 + _floatAnim.value * 0.5, left: 20,
-                child: _BgCircle(60, AppColors.teal.withOpacity(0.07))),
+                child: _BgCircle(60, AppColors.teal.withValues(alpha: 0.07))),
             ]),
           ),
 
@@ -119,7 +119,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.08),
+                            color: AppColors.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: AppColors.borderLight),
                           ),
@@ -177,7 +177,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           gradient: AppColors.brandGradient,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [BoxShadow(
-                            color: AppColors.primary.withOpacity(0.35),
+                            color: AppColors.primary.withValues(alpha: 0.35),
                             blurRadius: 20, offset: const Offset(0, 8),
                           )],
                         ),
@@ -373,7 +373,7 @@ class _Page3 extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.06),
+                color: AppColors.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.borderLight),
               ),
@@ -419,12 +419,12 @@ class _ModuleTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.25)),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Row(children: [
         Container(width: 36, height: 36,
-          decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
           child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18)))),
         const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -448,7 +448,7 @@ class _FeatureCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: AppColors.borderLight),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
     ),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(width: 46, height: 46,
@@ -462,7 +462,7 @@ class _FeatureCard extends StatelessWidget {
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
           child: Text(stat, style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w600)),
         ),
       ])),
@@ -526,10 +526,10 @@ class _CarePainter extends CustomPainter {
   void _badge(Canvas canvas, Offset c, String emoji, Color color) {
     canvas.drawRRect(RRect.fromRectAndRadius(
       Rect.fromCenter(center: c, width: 38, height: 26), const Radius.circular(8)),
-      Paint()..color = color.withOpacity(0.15));
+      Paint()..color = color.withValues(alpha: 0.15));
     canvas.drawRRect(RRect.fromRectAndRadius(
       Rect.fromCenter(center: c, width: 38, height: 26), const Radius.circular(8)),
-      Paint()..color = color.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 1);
+      Paint()..color = color.withValues(alpha: 0.4)..style = PaintingStyle.stroke..strokeWidth = 1);
     final tp = TextPainter(
       text: TextSpan(text: emoji, style: const TextStyle(fontSize: 14)),
       textDirection: TextDirection.ltr)..layout();
@@ -562,7 +562,7 @@ class _SkelPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width; final h = size.height;
-    canvas.drawCircle(Offset(w*0.5, h*0.1), 14, Paint()..color = AppColors.primary.withOpacity(0.8));
+    canvas.drawCircle(Offset(w*0.5, h*0.1), 14, Paint()..color = AppColors.primary.withValues(alpha: 0.8));
     final p = Paint()..color = AppColors.primary..strokeWidth = 3..strokeCap = StrokeCap.round;
     // Body sway
     final sway = sin(t * 2 * pi) * 6;
@@ -573,14 +573,14 @@ class _SkelPainter extends CustomPainter {
     canvas.drawLine(Offset(w*0.5+sway, h*0.55), Offset(w*0.6, h*0.82), p);
     // Risk score badge
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w*0.65, h*0.1, 60, 28), const Radius.circular(8)),
-      Paint()..color = AppColors.high.withOpacity(0.12));
+      Paint()..color = AppColors.high.withValues(alpha: 0.12));
     final tp = TextPainter(
       text: const TextSpan(text: 'HIGH 82',
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.high)),
       textDirection: TextDirection.ltr)..layout();
     tp.paint(canvas, Offset(w*0.67, h*0.14));
     // Waveform at bottom
-    final wp = Paint()..color = AppColors.primary.withOpacity(0.4)..strokeWidth = 2
+    final wp = Paint()..color = AppColors.primary.withValues(alpha: 0.4)..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final wavePath = Path();
     for (double x = 0; x <= w; x += 2) {
@@ -607,10 +607,10 @@ class _PulsePainter extends CustomPainter {
     // Concentric rings
     for (int i = 3; i >= 1; i--) {
       canvas.drawCircle(Offset(w*0.5, h*0.5), i * 38.0,
-        Paint()..color = AppColors.pulse.withOpacity(0.06 * (4 - i)));
+        Paint()..color = AppColors.pulse.withValues(alpha: 0.06 * (4 - i)));
     }
     canvas.drawCircle(Offset(w*0.5, h*0.5), 36,
-      Paint()..color = AppColors.pulse.withOpacity(0.15));
+      Paint()..color = AppColors.pulse.withValues(alpha: 0.15));
     // Heart
     final tp = TextPainter(
       text: const TextSpan(text: '💓', style: TextStyle(fontSize: 40)),

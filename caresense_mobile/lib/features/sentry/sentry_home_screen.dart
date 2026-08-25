@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import '../../widgets/risk_badge.dart';
@@ -25,7 +25,7 @@ class SentryHomeScreen extends StatelessWidget {
                 children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text('Good Morning, Sarah', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textLight)),
-                    Text('SENTRY Â· Shift Active', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+                    Text('SENTRY · Shift Active', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
                   ]),
                   const ModuleSwitcherPill(),
                 ],
@@ -80,8 +80,8 @@ class _StatCard extends StatelessWidget {
     return Expanded(child: Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(children: [
@@ -110,7 +110,7 @@ class _PatientRow extends StatelessWidget {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(p['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
           const SizedBox(height: 2),
-          Text(' Â· ', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+          Text(' · ', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
         ])),
         RiskBadge(level: p['riskLevel'], score: p['riskScore']),
       ]),

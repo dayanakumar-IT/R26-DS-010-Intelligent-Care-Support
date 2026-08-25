@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 
 class RiskBadge extends StatelessWidget {
@@ -20,8 +20,8 @@ class RiskBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.15),
-        border: Border.all(color: _color.withOpacity(0.5)),
+        color: _color.withValues(alpha: 0.15),
+        border: Border.all(color: _color.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(' ', style: TextStyle(color: _color, fontSize: 11, fontWeight: FontWeight.w700)),
