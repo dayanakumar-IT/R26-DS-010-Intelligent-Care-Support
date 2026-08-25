@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../features/adl/adl_home_screen.dart';
 import '../features/adl/tasks_screen.dart';
@@ -28,9 +28,9 @@ class _AdlNavState extends State<AdlNav> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.adlGreen,
-        unselectedItemColor: AppColors.muted,
+        backgroundColor: AppColors.surfaceLight,
+        selectedItemColor: AppColors.scribe,
+        unselectedItemColor: AppColors.mutedLight,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined),       label: 'Home'),
@@ -42,3 +42,4 @@ class _AdlNavState extends State<AdlNav> {
     );
   }
 }
+

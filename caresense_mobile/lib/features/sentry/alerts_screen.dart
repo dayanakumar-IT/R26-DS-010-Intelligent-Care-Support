@@ -10,7 +10,7 @@ class AlertsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final alerts = SentryService.getMockAlerts();
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bgLight,
       body: SafeArea(
         child: Column(
           children: [
@@ -18,7 +18,7 @@ class AlertsScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Alerts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
+                  const Text('Alerts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textLight)),
                   Text(' unacknowledged', style: TextStyle(fontSize: 11, color: AppColors.high)),
                 ]),
                 const ModuleSwitcherPill(),
@@ -34,7 +34,7 @@ class AlertsScreen extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: AppColors.surfaceLight,
                       border: Border.all(color: AppColors.high.withOpacity(0.4)),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -42,9 +42,9 @@ class AlertsScreen extends StatelessWidget {
                       const Text('🚨', style: TextStyle(fontSize: 22)),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(a['patientName'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text)),
-                        Text(' · Score: ', style: TextStyle(fontSize: 11, color: AppColors.muted)),
-                        Text(a['time'], style: TextStyle(fontSize: 10, color: AppColors.dim)),
+                        Text(a['patientName'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+                        Text(' · Score: ', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+                        Text(a['time'], style: TextStyle(fontSize: 10, color: AppColors.dimLight)),
                       ])),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(backgroundColor: AppColors.high, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
@@ -62,3 +62,4 @@ class AlertsScreen extends StatelessWidget {
     );
   }
 }
+

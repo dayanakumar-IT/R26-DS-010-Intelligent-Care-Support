@@ -8,9 +8,10 @@ class PatientDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(backgroundColor: AppColors.surface, foregroundColor: AppColors.text, title: const Text('Patient Detail')),
-      body: const Center(child: Text('Patient detail — TODO', style: TextStyle(color: AppColors.muted))),
+      backgroundColor: AppColors.bgLight,
+      appBar: AppBar(backgroundColor: AppColors.surfaceLight, foregroundColor: AppColors.textLight, title: const Text('Patient Detail')),
+      body: const Center(child: Text('Patient detail — TODO', style: TextStyle(color: AppColors.mutedLight))),
     );
   }
 }
+

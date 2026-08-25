@@ -13,7 +13,7 @@ class SentryHomeScreen extends StatelessWidget {
     final patients = SentryService.getMockPatients();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bgLight,
       body: SafeArea(
         child: Column(
           children: [
@@ -24,8 +24,8 @@ class SentryHomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Good Morning, Sarah', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.text)),
-                    Text('SENTRY · Shift Active', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                    const Text('Good Morning, Sarah', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+                    Text('SENTRY · Shift Active', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
                   ]),
                   const ModuleSwitcherPill(),
                 ],
@@ -47,8 +47,8 @@ class SentryHomeScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Your Patients', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text)),
-                Text(' assigned', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                const Text('Your Patients', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+                Text(' assigned', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
               ]),
             ),
             const SizedBox(height: 8),
@@ -87,7 +87,7 @@ class _StatCard extends StatelessWidget {
       child: Column(children: [
         Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.muted)),
+        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mutedLight)),
       ]),
     ));
   }
@@ -102,18 +102,19 @@ class _PatientRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
+        color: AppColors.surfaceLight,
+        border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(p['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text)),
+          Text(p['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
           const SizedBox(height: 2),
-          Text(' · ', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text(' · ', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
         ])),
         RiskBadge(level: p['riskLevel'], score: p['riskScore']),
       ]),
     );
   }
 }
+

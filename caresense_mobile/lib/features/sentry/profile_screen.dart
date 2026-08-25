@@ -11,18 +11,18 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bgLight,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
+              const Text('Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textLight)),
               const SizedBox(height: 24),
-              Text(auth.caregiverName ?? 'Caregiver', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+              Text(auth.caregiverName ?? 'Caregiver', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textLight)),
               const SizedBox(height: 4),
-              Text('Module: SENTRY', style: TextStyle(fontSize: 13, color: AppColors.muted)),
+              Text('Module: SENTRY', style: TextStyle(fontSize: 13, color: AppColors.mutedLight)),
               const Spacer(),
               SizedBox(
                 width: double.infinity,
@@ -41,3 +41,4 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 }
+

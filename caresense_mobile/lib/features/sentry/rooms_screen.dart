@@ -11,14 +11,14 @@ class RoomsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final patients = SentryService.getMockPatients();
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bgLight,
       body: SafeArea(
         child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Rooms', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
+                const Text('Rooms', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textLight)),
                 const ModuleSwitcherPill(),
               ]),
             ),
@@ -31,13 +31,13 @@ class RoomsScreen extends StatelessWidget {
                   final p = patients[i];
                   return Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: AppColors.surface, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: AppColors.surfaceLight, border: Border.all(color: AppColors.borderLight), borderRadius: BorderRadius.circular(10)),
                     child: Row(children: [
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(p['room'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text)),
+                        Text(p['room'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
                         const SizedBox(height: 2),
-                        Text(p['name'], style: TextStyle(fontSize: 11, color: AppColors.muted)),
-                        Text(' · ', style: TextStyle(fontSize: 10, color: AppColors.dim)),
+                        Text(p['name'], style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+                        Text(' · ', style: TextStyle(fontSize: 10, color: AppColors.dimLight)),
                       ])),
                       RiskBadge(level: p['riskLevel'], score: p['riskScore']),
                     ]),
@@ -51,3 +51,4 @@ class RoomsScreen extends StatelessWidget {
     );
   }
 }
+
