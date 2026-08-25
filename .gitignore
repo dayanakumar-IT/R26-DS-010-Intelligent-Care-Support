@@ -77,3 +77,8 @@ Research Paper - Writing/
 *.xls
 *.lock
 Component Completion.xlsx
+
+# Flutter generated
+.dart_tool/
+*.dart_tool
+build/
