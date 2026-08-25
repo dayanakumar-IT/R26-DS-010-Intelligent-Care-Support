@@ -103,3 +103,14 @@ datasets/**/*.rar
 
 # Zip archives
 **/*.zip
+
+# ML model weights — local only
+**/*.pth
+**/*.joblib
+**/*.pkl
+**/*.h5
+**/*.onnx
+
+# Excel files
+*.xlsx
+*.xls
