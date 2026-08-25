@@ -103,4 +103,3 @@ Component Completion.xlsx
 **/*.npy
 **/*.npz
 **/*.db
-**/*.sqlite
