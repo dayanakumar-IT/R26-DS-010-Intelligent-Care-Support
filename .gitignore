@@ -94,4 +94,13 @@ datasets/**/*.rar
 Datasets/
 backend/
 Research Paper - Writing/
+
+# Local-only files
 Component Completion.xlsx
+*.lock
+
+# Large ML data files — local only
+**/*.npy
+**/*.npz
+**/*.db
+**/*.sqlite
