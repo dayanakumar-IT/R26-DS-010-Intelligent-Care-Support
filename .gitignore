@@ -1,7 +1,6 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 .Python
 
@@ -10,36 +9,19 @@ venv/
 env/
 ENV/
 .venv/
-.env/
 
 # Distribution / packaging
 build/
 dist/
 *.egg-info/
-*.egg
-.eggs/
-wheels/
-pip-wheel-metadata/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb_checkpoints
 
 # Testing / coverage
 .pytest_cache/
 .coverage
-.coverage.*
 htmlcov/
-.tox/
-.nox/
-nosetests.xml
-coverage.xml
-
-# Type checkers / linters
-.mypy_cache/
-.dmypy.json
-.pyre/
-.ruff_cache/
 
 # Environment / secrets
 .env
@@ -51,19 +33,14 @@ secrets.json
 credentials.json
 
 # IDE / editors
-.vscode/
 .idea/
 *.swp
-*.swo
 *~
-.project
-.pydevproject
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
-ehthumbs.db
 
 # Logs / temp
 *.log
@@ -71,54 +48,34 @@ logs/
 tmp/
 temp/
 
-# Versioned backups of old experiment runs â€” local only, not for git
-_backup_v*/
+# Local-only folders â€” never commit these
+.claude/
+Datasets/
+backend/
+Research Paper - Writing/
 
-# Dataset archives (too large for GitHub â€” keep folder structure & metadata only)
-datasets/**/*.zip
-datasets/**/*.tar
-datasets/**/*.tar.gz
-datasets/**/*.7z
-datasets/**/*.rar
-
-# Model / large artifacts (uncomment if you don't want these in git)
-# *.pkl
-# *.h5
-# *.pt
-# *.pth
-# *.onnx
-# *.joblib
-
-# Large ML data files — local only
+# Large data files â€” too big for GitHub
 **/*.npy
 **/*.npz
 **/*.db
-**/*.sqlite
-*.lock
-
-# Video files — local only
 **/*.mp4
 **/*.avi
 **/*.mov
-
-# Zip archives
 **/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.7z
+**/*.rar
 
-# ML model weights — local only
+# ML model weights â€” large binary files
 **/*.pth
 **/*.joblib
 **/*.pkl
 **/*.h5
 **/*.onnx
 
-# Excel files
+# Local-only files
 *.xlsx
 *.xls
-
-# All other component folders — not for mobile branch
-Component2_v2/
-Datasets/
-*.csv
-*.md
-!caresense_mobile/**
-!README.md
+*.lock
+Component Completion.xlsx
