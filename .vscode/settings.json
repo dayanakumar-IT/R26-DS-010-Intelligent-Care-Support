@@ -1,0 +1,8 @@
+{
+  "dart.projectSearchDepth": 3,
+  "dart.analysisExcludedFolders": [
+    "backend",
+    "Datasets",
+    "Component2_v2"
+  ]
+}

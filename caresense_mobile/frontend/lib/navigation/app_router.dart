@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/splash_screen.dart';
 import '../features/auth/onboarding_screen.dart';
 import '../features/auth/login_screen.dart';
-import '../features/auth/signup_screen.dart';
-import '../features/auth/otp_screen.dart';
 import '../features/module/module_select_screen.dart';
 import '../navigation/sentry_nav.dart';
 import '../navigation/scribe_nav.dart';
@@ -25,14 +23,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/splash',      builder: (c, s) => const SplashScreen()),
-      GoRoute(path: '/onboarding',  builder: (c, s) => const OnboardingScreen()),
-      GoRoute(path: '/auth/login',  builder: (c, s) => const LoginScreen()),
-      GoRoute(path: '/auth/signup', builder: (c, s) => const SignUpScreen()),
-      GoRoute(path: '/auth/otp',    builder: (c, s) => const OtpScreen()),
-      GoRoute(path: '/modules',     builder: (c, s) => const ModuleSelectScreen()),
-      GoRoute(path: '/sentry',      builder: (c, s) => const SentryNav()),
-      GoRoute(path: '/scribe',      builder: (c, s) => const ScribeNav()),
+      GoRoute(path: '/splash',     builder: (c, s) => const SplashScreen()),
+      GoRoute(path: '/onboarding', builder: (c, s) => const OnboardingScreen()),
+      GoRoute(path: '/auth/login', builder: (c, s) => const LoginScreen()),
+      GoRoute(path: '/modules',    builder: (c, s) => const ModuleSelectScreen()),
+      GoRoute(path: '/sentry',     builder: (c, s) => const SentryNav()),
+      GoRoute(path: '/scribe',     builder: (c, s) => const ScribeNav()),
     ],
   );
 });

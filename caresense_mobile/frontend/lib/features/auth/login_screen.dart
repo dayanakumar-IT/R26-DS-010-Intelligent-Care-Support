@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
+import '../../store/auth_store.dart';
 import '../../widgets/caregiver_illustration.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -21,10 +22,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 800)); // mock
+    await Future.delayed(const Duration(milliseconds: 800)); // mock — replace with Supabase Auth
     if (mounted) {
       setState(() => _loading = false);
-      context.go('/auth/otp');
+      // Admin creates caregiver accounts — no signup or OTP needed
+      ref.read(authProvider.notifier).login(
+        caregiverId: 'CG001',
+        caregiverName: 'Caregiver',
+        token: 'mock-token',
+      );
+      context.go('/modules');
     }
   }
 
@@ -189,17 +196,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Sign up link
+                      // Account info note
                       Center(
-                        child: GestureDetector(
-                          onTap: () => context.go('/auth/signup'),
-                          child: Text.rich(TextSpan(children: [
-                            TextSpan(text: "New caregiver? ",
-                              style: TextStyle(color: AppColors.mutedLight, fontSize: 13)),
-                            const TextSpan(text: 'Request Access',
-                              style: TextStyle(color: AppColors.accent, fontSize: 13,
-                                fontWeight: FontWeight.w700)),
-                          ])),
+                        child: Text(
+                          'Accounts are created by your supervisor.\nContact admin if you need access.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: AppColors.mutedLight, height: 1.5),
                         ),
                       ),
                     ],

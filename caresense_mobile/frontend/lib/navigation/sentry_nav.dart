@@ -14,11 +14,11 @@ class SentryNav extends StatefulWidget {
 class _SentryNavState extends State<SentryNav> {
   int _index = 0;
 
-  final List<Widget> _screens = const [
-    SentryHomeScreen(),
-    RoomsScreen(),
-    AlertsScreen(),
-    ProfileScreen(),
+  final List<Widget> _screens = [
+    const SentryHomeScreen(),
+    const RoomsScreen(),
+    const AlertsScreen(),
+    const ProfileScreen(),
   ];
 
   @override

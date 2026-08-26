@@ -1,62 +1,40 @@
-# CareSense Mobile — Flutter
+# CareSense Mobile
 
-Integrated caregiver mobile app for CareSense platform.  
-Modules: **SENTRY** (fall risk) + **ADL** (activities of daily living)
+Flutter mobile app + backend services for SENTRY (Component 2) and SCRIBE (Component 3).
 
-## Team
+## Structure
 
-| Who | Module | Folder |
-|-----|--------|--------|
-| Harishalinee | SENTRY 🛡 | `lib/features/sentry/` |
-| Teammate | ADL 🏃 | `lib/features/adl/` |
+```
+caresense_mobile/
+├── backend/
+│   ├── sentry_service/    ← Component 2: Fall Risk Detection (Harishalinee)
+│   └── scribe_service/    ← Component 3: Voice to ADL (Teammate)
+└── frontend/              ← Flutter mobile app (both modules)
+```
 
-## Setup
+## Running the app
 
 ```bash
-# 1. Clone the repo and switch to this branch
-git checkout caresense-mobile-flutter
-
-# 2. Install dependencies
+cd frontend
 flutter pub get
-
-# 3. Run the app
 flutter run
 ```
 
-## Project Structure
+## Running backend services
 
-```
-lib/
-├── main.dart                     # App entry point
-├── core/
-│   ├── constants/colors.dart     # All colours
-│   ├── config/api_config.dart    # Backend URL (update when backend ready)
-│   └── services/
-│       ├── sentry_service.dart   # SENTRY API (Harishalinee)
-│       └── adl_service.dart      # ADL API (Teammate)
-├── store/
-│   ├── auth_store.dart           # Login session
-│   └── module_store.dart         # Active module (SENTRY/ADL)
-├── features/
-│   ├── auth/                     # Login, Signup, OTP, Onboarding (shared)
-│   ├── module/                   # Module select screen (shared)
-│   ├── sentry/                   # SENTRY screens (Harishalinee)
-│   └── adl/                      # ADL screens (Teammate)
-├── navigation/
-│   ├── app_router.dart           # Root navigation
-│   ├── sentry_nav.dart           # SENTRY bottom nav
-│   └── adl_nav.dart              # ADL bottom nav
-└── widgets/                      # Shared UI components (both use)
-    ├── module_switcher_pill.dart  # 🛡 SENTRY ⌄ pill in top bar
-    ├── module_switcher_sheet.dart # Bottom sheet to switch modules
-    ├── risk_badge.dart            # HIGH/MOD/LOW badge
-    └── loading_spinner.dart
+```bash
+# SENTRY (port 8001)
+cd backend/sentry_service
+pip install -r requirements.txt
+cp .env.example .env   # fill in your keys
+uvicorn main:app --reload --port 8001
+
+# SCRIBE (port 8002)
+cd backend/scribe_service
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn main:app --reload --port 8002
 ```
 
-## Connecting to Backend
-
-When backend is ready, update `lib/core/config/api_config.dart`:
-```dart
-static const String baseUrl = 'https://your-backend-url.com';
-```
-Then replace mock data in `sentry_service.dart` / `adl_service.dart` with real Dio calls.
+## Git Branch
+`caresense_mobile_flutter_v1`

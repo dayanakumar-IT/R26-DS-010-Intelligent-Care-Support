@@ -585,7 +585,7 @@ class _SkelPainter extends CustomPainter {
     final wavePath = Path();
     for (double x = 0; x <= w; x += 2) {
       final y = h*0.93 + sin((x/w * 4 * pi) + t * 2 * pi) * 8;
-      if (x == 0) wavePath.moveTo(x, y); else wavePath.lineTo(x, y);
+      if (x == 0) { wavePath.moveTo(x, y); } else { wavePath.lineTo(x, y); }
     }
     canvas.drawPath(wavePath, wp);
   }
