@@ -54,6 +54,10 @@ Datasets/
 backend/
 Research Paper - Writing/
 
+# Exception: mobile backend skeleton should be tracked
+!caresense_mobile/backend/
+!caresense_mobile/backend/**
+
 # Large raw training data — too big for GitHub (72MB+)
 **/ntu_data.npy
 **/ntu_data.npy
