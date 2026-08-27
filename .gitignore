@@ -1,33 +1,43 @@
+﻿# ============================================================
+# skeletal-fall-prediction_v2 — tracks: Component2_v2/ only
+# ============================================================
+
+# Other branches' folders
+backend_services/
+frontend/
+supabase/
+caresense_mobile/
+PP1/
+
+# Local-only
+backend/
+Datasets/
+Research Paper - Writing/
+.claude/
+Component Completion.xlsx
+*.xlsx
+*.xls
+
 # Python
 __pycache__/
 *.py[cod]
 *.so
 .Python
-
-# Virtual environments
 venv/
 env/
 ENV/
 .venv/
-
-# Distribution / packaging
-build/
-dist/
 *.egg-info/
-
-# Jupyter
+dist/
+build/
 .ipynb_checkpoints/
-
-# Testing / coverage
 .pytest_cache/
 .coverage
 htmlcov/
-
-# Type checkers / linters
 .mypy_cache/
 .ruff_cache/
 
-# Environment / secrets
+# Env / secrets
 .env
 .env.*
 !.env.example
@@ -35,11 +45,6 @@ htmlcov/
 *.key
 secrets.json
 credentials.json
-
-# IDE / editors
-.idea/
-*.swp
-*~
 
 # OS
 .DS_Store
@@ -52,31 +57,19 @@ logs/
 tmp/
 temp/
 
-# Local-only folders — never commit
-.claude/
-Datasets/
-backend/
-Research Paper - Writing/
-
-# Local-only files
-Component Completion.xlsx
+# Large files
 *.lock
-*.xlsx
-*.xls
-
-# Large raw training data — too big for GitHub (72MB+)
 **/ntu_data.npy
-
-# Video files — too large
 **/*.mp4
 **/*.avi
 **/*.mov
-
-# Archive files
 **/*.tar
 **/*.tar.gz
 **/*.7z
 **/*.rar
-
-# Local database files
 **/*.db
+
+# IDE
+.idea/
+*.swp
+*~
