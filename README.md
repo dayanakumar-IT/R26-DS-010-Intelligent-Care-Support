@@ -22,7 +22,7 @@ _Placeholder — details to follow._
 Each component owns its own tables. Follow this exact pattern —
 skipping any step causes real, hard-to-diagnose errors.
 
-1. Create your migration file in `supabase/migrations/`, numbered after the last existing one (e.g. `PULSE_yourwork.sql`). Never edit an already-pushed migration file — create a new one instead.
+1. Create your migration file in `supabase/migrations/`, numbered after the last existing one (e.g. `0007_SENTRY_patients.sql`, `0008_SENTRY_rooms.sql`). Never edit an already-pushed migration file — create a new one instead.
 
 2. Enable RLS on every table you create:
    ```sql
