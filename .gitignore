@@ -1,41 +1,42 @@
+﻿# ============================================================
+# sentry-mobile — tracks: caresense_mobile/ only
+# ============================================================
+
+# Other branches' folders
+Component2_v2/
+backend_services/
+frontend/
+supabase/
+PP1/
+
+# Local-only
+backend/
+Datasets/
+Research Paper - Writing/
+.claude/
+Component Completion.xlsx
+*.xlsx
+*.xls
+
+# Flutter / Dart
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+**/*.iml
+**/.idea/
+
 # Python
 __pycache__/
-*.py[cod]
-*.so
-.Python
-
-# Virtual environments
+*.pyc
+*.pyo
 venv/
-env/
-ENV/
 .venv/
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Testing / coverage
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Environment / secrets
+# Env / secrets
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-secrets.json
-credentials.json
-
-# IDE / editors
-.idea/
-*.swp
-*~
 
 # OS
 .DS_Store
@@ -48,41 +49,18 @@ logs/
 tmp/
 temp/
 
-# Local-only folders — never commit these
-.claude/
-Datasets/
-backend/
-Research Paper - Writing/
-
-# Exception: mobile backend skeleton should be tracked
-!caresense_mobile/backend/
-!caresense_mobile/backend/**
-
-# Large raw training data — too big for GitHub (72MB+)
+# Large files
+*.lock
 **/ntu_data.npy
-**/ntu_data.npy
-
-# Video files
 **/*.mp4
 **/*.avi
 **/*.mov
-
-# Archive files
 **/*.tar
 **/*.tar.gz
 **/*.7z
 **/*.rar
-
-# Local database
 **/*.db
 
-# Local-only files
-*.xlsx
-*.xls
-*.lock
-Component Completion.xlsx
-
-# Flutter generated
-.dart_tool/
-*.dart_tool
-build/
+# IDE
+*.swp
+*~
