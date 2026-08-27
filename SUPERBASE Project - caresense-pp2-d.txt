@@ -1,0 +1,23 @@
+SUPERBASE Project - caresense-pp2-dev
+password: A3qQtwQYtEBjIWrK
+
+API Key: sb_publishable_oVSFlMyrnSyPwxhfD-nAlw_iKLNPB3Y
+
+anon public key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14eHBmdnhwYmt0bHR1cmxycmFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2Njk2NDQsImV4cCI6MjEwMzI0NTY0NH0.YKPjklZWR6bXh3AZsCbQrubfTSqDdhFk4hXssZrOdy0
+
+--------------------------------------------------------------------------
+VITE_SUPABASE_URL=https://mxxpfvxpbktlturlrrae.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14eHBmdnhwYmt0bHR1cmxycmFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2Njk2NDQsImV4cCI6MjEwMzI0NTY0NH0.YKPjklZWR6bXh3AZsCbQrubfTSqDdhFk4hXssZrOdy0 
+-------------------------------------------------------------------------
+admin
+username email: dayanapriya.k@gmail.com
+password: J<$u$|$my$aviour12345678
+user id: dd1b65ab-c7a2-48ac-9a2a-3ccc30407ff8
+
+Supervisor 01
+email: chamara.d@gmail.com
+pw:A$d}>^JHKL1234567
+
+Supervisor 02
+email:sachini.f@gmail.com
+pw:S$D#a@>nmbjgh1234567
