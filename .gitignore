@@ -1,3 +1,21 @@
+# ============================================================
+# SENTRY-03 — tracks: backend_services/, frontend/, supabase/
+# ============================================================
+
+# Other branches' folders
+Component2_v2/
+caresense_mobile/
+PP1/
+
+# Local-only
+backend/
+Datasets/
+Research Paper - Writing/
+.claude/
+"Component Completion.xlsx"
+*.xlsx
+*.xls
+
 # Node
 node_modules/
 dist/
@@ -6,12 +24,40 @@ dist/
 # Python
 __pycache__/
 *.pyc
+*.pyo
 venv/
 .venv/
+env/
 
 # Env / secrets
 .env
-.env.local
+.env.*
+!.env.example
 
 # OS
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / temp
+*.log
+logs/
+tmp/
+temp/
+
+# Large files
+*.lock
+**/ntu_data.npy
+**/*.mp4
+**/*.avi
+**/*.mov
+**/*.tar
+**/*.tar.gz
+**/*.7z
+**/*.rar
+**/*.db
+
+# IDE
+.idea/
+*.swp
+*~
