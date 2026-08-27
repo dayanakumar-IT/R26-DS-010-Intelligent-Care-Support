@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -27,8 +27,6 @@ data/processed/
 data/raw/
 
 # Model weights (large binary files)
-models/saved/*.pth
-models/saved/*.joblib
 
 # Logs
 *.log
