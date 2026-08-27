@@ -1,403 +1,353 @@
 """
-SQLite event database.
+Supabase database layer — SENTRY Fall Risk Detection (Component 2).
 
-Schema
-------
-patients        — static patient records
-rooms           — static room records
-events          — one row per inference window (risk_score, level, posture …)
-alerts          — one row per fired HIGH alert, with acknowledgement flag
-skeleton_replay — 5-second skeleton buffer saved on each HIGH event
+Replaces the previous SQLite implementation.
+All structured data goes to Supabase; skeleton replay blobs go to Cloudflare R2.
 
-Raw video frames are NEVER stored. Only skeletal coordinates.
+Tables (defined in supabase/migrations/):
+    0007_SENTRY_patients.sql    — patients
+    0008_SENTRY_rooms.sql       — rooms
+    0009_SENTRY_fall_events.sql — fall_events
+    0010_SENTRY_fall_alerts.sql — fall_alerts
+
+Skeleton replay:
+    NOT stored in Supabase. HIGH alert replays go to Cloudflare R2
+    via src/r2_storage.py. The r2_replay_key column in fall_alerts
+    stores the R2 object key for lookup.
+
+Caregivers:
+    Read-only from PULSE component's caregiver_profiles table.
+    SENTRY never writes to it.
+
+Setup (.env):
+    SUPABASE_URL=https://mxxpfvxpbktlturlrrae.supabase.co
+    SUPABASE_KEY=<service_role_key>
 """
 from __future__ import annotations
 
 import json
 import os
-import sqlite3
 import time
-from contextlib import contextmanager
+from datetime import datetime, timezone
 from typing import List, Optional
 
-DB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data", "fallrisk.db"
-)
+from dotenv import load_dotenv
+from supabase import create_client, Client
 
-_SCHEMA = """
-PRAGMA journal_mode=WAL;
-PRAGMA foreign_keys=ON;
+load_dotenv()
 
-CREATE TABLE IF NOT EXISTS patients (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL,
-    age         INTEGER,
-    gender      TEXT,
-    room_id     TEXT,
-    bed         TEXT,
-    notes       TEXT,
-    created_at  REAL DEFAULT (unixepoch('now'))
-);
+# ---------------------------------------------------------------------------
+# Client
+# ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS rooms (
-    id           TEXT PRIMARY KEY,
-    name         TEXT NOT NULL,
-    ward         TEXT,
-    camera_src   TEXT,
-    camera_suffix TEXT DEFAULT '',
-    caregiver_id TEXT,
-    zone_config  TEXT
-);
-
-CREATE TABLE IF NOT EXISTS caregivers (
-    id         TEXT PRIMARY KEY,
-    name       TEXT NOT NULL,
-    role       TEXT DEFAULT 'Nurse',
-    phone      TEXT,
-    email      TEXT,
-    created_at REAL DEFAULT (unixepoch('now'))
-);
-
-CREATE TABLE IF NOT EXISTS events (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    patient_id   TEXT,
-    room_id      TEXT,
-    timestamp    REAL NOT NULL,
-    risk_score   REAL NOT NULL,
-    risk_level   TEXT NOT NULL,
-    posture      TEXT,
-    zone         TEXT,
-    pose_quality TEXT,
-    confidence   REAL,
-    key_factors  TEXT,   -- JSON list of strings
-    alert_id     INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS alerts (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    patient_id   TEXT,
-    room_id      TEXT,
-    timestamp    REAL NOT NULL,
-    risk_score   REAL NOT NULL,
-    risk_level   TEXT NOT NULL,
-    posture      TEXT,
-    key_factors  TEXT,   -- JSON list of strings
-    acknowledged INTEGER DEFAULT 0,
-    ack_by       TEXT,
-    ack_at       REAL
-);
-
-CREATE TABLE IF NOT EXISTS skeleton_replay (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    alert_id    INTEGER NOT NULL REFERENCES alerts(id),
-    frame_index INTEGER NOT NULL,
-    timestamp   REAL NOT NULL,
-    skeleton    TEXT NOT NULL    -- JSON (14, 4) array
-);
-
-CREATE INDEX IF NOT EXISTS idx_events_patient   ON events(patient_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_events_room      ON events(room_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_alerts_patient   ON alerts(patient_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_alerts_ack       ON alerts(acknowledged);
-CREATE INDEX IF NOT EXISTS idx_replay_alert     ON skeleton_replay(alert_id, frame_index);
-"""
+_client: Optional[Client] = None
 
 
-@contextmanager
-def _conn():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    con = sqlite3.connect(DB_PATH, check_same_thread=False)
-    con.row_factory = sqlite3.Row
-    try:
-        yield con
-        con.commit()
-    except Exception:
-        con.rollback()
-        raise
-    finally:
-        con.close()
+def _get_client() -> Client:
+    global _client
+    if _client is not None:
+        return _client
+    url = os.environ.get("SUPABASE_URL", "")
+    key = os.environ.get("SUPABASE_KEY", "")
+    if not url or not key:
+        raise EnvironmentError(
+            "SUPABASE_URL and SUPABASE_KEY must be set in your .env file."
+        )
+    _client = create_client(url, key)
+    print("[db] Connected to Supabase.")
+    return _client
 
 
 def init_db():
-    with _conn() as con:
-        con.executescript(_SCHEMA)
+    """Verify Supabase connection on startup. Tables are created via migrations."""
+    client = _get_client()
+    # Quick connectivity check
+    client.table("patients").select("id").limit(1).execute()
+    print("[db] Supabase connection verified.")
 
 
-# ── Patients ────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Patients
+# ---------------------------------------------------------------------------
 
 def upsert_patient(id: str, name: str, age: int = None, gender: str = None,
                    room_id: str = None, bed: str = None, notes: str = None):
-    with _conn() as con:
-        con.execute("""
-            INSERT INTO patients (id, name, age, gender, room_id, bed, notes)
-            VALUES (?,?,?,?,?,?,?)
-            ON CONFLICT(id) DO UPDATE SET
-                name=excluded.name, age=excluded.age, gender=excluded.gender,
-                room_id=excluded.room_id, bed=excluded.bed, notes=excluded.notes
-        """, (id, name, age, gender, room_id, bed, notes))
-    try:
-        from src.supabase_sync import sync_patient
-        sync_patient({"id": id, "name": name, "age": age, "gender": gender,
-                      "room_id": room_id, "bed": bed, "notes": notes})
-    except Exception:
-        pass
+    _get_client().table("patients").upsert({
+        "id":      id,
+        "name":    name,
+        "age":     age,
+        "gender":  gender,
+        "room_id": room_id,
+        "bed":     bed,
+        "notes":   notes,
+    }).execute()
 
 
 def get_patients() -> List[dict]:
-    with _conn() as con:
-        rows = con.execute("SELECT * FROM patients ORDER BY id").fetchall()
-    return [dict(r) for r in rows]
+    res = _get_client().table("patients").select("*").order("id").execute()
+    return res.data or []
 
 
 def get_patient(patient_id: str) -> Optional[dict]:
-    with _conn() as con:
-        row = con.execute("SELECT * FROM patients WHERE id=?",
-                          (patient_id,)).fetchone()
-    return dict(row) if row else None
+    res = _get_client().table("patients").select("*").eq("id", patient_id).limit(1).execute()
+    return res.data[0] if res.data else None
 
 
-# ── Rooms ───────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Rooms
+# ---------------------------------------------------------------------------
 
 def upsert_room(id: str, name: str, ward: str = None,
                 camera_src: str = None, camera_suffix: str = "",
                 zone_config: dict = None):
-    with _conn() as con:
-        con.execute("""
-            INSERT INTO rooms (id, name, ward, camera_src, camera_suffix, zone_config)
-            VALUES (?,?,?,?,?,?)
-            ON CONFLICT(id) DO UPDATE SET
-                name=excluded.name, ward=excluded.ward,
-                camera_src=excluded.camera_src,
-                camera_suffix=excluded.camera_suffix,
-                zone_config=excluded.zone_config
-        """, (id, name, ward, camera_src, camera_suffix or "",
-               json.dumps(zone_config) if zone_config else None))
+    _get_client().table("rooms").upsert({
+        "id":            id,
+        "name":          name,
+        "ward":          ward,
+        "camera_src":    camera_src,
+        "camera_suffix": camera_suffix or "",
+        "zone_config":   zone_config,
+    }).execute()
 
 
 def get_rooms() -> List[dict]:
-    with _conn() as con:
-        rows = con.execute("SELECT * FROM rooms ORDER BY id").fetchall()
-    return [dict(r) for r in rows]
+    res = _get_client().table("rooms").select("*").order("id").execute()
+    return res.data or []
 
 
 def get_rooms_with_camera() -> List[dict]:
     """Return only rooms that have a camera configured — used for auto-start on server boot."""
-    with _conn() as con:
-        rows = con.execute(
-            "SELECT * FROM rooms WHERE camera_src IS NOT NULL AND camera_src != '' ORDER BY id"
-        ).fetchall()
-    return [dict(r) for r in rows]
+    res = (
+        _get_client().table("rooms")
+        .select("*")
+        .not_.is_("camera_src", "null")
+        .neq("camera_src", "")
+        .order("id")
+        .execute()
+    )
+    return res.data or []
 
 
 def update_room_camera(room_id: str, camera_src: str, camera_suffix: str = ""):
-    """Set or update the camera source for a room. Persists across server restarts."""
-    with _conn() as con:
-        con.execute(
-            "UPDATE rooms SET camera_src=?, camera_suffix=? WHERE id=?",
-            (camera_src, camera_suffix or "", room_id)
-        )
+    """Set or update the camera source for a room."""
+    _get_client().table("rooms").update({
+        "camera_src":    camera_src,
+        "camera_suffix": camera_suffix or "",
+    }).eq("id", room_id).execute()
 
 
 def assign_caregiver_to_room(room_id: str, caregiver_id: str):
-    with _conn() as con:
-        con.execute("UPDATE rooms SET caregiver_id=? WHERE id=?",
-                    (caregiver_id, room_id))
-
-
-# ── Caregivers ───────────────────────────────────────────────────────────────
-
-def upsert_caregiver(id: str, name: str, role: str = "Nurse",
-                     phone: str = None, email: str = None):
-    with _conn() as con:
-        con.execute("""
-            INSERT INTO caregivers (id, name, role, phone, email)
-            VALUES (?,?,?,?,?)
-            ON CONFLICT(id) DO UPDATE SET
-                name=excluded.name, role=excluded.role,
-                phone=excluded.phone, email=excluded.email
-        """, (id, name, role, phone, email))
-
-
-def get_caregivers() -> List[dict]:
-    with _conn() as con:
-        rows = con.execute("SELECT * FROM caregivers ORDER BY name").fetchall()
-    return [dict(r) for r in rows]
-
-
-def get_caregiver(caregiver_id: str) -> Optional[dict]:
-    with _conn() as con:
-        row = con.execute("SELECT * FROM caregivers WHERE id=?",
-                          (caregiver_id,)).fetchone()
-    return dict(row) if row else None
+    """Link a caregiver (from PULSE's caregiver_profiles) to a room."""
+    _get_client().table("rooms").update({
+        "caregiver_id": caregiver_id,
+    }).eq("id", room_id).execute()
 
 
 def get_room_zones(room_id: str) -> dict:
     """Return zone polygon map for a room, or empty dict if not configured."""
-    with _conn() as con:
-        row = con.execute("SELECT zone_config FROM rooms WHERE id=?",
-                          (room_id,)).fetchone()
-    if row and row["zone_config"]:
-        return json.loads(row["zone_config"])
+    res = _get_client().table("rooms").select("zone_config").eq("id", room_id).limit(1).execute()
+    if res.data and res.data[0].get("zone_config"):
+        return res.data[0]["zone_config"]
     return {}
 
 
 def set_room_zones(room_id: str, zones: dict):
     """Save zone polygon map for a room."""
-    with _conn() as con:
-        con.execute("UPDATE rooms SET zone_config=? WHERE id=?",
-                    (json.dumps(zones), room_id))
+    _get_client().table("rooms").update({
+        "zone_config": zones,
+    }).eq("id", room_id).execute()
 
 
-# ── Events ──────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Caregivers — READ ONLY from PULSE's caregiver_profiles table
+# ---------------------------------------------------------------------------
+
+def get_caregivers() -> List[dict]:
+    """Read caregivers from PULSE's shared caregiver_profiles table. Never write here."""
+    res = _get_client().table("caregiver_profiles").select("id, display_name, ward").order("display_name").execute()
+    return res.data or []
+
+
+def get_caregiver(caregiver_id: str) -> Optional[dict]:
+    res = (
+        _get_client().table("caregiver_profiles")
+        .select("id, display_name, ward")
+        .eq("id", caregiver_id)
+        .limit(1)
+        .execute()
+    )
+    return res.data[0] if res.data else None
+
+
+# ---------------------------------------------------------------------------
+# Fall Events (one row per inference window)
+# ---------------------------------------------------------------------------
 
 def insert_event(patient_id: str, room_id: str, timestamp: float,
                  risk_score: float, risk_level: str, posture: str = None,
                  zone: str = None, pose_quality: str = None,
                  confidence: float = None, key_factors: List[str] = None,
                  alert_id: int = None) -> int:
-    with _conn() as con:
-        cur = con.execute("""
-            INSERT INTO events
-              (patient_id, room_id, timestamp, risk_score, risk_level,
-               posture, zone, pose_quality, confidence, key_factors, alert_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
-        """, (patient_id, room_id, timestamp, risk_score, risk_level,
-               posture, zone, pose_quality, confidence,
-               json.dumps(key_factors or []), alert_id))
-        return cur.lastrowid
+    res = _get_client().table("fall_events").insert({
+        "patient_id":   patient_id,
+        "room_id":      room_id,
+        "timestamp":    _unix_to_iso(timestamp),
+        "risk_score":   risk_score,
+        "risk_level":   risk_level,
+        "posture":      posture,
+        "zone":         zone,
+        "pose_quality": pose_quality,
+        "confidence":   confidence,
+        "key_factors":  key_factors or [],
+        "alert_id":     alert_id,
+    }).execute()
+    return res.data[0]["id"] if res.data else None
 
 
 def get_patient_history(patient_id: str, limit: int = 200) -> List[dict]:
-    with _conn() as con:
-        rows = con.execute("""
-            SELECT * FROM events WHERE patient_id=?
-            ORDER BY timestamp DESC LIMIT ?
-        """, (patient_id, limit)).fetchall()
-    return [dict(r) for r in rows]
+    res = (
+        _get_client().table("fall_events")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .order("timestamp", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return res.data or []
 
 
-# ── Alerts ──────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Fall Alerts
+# ---------------------------------------------------------------------------
 
 def insert_alert(patient_id: str, room_id: str, timestamp: float,
                  risk_score: float, risk_level: str, posture: str = None,
                  key_factors: List[str] = None) -> int:
-    with _conn() as con:
-        cur = con.execute("""
-            INSERT INTO alerts
-              (patient_id, room_id, timestamp, risk_score, risk_level,
-               posture, key_factors)
-            VALUES (?,?,?,?,?,?,?)
-        """, (patient_id, room_id, timestamp, risk_score, risk_level,
-               posture, json.dumps(key_factors or [])))
-        alert_id = cur.lastrowid
-    try:
-        from src.supabase_sync import sync_alert
-        sync_alert({"id": alert_id, "patient_id": patient_id, "room_id": room_id,
-                    "timestamp": timestamp, "risk_score": risk_score,
-                    "risk_level": risk_level, "posture": posture,
-                    "key_factors": key_factors or []})
-    except Exception:
-        pass
-    return alert_id
+    res = _get_client().table("fall_alerts").insert({
+        "patient_id":  patient_id,
+        "room_id":     room_id,
+        "timestamp":   _unix_to_iso(timestamp),
+        "risk_score":  risk_score,
+        "risk_level":  risk_level,
+        "posture":     posture,
+        "key_factors": key_factors or [],
+    }).execute()
+    return res.data[0]["id"] if res.data else None
 
 
 def acknowledge_alert(alert_id: int, ack_by: str = "caregiver") -> bool:
-    with _conn() as con:
-        cur = con.execute("""
-            UPDATE alerts SET acknowledged=1, ack_by=?, ack_at=?
-            WHERE id=? AND acknowledged=0
-        """, (ack_by, time.time(), alert_id))
-        return cur.rowcount > 0
+    res = (
+        _get_client().table("fall_alerts")
+        .update({
+            "acknowledged": True,
+            "ack_by":       ack_by,
+            "ack_at":       datetime.now(timezone.utc).isoformat(),
+        })
+        .eq("id", alert_id)
+        .eq("acknowledged", False)
+        .execute()
+    )
+    return len(res.data) > 0
 
 
 def get_alerts(unacked_only: bool = False, limit: int = 100) -> List[dict]:
-    where = "WHERE acknowledged=0" if unacked_only else ""
-    with _conn() as con:
-        rows = con.execute(f"""
-            SELECT * FROM alerts {where}
-            ORDER BY timestamp DESC LIMIT ?
-        """, (limit,)).fetchall()
-    result = []
-    for r in rows:
-        d = dict(r)
-        d["key_factors"] = json.loads(d.get("key_factors") or "[]")
-        result.append(d)
-    return result
+    query = _get_client().table("fall_alerts").select("*").order("timestamp", desc=True).limit(limit)
+    if unacked_only:
+        query = query.eq("acknowledged", False)
+    res = query.execute()
+    return res.data or []
 
 
-# ── Skeleton replay ─────────────────────────────────────────────────────────
+def set_alert_r2_key(alert_id: int, r2_key: str):
+    """Store the Cloudflare R2 object key for a HIGH alert's skeleton replay."""
+    _get_client().table("fall_alerts").update({
+        "r2_replay_key": r2_key,
+    }).eq("id", alert_id).execute()
 
-def save_replay_frames(alert_id: int,
-                       frames: List[tuple]):
+
+# ---------------------------------------------------------------------------
+# Skeleton Replay — Cloudflare R2 (NOT Supabase)
+# ---------------------------------------------------------------------------
+
+def save_replay_frames(alert_id: int, frames: list):
     """
+    Save skeleton replay to Cloudflare R2.
     frames: list of (frame_index, timestamp, skeleton_array)
-    skeleton_array: np.ndarray (14, 4)
     """
-    import numpy as np
-    with _conn() as con:
-        con.executemany("""
-            INSERT INTO skeleton_replay (alert_id, frame_index, timestamp, skeleton)
-            VALUES (?,?,?,?)
-        """, [
-            (alert_id, idx, ts, json.dumps(sk.tolist() if hasattr(sk, "tolist") else sk))
-            for idx, ts, sk in frames
-        ])
+    try:
+        from src.r2_storage import save_replay_to_r2
+        save_replay_to_r2(alert_id, frames)
+        r2_key = f"replays/alert_{alert_id}.json"
+        set_alert_r2_key(alert_id, r2_key)
+    except Exception as e:
+        print(f"[db] save_replay_frames failed: {e}")
 
 
 def get_replay(alert_id: int) -> List[dict]:
-    with _conn() as con:
-        rows = con.execute("""
-            SELECT frame_index, timestamp, skeleton
-            FROM skeleton_replay WHERE alert_id=?
-            ORDER BY frame_index
-        """, (alert_id,)).fetchall()
-    return [{"frame_index": r["frame_index"],
-             "timestamp":   r["timestamp"],
-             "skeleton":    json.loads(r["skeleton"])} for r in rows]
+    """Fetch skeleton replay from Cloudflare R2."""
+    try:
+        from src.r2_storage import get_replay_from_r2
+        return get_replay_from_r2(alert_id)
+    except Exception as e:
+        print(f"[db] get_replay failed: {e}")
+        return []
 
 
-# ── Analytics ───────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Dashboard summary
+# ---------------------------------------------------------------------------
 
 def get_dashboard_summary() -> dict:
-    with _conn() as con:
-        total_patients = con.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
-        total_alerts   = con.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
-        unacked        = con.execute(
-            "SELECT COUNT(*) FROM alerts WHERE acknowledged=0").fetchone()[0]
-        high_today     = con.execute("""
-            SELECT COUNT(*) FROM alerts
-            WHERE risk_level='HIGH'
-              AND timestamp > unixepoch('now','-1 day')
-        """).fetchone()[0]
-        # Latest risk level per patient
-        levels = con.execute("""
-            SELECT risk_level, COUNT(*) as cnt FROM (
-                SELECT patient_id, risk_level,
-                       ROW_NUMBER() OVER (PARTITION BY patient_id
-                                          ORDER BY timestamp DESC) rn
-                FROM events
-            ) WHERE rn=1
-            GROUP BY risk_level
-        """).fetchall()
-    level_counts = {r["risk_level"]: r["cnt"] for r in levels}
+    client = _get_client()
+
+    total_patients = len(client.table("patients").select("id").execute().data or [])
+    all_alerts     = client.table("fall_alerts").select("id, acknowledged, risk_level, timestamp").execute().data or []
+
+    total_alerts = len(all_alerts)
+    unacked      = sum(1 for a in all_alerts if not a.get("acknowledged"))
+
+    # HIGH alerts in last 24h
+    cutoff = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).isoformat()
+    high_today = sum(
+        1 for a in all_alerts
+        if a.get("risk_level") == "HIGH" and (a.get("timestamp") or "") >= cutoff
+    )
+
+    # Latest risk level per patient from fall_events
+    events = (
+        client.table("fall_events")
+        .select("patient_id, risk_level, timestamp")
+        .order("timestamp", desc=True)
+        .limit(500)
+        .execute()
+        .data or []
+    )
+    seen = set()
+    level_counts: dict = {}
+    for e in events:
+        pid = e.get("patient_id")
+        if pid and pid not in seen:
+            seen.add(pid)
+            lvl = e.get("risk_level", "NORMAL")
+            level_counts[lvl] = level_counts.get(lvl, 0) + 1
+
     return {
-        "total_patients": total_patients,
-        "total_alerts":   total_alerts,
+        "total_patients":        total_patients,
+        "total_alerts":          total_alerts,
         "unacknowledged_alerts": unacked,
-        "high_alerts_today": high_today,
-        "patients_by_level": level_counts,
+        "high_alerts_today":     high_today,
+        "patients_by_level":     level_counts,
     }
 
 
-# ── Seed demo data ──────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Seed demo data
+# ---------------------------------------------------------------------------
 
 def seed_demo_data():
-    """Insert demo rooms, patients, and caregivers on first run.
-    Camera sources are NOT seeded — supervisor configures them once via the portal.
-    On every server restart, rooms with camera_src already saved in DB auto-start.
-    """
-    # Rooms — camera_src left None until supervisor configures via portal
+    """Insert demo rooms and patients. Camera sources configured via portal."""
     rooms = [
         ("ROOM_01", "Ward A - Room 1", "Ward A"),
         ("ROOM_02", "Ward A - Room 2", "Ward A"),
@@ -406,28 +356,27 @@ def seed_demo_data():
     for r in rooms:
         upsert_room(r[0], r[1], ward=r[2])
 
-    # Patients
     patients = [
         ("P001", "Patient 01", 72, "M", "ROOM_01", "Bed A1"),
         ("P002", "Patient 02", 68, "F", "ROOM_02", "Bed A2"),
         ("P003", "Patient 03", 80, "M", "ROOM_03", "Bed B1"),
     ]
     for p in patients:
-        upsert_patient(p[0], p[1], age=p[2], gender=p[3],
-                       room_id=p[4], bed=p[5])
+        upsert_patient(p[0], p[1], age=p[2], gender=p[3], room_id=p[4], bed=p[5])
 
-    # Demo caregivers
-    caregivers = [
-        ("C001", "Nurse Sarah",  "Nurse",   "+94771234567"),
-        ("C002", "Nurse James",  "Nurse",   "+94779876543"),
-        ("C003", "Dr. Perera",   "Doctor",  "+94770001111"),
-    ]
-    for c in caregivers:
-        upsert_caregiver(c[0], c[1], role=c[2], phone=c[3])
+    print("[db] Demo data seeded.")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _unix_to_iso(ts: float) -> str:
+    """Convert a Unix timestamp (float) to ISO 8601 string for Supabase."""
+    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
 
 
 if __name__ == "__main__":
     init_db()
     seed_demo_data()
-    print(f"Database initialised at: {DB_PATH}")
     print("Summary:", get_dashboard_summary())
