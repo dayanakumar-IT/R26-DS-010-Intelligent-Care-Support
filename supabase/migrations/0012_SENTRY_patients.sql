@@ -1,7 +1,7 @@
 -- ============================================================
--- 0007_SENTRY_patients.sql
+-- 0012_SENTRY_patients.sql
 -- SENTRY Component — Fall Risk Detection (Component 2)
--- Patients monitored by the SENTRY fall detection system.
+-- Re-applied as 0012 (0007 was taken by model_registry_grants).
 -- patient_code (e.g. P01, P02) shown in UI — no real names stored.
 -- Teammates reference id (PK) and read patient_code + gender.
 -- ============================================================
