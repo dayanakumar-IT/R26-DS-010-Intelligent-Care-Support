@@ -54,16 +54,29 @@ def _get_client() -> Client:
             "SUPABASE_URL and SUPABASE_KEY must be set in your .env file."
         )
     _client = create_client(url, key)
+    # Force HTTP/1.1 — HTTP/2 multiplexing causes RemoteProtocolError on idle
+    # connection reuse, which crashes background async tasks.  HTTP/1.1 reconnects
+    # transparently on each request, so transient drops are never fatal.
+    try:
+        import httpx
+        _client.postgrest.session = httpx.Client(
+            http2=False,
+            timeout=httpx.Timeout(8.0),
+        )
+    except Exception:
+        pass
     print("[db] Connected to Supabase.")
     return _client
 
 
 def init_db():
-    """Verify Supabase connection on startup. Tables are created via migrations."""
-    client = _get_client()
-    # Quick connectivity check
-    client.table("patients").select("id").limit(1).execute()
-    print("[db] Supabase connection verified.")
+    """Verify Supabase connection on startup. Non-fatal — server starts even if check times out."""
+    try:
+        client = _get_client()
+        client.table("patients").select("id").limit(1).execute()
+        print("[db] Supabase connection verified.")
+    except Exception as e:
+        print(f"[db] Startup connectivity check failed ({e.__class__.__name__}: {e}) — continuing anyway.")
 
 
 # ---------------------------------------------------------------------------
@@ -80,13 +93,31 @@ def upsert_patient(patient_code: str, gender: str = None, room_id: str = None):
 
 
 def get_patients() -> List[dict]:
-    res = _get_client().table("patients").select("*").order("id").execute()
-    return res.data or []
+    try:
+        res = _get_client().table("patients").select("*").order("id").execute()
+        return res.data or []
+    except Exception as e:
+        print(f"[db] get_patients timeout/error: {e.__class__.__name__} — returning []")
+        return []
+
+
+def get_patient_by_code(patient_code: str) -> Optional[dict]:
+    """Look up a patient by their patient_code string (e.g. 'P001')."""
+    try:
+        res = _get_client().table("patients").select("*").eq("patient_code", patient_code).limit(1).execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"[db] get_patient_by_code error: {e.__class__.__name__} — returning None")
+        return None
 
 
 def get_patient(patient_id: str) -> Optional[dict]:
-    res = _get_client().table("patients").select("*").eq("id", patient_id).limit(1).execute()
-    return res.data[0] if res.data else None
+    try:
+        res = _get_client().table("patients").select("*").eq("id", patient_id).limit(1).execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"[db] get_patient timeout/error: {e.__class__.__name__} — returning None")
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -106,50 +137,74 @@ def upsert_room(room_code: str, ward: str = None,
 
 
 def get_rooms() -> List[dict]:
-    res = _get_client().table("rooms").select("*").order("id").execute()
-    return res.data or []
+    try:
+        res = _get_client().table("rooms").select("*").order("id").execute()
+        return res.data or []
+    except Exception as e:
+        print(f"[db] get_rooms timeout/error: {e.__class__.__name__} — returning []")
+        return []
 
 
 def get_rooms_with_camera() -> List[dict]:
     """Return only rooms that have a camera configured — used for auto-start on server boot."""
-    res = (
-        _get_client().table("rooms")
-        .select("*")
-        .not_.is_("camera_src", "null")
-        .neq("camera_src", "")
-        .order("id")
-        .execute()
-    )
-    return res.data or []
+    try:
+        res = (
+            _get_client().table("rooms")
+            .select("*")
+            .not_.is_("camera_src", "null")
+            .neq("camera_src", "")
+            .order("id")
+            .execute()
+        )
+        return res.data or []
+    except Exception as e:
+        print(f"[db] get_rooms_with_camera timeout/error: {e.__class__.__name__} — returning []")
+        return []
 
 
-def update_room_camera(room_id: str, camera_src: str):
-    """Set or update the camera source for a room."""
-    _get_client().table("rooms").update({
-        "camera_src": camera_src,
-    }).eq("id", room_id).execute()
+def update_room_camera(room_id: str, camera_src: str, suffix: str = ""):
+    """Set or update the camera source for a room. room_id may be numeric id or room_code."""
+    payload: dict = {"camera_src": camera_src}
+    if suffix:
+        payload["camera_suffix"] = suffix
+    # Try numeric id first, fall back to room_code
+    if str(room_id).isdigit():
+        _get_client().table("rooms").update(payload).eq("id", room_id).execute()
+    else:
+        _get_client().table("rooms").update(payload).eq("room_code", room_id).execute()
 
 
 def assign_caregiver_to_room(room_id: str, caregiver_id: str):
-    """Link a caregiver (from PULSE's caregiver_profiles) to a room."""
-    _get_client().table("rooms").update({
-        "caregiver_id": caregiver_id,
-    }).eq("id", room_id).execute()
+    """Link a caregiver (from PULSE's caregiver_profiles) to a room.
+    room_id may be a numeric id or a room_code string."""
+    try:
+        col = "id" if str(room_id).isdigit() else "room_code"
+        _get_client().table("rooms").update({
+            "caregiver_id": caregiver_id,
+        }).eq(col, room_id).execute()
+    except Exception as e:
+        print(f"[db] assign_caregiver_to_room timeout/error: {e.__class__.__name__} — {e}")
 
 
 def get_room_zones(room_id: str) -> dict:
-    """Return zone polygon map for a room, or empty dict if not configured."""
-    res = _get_client().table("rooms").select("zone_config").eq("id", room_id).limit(1).execute()
-    if res.data and res.data[0].get("zone_config"):
-        return res.data[0]["zone_config"]
+    """Return zone polygon map for a room, or empty dict if not configured.
+    room_id may be a numeric id or a room_code string."""
+    try:
+        col = "id" if str(room_id).isdigit() else "room_code"
+        res = _get_client().table("rooms").select("zone_config").eq(col, room_id).limit(1).execute()
+        if res.data and res.data[0].get("zone_config"):
+            return res.data[0]["zone_config"]
+    except Exception as e:
+        print(f"[db] get_room_zones error: {e.__class__.__name__} — returning {{}}")
     return {}
 
 
 def set_room_zones(room_id: str, zones: dict):
     """Save zone polygon map for a room."""
+    col = "id" if str(room_id).isdigit() else "room_code"
     _get_client().table("rooms").update({
         "zone_config": zones,
-    }).eq("id", room_id).execute()
+    }).eq(col, room_id).execute()
 
 
 # ---------------------------------------------------------------------------
@@ -158,19 +213,27 @@ def set_room_zones(room_id: str, zones: dict):
 
 def get_caregivers() -> List[dict]:
     """Read caregivers from PULSE's shared caregiver_profiles table. Never write here."""
-    res = _get_client().table("caregiver_profiles").select("id, display_name, ward").order("display_name").execute()
-    return res.data or []
+    try:
+        res = _get_client().table("caregiver_profiles").select("id, display_name, ward").order("display_name").execute()
+        return res.data or []
+    except Exception as e:
+        print(f"[db] get_caregivers timeout/error: {e.__class__.__name__} — returning []")
+        return []
 
 
 def get_caregiver(caregiver_id: str) -> Optional[dict]:
-    res = (
-        _get_client().table("caregiver_profiles")
-        .select("id, display_name, ward")
-        .eq("id", caregiver_id)
-        .limit(1)
-        .execute()
-    )
-    return res.data[0] if res.data else None
+    try:
+        res = (
+            _get_client().table("caregiver_profiles")
+            .select("id, display_name, ward")
+            .eq("id", caregiver_id)
+            .limit(1)
+            .execute()
+        )
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"[db] get_caregiver timeout/error: {e.__class__.__name__} — returning None")
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -199,33 +262,40 @@ def insert_event(patient_id: str, room_id: str, timestamp: float,
 
 
 def get_patient_history(patient_id: str, limit: int = 200) -> List[dict]:
-    res = (
-        _get_client().table("fall_events")
-        .select("*")
-        .eq("patient_id", patient_id)
-        .order("timestamp", desc=True)
-        .limit(limit)
-        .execute()
-    )
-    return res.data or []
+    try:
+        res = (
+            _get_client().table("fall_events")
+            .select("*")
+            .eq("patient_id", patient_id)
+            .order("timestamp", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return res.data or []
+    except Exception as e:
+        print(f"[db] get_patient_history timeout/error: {e.__class__.__name__} — returning []")
+        return []
 
 
 # ---------------------------------------------------------------------------
 # Fall Alerts
 # ---------------------------------------------------------------------------
 
-def insert_alert(patient_id: str, room_id: str, timestamp: float,
+def insert_alert(patient_id, room_id, timestamp: float,
                  risk_score: float, risk_level: str, posture: str = None,
                  key_factors: List[str] = None) -> int:
-    res = _get_client().table("fall_alerts").insert({
-        "patient_id":  patient_id,
+    """patient_id and room_id may be None if not yet resolved — DB allows NULL."""
+    payload = {
         "room_id":     room_id,
         "timestamp":   _unix_to_iso(timestamp),
         "risk_score":  risk_score,
         "risk_level":  risk_level,
         "posture":     posture,
         "key_factors": key_factors or [],
-    }).execute()
+    }
+    if patient_id is not None:
+        payload["patient_id"] = patient_id
+    res = _get_client().table("fall_alerts").insert(payload).execute()
     return res.data[0]["id"] if res.data else None
 
 
@@ -245,11 +315,15 @@ def acknowledge_alert(alert_id: int, ack_by: str = "caregiver") -> bool:
 
 
 def get_alerts(unacked_only: bool = False, limit: int = 100) -> List[dict]:
-    query = _get_client().table("fall_alerts").select("*").order("timestamp", desc=True).limit(limit)
-    if unacked_only:
-        query = query.eq("acknowledged", False)
-    res = query.execute()
-    return res.data or []
+    try:
+        query = _get_client().table("fall_alerts").select("*").order("timestamp", desc=True).limit(limit)
+        if unacked_only:
+            query = query.eq("acknowledged", False)
+        res = query.execute()
+        return res.data or []
+    except Exception as e:
+        print(f"[db] get_alerts timeout/error: {e.__class__.__name__} — returning []")
+        return []
 
 
 def set_alert_r2_key(alert_id: int, r2_key: str):
@@ -292,6 +366,18 @@ def get_replay(alert_id: int) -> List[dict]:
 # ---------------------------------------------------------------------------
 
 def get_dashboard_summary() -> dict:
+    try:
+        return _get_dashboard_summary_inner()
+    except Exception as e:
+        print(f"[db] get_dashboard_summary timeout/error: {e.__class__.__name__} — returning empty summary")
+        return {
+            "total_patients": 0, "total_alerts": 0,
+            "unacknowledged_alerts": 0, "high_alerts_today": 0,
+            "patients_by_level": {},
+        }
+
+
+def _get_dashboard_summary_inner() -> dict:
     client = _get_client()
 
     total_patients = len(client.table("patients").select("id").execute().data or [])

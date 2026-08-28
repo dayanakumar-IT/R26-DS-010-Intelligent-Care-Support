@@ -43,6 +43,12 @@ export interface Alert {
   created_at: string
 }
 
+export interface Caregiver {
+  id: string
+  display_name: string
+  ward: string | null
+}
+
 export interface DashboardSummary {
   total_rooms: number
   total_patients: number
@@ -57,6 +63,9 @@ export const api = {
   getRooms: () => request<Room[]>('/api/rooms'),
   getPatients: () => request<Patient[]>('/api/patients'),
   getAlerts: () => request<Alert[]>('/api/alerts'),
+  getCaregivers: () => request<Caregiver[]>('/api/caregivers'),
   acknowledgeAlert: (id: number) =>
     request<Alert>(`/api/alerts/${id}/acknowledge`, { method: 'PATCH' }),
+  assignCaregiver: (roomId: string, caregiverId: string) =>
+    request<{ status: string }>(`/api/rooms/${roomId}/caregiver?caregiver_id=${caregiverId}`, { method: 'PATCH' }),
 }

@@ -26,16 +26,18 @@ from typing import Optional
 from config.settings import (
     RISK_TAU_LOW, RISK_TAU_HIGH, RISK_EMA_ALPHA,
     DWELL_S, ALERT_COOLDOWN_S, ALERT_HIGH_DWELL_S,
+    ALERT_MODERATE_COOLDOWN_S, ALERT_MODERATE_DWELL_S,
 )
 
 
 @dataclass
 class RiskState:
-    level: str          # "NORMAL" | "MODERATE" | "HIGH"
-    score: float        # EMA-smoothed score 0..1
-    raw_score: float    # un-smoothed model output
-    alert: bool         # True when a new HIGH alert should fire
-    timestamp: float    # wall-clock seconds
+    level: str            # "NORMAL" | "MODERATE" | "HIGH"
+    score: float          # EMA-smoothed score 0..1
+    raw_score: float      # un-smoothed model output
+    alert: bool            # True when a new HIGH alert should fire (repeats — drives the continuous/repeated beep)
+    moderate_alert: bool   # True when a new MODERATE alert should be logged (one-shot per cooldown window — single beep)
+    timestamp: float      # wall-clock seconds
 
 
 class RiskPostProcessor:
@@ -70,6 +72,7 @@ class RiskPostProcessor:
         self._level: str            = "NORMAL"
         self._level_entry_t: float  = time.time()
         self._last_alert_t: float   = 0.0
+        self._last_moderate_alert_t: float = 0.0
         self._initialised: bool     = False
 
     # ------------------------------------------------------------------
@@ -101,21 +104,27 @@ class RiskPostProcessor:
         if alert:
             self._last_alert_t = now
 
+        moderate_alert = self._should_moderate_alert(now)
+        if moderate_alert:
+            self._last_moderate_alert_t = now
+
         return RiskState(
-            level     = self._level,
-            score     = round(self._ema, 4),
-            raw_score = round(score, 4),
-            alert     = alert,
-            timestamp = now,
+            level          = self._level,
+            score          = round(self._ema, 4),
+            raw_score      = round(score, 4),
+            alert          = alert,
+            moderate_alert = moderate_alert,
+            timestamp      = now,
         )
 
     # ------------------------------------------------------------------
     def reset(self):
-        self._ema           = 0.0
-        self._level         = "NORMAL"
-        self._level_entry_t = time.time()
-        self._last_alert_t  = 0.0
-        self._initialised   = False
+        self._ema                   = 0.0
+        self._level                 = "NORMAL"
+        self._level_entry_t         = time.time()
+        self._last_alert_t          = 0.0
+        self._last_moderate_alert_t = 0.0
+        self._initialised           = False
 
     # ------------------------------------------------------------------
     def _dwell_elapsed(self, now: float) -> float:
@@ -137,6 +146,12 @@ class RiskPostProcessor:
                 return "NORMAL"
 
         elif current == "HIGH":
+            # Fast path: score drops well below NORMAL threshold → skip MODERATE, go straight to NORMAL
+            # This handles the demo case where someone stands up after a fall — recovery feels instant.
+            fast_to_normal = self.dwell.get("high_to_normal", 1.5)
+            if ema < self.tau_low * 0.8 and elapsed >= fast_to_normal:
+                return "NORMAL"
+            # Normal path: score just below HIGH threshold → MODERATE first
             if ema < self.tau_high and elapsed >= self.dwell["to_moderate_from_high"]:
                 return "MODERATE"
 
@@ -148,5 +163,21 @@ class RiskPostProcessor:
         if now - self._last_alert_t < self.cooldown:
             return False
         if self._dwell_elapsed(now) < ALERT_HIGH_DWELL_S:
+            return False
+        return True
+
+    def _should_moderate_alert(self, now: float) -> bool:
+        """
+        MODERATE alerts are logged (not just pushed live) so a caregiver who
+        was away from their phone can still see them later. Uses a much
+        longer cooldown than HIGH — one log entry per sustained episode,
+        not a repeating one — matching a single-beep (vs HIGH's repeating
+        beep) notification on the caregiver's phone.
+        """
+        if self._level != "MODERATE":
+            return False
+        if now - self._last_moderate_alert_t < ALERT_MODERATE_COOLDOWN_S:
+            return False
+        if self._dwell_elapsed(now) < ALERT_MODERATE_DWELL_S:
             return False
         return True

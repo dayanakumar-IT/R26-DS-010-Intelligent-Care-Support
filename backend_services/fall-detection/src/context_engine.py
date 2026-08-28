@@ -28,7 +28,7 @@ from config.settings import JOINT
 
 _VIS_THRESH  = 0.3    # minimum visibility to trust a joint
 _WALK_SPEED  = 0.15   # torso-lengths/s ankle speed → walking
-_TRANS_TTL   = 0.2    # seconds a TRANSITION label persists
+_TRANS_TTL   = 0.25   # seconds a TRANSITION label persists — long enough to gate HIGH during real falls
 
 # Lateral lean threshold (degrees shoulder tilt) to flag sideways instability
 _LATERAL_LEAN_THRESH = 12.0
@@ -75,6 +75,10 @@ def _lateral_lean_deg(frame: np.ndarray) -> Optional[float]:
 
 
 def _hip_to_knee_y(frame: np.ndarray) -> Optional[float]:
+    """Return hip_y - knee_y in normalised image coords (Y increases downward).
+    SITTING: hips and knees at similar heights → value close to 0 (slightly negative).
+    STANDING: hips well above knees → large negative (e.g. −0.15 to −0.25).
+    """
     jts = [JOINT["l_hip"], JOINT["r_hip"], JOINT["l_knee"], JOINT["r_knee"]]
     if not all(_vis(frame, j) for j in jts):
         return None
@@ -132,7 +136,10 @@ class ContextEngine:
 
         if angle > 75.0:
             posture = "LYING"
-        elif h2k is not None and h2k < 0.05 and angle < 50.0:
+        elif h2k is not None and h2k > -0.06 and angle < 50.0:
+            # SITTING: hips roughly level with knees (h2k near 0, slightly negative at most).
+            # STANDING has hips well above knees → h2k ≈ −0.15 to −0.25 → excluded here.
+            # Threshold −0.06 gives a 6 cm normalised margin for slouched-sit noise.
             posture = "SITTING"
         else:
             # Determine walking via ankle velocity

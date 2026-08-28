@@ -39,6 +39,9 @@ from typing import Deque, Iterator, List, Optional, Union
 
 import cv2
 import numpy as np
+
+# Suppress OpenCV/MSMF verbose warnings — they appear even when DSHOW is used
+cv2.setLogLevel(3)   # 3 = ERROR only (0=DEBUG, 1=INFO, 2=WARN, 3=ERROR, 4=FATAL)
 import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -55,13 +58,13 @@ from src.data_splits import load_scaler
 
 # Run model inference every N captured frames (≈5 inferences/sec at 30 FPS)
 INFER_EVERY_N = 3
-# Minimum fraction of buffer that must have valid joints
-MIN_BUFFER_FILL = 0.5
-# Per-joint visibility threshold
-VIS_THRESH = 0.4
-# Fraction of joints that must be visible for GOOD quality
-GOOD_JOINT_FRAC  = 0.85
-DEGRADED_JOINT_FRAC = 0.5
+# Minimum fraction of buffer that must have valid joints before inference fires
+MIN_BUFFER_FILL = 0.3      # was 0.5 — fire sooner, don't wait for full 45 frames
+# Per-joint visibility threshold — lower = more joints count as "visible"
+VIS_THRESH = 0.2           # was 0.4 — laptop webcam gives lower visibility scores
+# Fraction of joints that must be visible for GOOD / DEGRADED quality
+GOOD_JOINT_FRAC     = 0.65 # was 0.85 — partial body view still scores GOOD
+DEGRADED_JOINT_FRAC = 0.35 # was 0.5  — partial body view is DEGRADED not UNAVAILABLE
 
 
 @dataclass
@@ -97,6 +100,14 @@ class InferenceEngine:
         self._running = False
         self._thread:  Optional[threading.Thread] = None
         self._frame_count = 0
+
+        # MJPEG stream state — updated every frame
+        self._latest_frame_bytes: Optional[bytes] = None
+        self._latest_skeleton: Optional[np.ndarray] = None   # (14,4) raw MediaPipe frame
+        self._disp_level    = "NORMAL"
+        self._disp_score    = 0.0
+        self._disp_posture  = "UNKNOWN"
+        self._disp_buffering = True
 
         self._dp    = DataProcessor()
         self._feat  = FeatureExtractor()
@@ -164,21 +175,28 @@ class InferenceEngine:
             min_tracking_confidence=0.5,
         ) as pose:
             self._pose = pose
-            cap = cv2.VideoCapture(self.source)
+            # On Windows, MSMF (default backend) often fails with -1072873821.
+            # Force DirectShow which is more compatible with USB webcams.
+            if isinstance(self.source, int):
+                cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
+            else:
+                cap = cv2.VideoCapture(self.source)
+
             if not cap.isOpened():
                 print(f"[inference] Cannot open source: {self.source}")
                 self._running = False
                 return
 
-            # Request MJPEG for USB camera
+            # Request MJPEG + manageable resolution for USB camera via DSHOW
             if isinstance(self.source, int):
                 cap.set(cv2.CAP_PROP_FOURCC,
                         cv2.VideoWriter_fourcc(*"MJPG"))
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH,  1280)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT,  720)
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
                 cap.set(cv2.CAP_PROP_FPS, FRAME_RATE)
 
             print(f"[inference] Capture started: {self.source}")
+            last_joints = None
             while self._running:
                 ok, frame = cap.read()
                 if not ok:
@@ -190,12 +208,23 @@ class InferenceEngine:
                 joint_frame = self._mediapipe_frame(frame, pose)
                 if joint_frame is not None:
                     self._buffer.append(joint_frame)
+                    last_joints = joint_frame
+                    self._latest_skeleton = joint_frame   # expose for per-frame WS streaming
 
                 if (self._frame_count % INFER_EVERY_N == 0
                         and len(self._buffer) >= int(TARGET_FRAMES * MIN_BUFFER_FILL)):
                     result = self._infer()
                     if result:
                         self._result_queue.append(result)
+                        print(f"[inference] score={result.risk_score:.3f} quality={result.pose_quality} frame={result.frame_count}")
+                        # Use calibrated thresholds from settings, not hardcoded 0.50
+                        from config.settings import RISK_TAU_HIGH, RISK_TAU_LOW
+                        self._disp_level    = "HIGH" if result.risk_score >= RISK_TAU_HIGH else "MODERATE" if result.risk_score >= RISK_TAU_LOW else "NORMAL"
+                        self._disp_score    = result.risk_score
+                        self._disp_buffering = False
+
+                # Annotate and store MJPEG frame
+                self._encode_display_frame(frame, last_joints)
 
             cap.release()
         self._running = False
@@ -226,6 +255,89 @@ class InferenceEngine:
         return self._dp.extract_mediapipe_14_joints(res)
 
     # ------------------------------------------------------------------ #
+    _SKEL_EDGES = [
+        (0,1),(1,2),(1,3),(2,4),(3,5),(4,6),(5,7),
+        (1,8),(1,9),(8,9),(8,10),(9,11),(10,12),(11,13),
+    ]
+    _RISK_COLORS = {
+        "NORMAL":   (50, 200, 80),
+        "MODERATE": (30, 165, 255),
+        "HIGH":     (50,  50, 220),
+    }
+
+    def _encode_display_frame(self, bgr: np.ndarray,
+                               joints: Optional[np.ndarray]) -> None:
+        """Draw skeleton + risk overlay on a copy of the frame and JPEG-encode it."""
+        display = bgr.copy()
+        h, w = display.shape[:2]
+
+        # ── Face blur (privacy) ──────────────────────────────────────────
+        if joints is not None:
+            nose = joints[0]; neck = joints[1]
+            nx, ny = int(nose[0]*w), int(nose[1]*h)
+            nnx, nny = int(neck[0]*w), int(neck[1]*h)
+            radius = max(35, int(abs(ny - nny) * 1.5))
+            x1, y1 = max(0,nx-radius), max(0,ny-radius)
+            x2, y2 = min(w,nx+radius), min(h,ny+radius)
+            if x2 > x1 and y2 > y1:
+                roi = display[y1:y2, x1:x2]
+                display[y1:y2, x1:x2] = cv2.GaussianBlur(roi, (51,51), 20)
+
+        # ── Skeleton ─────────────────────────────────────────────────────
+        if joints is not None:
+            pts = {}
+            for i, (jx, jy, *_) in enumerate(joints):
+                if jx > 0.01 or jy > 0.01:
+                    pts[i] = (int(jx*w), int(jy*h))
+            for a, b in self._SKEL_EDGES:
+                if a in pts and b in pts:
+                    cv2.line(display, pts[a], pts[b], (60, 220, 90), 2)
+            for i, pt in pts.items():
+                r = 8 if i == 0 else 5
+                cv2.circle(display, pt, r, (30, 100, 255), -1)
+                cv2.circle(display, pt, r, (255,255,255), 1)
+
+        # ── HUD overlay ──────────────────────────────────────────────────
+        level  = self._disp_level
+        score  = self._disp_score
+        color  = self._RISK_COLORS.get(level, (200,200,200))
+        pct    = int(score * 100)
+
+        overlay = display.copy()
+        cv2.rectangle(overlay, (0,0), (w, 100), (15,15,25), -1)
+        cv2.addWeighted(overlay, 0.65, display, 0.35, 0, display)
+
+        if self._disp_buffering:
+            cv2.putText(display, "Initialising — stand in frame",
+                        (15,52), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,220,220), 2)
+        else:
+            cv2.putText(display, f"{level}   {pct}%",
+                        (15,55), cv2.FONT_HERSHEY_SIMPLEX, 1.4, color, 3)
+            cv2.putText(display, f"Posture: {self._disp_posture}",
+                        (15,85), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200,200,200), 1)
+            # Risk bar
+            bx, by, bw, bh = w-230, 20, 200, 24
+            cv2.rectangle(display, (bx,by), (bx+bw, by+bh), (55,55,55), -1)
+            cv2.rectangle(display, (bx,by), (bx+int(bw*score), by+bh), color, -1)
+            cv2.rectangle(display, (bx,by), (bx+bw, by+bh), (130,130,130), 1)
+
+        # HIGH alert border
+        if level == "HIGH":
+            cv2.rectangle(display, (0,0), (w,h), (50,50,220), 6)
+            cv2.putText(display, "!!! HIGH FALL RISK !!!",
+                        (w//2-200, h-35), cv2.FONT_HERSHEY_SIMPLEX,
+                        1.0, (50,50,220), 3)
+
+        # Watermark
+        cv2.putText(display, "SENTRY | CareSense",
+                    (15, h-12), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (100,100,120), 1)
+
+        # Encode to JPEG
+        ok, buf = cv2.imencode(".jpg", display, [cv2.IMWRITE_JPEG_QUALITY, 75])
+        if ok:
+            self._latest_frame_bytes = buf.tobytes()
+
+    # ------------------------------------------------------------------ #
     def _pose_quality(self, buffer_arr: np.ndarray) -> str:
         """Assess pose quality from the last frame in the buffer."""
         last = buffer_arr[-1]          # (14, 4)
@@ -244,13 +356,16 @@ class InferenceEngine:
 
         buf = np.stack(list(self._buffer), axis=0)  # (T, 14, 4)
         quality = self._pose_quality(buf)
+        # Only skip inference if truly UNAVAILABLE (< 35% joints visible).
+        # DEGRADED still runs the model — a partial-body view on a laptop webcam
+        # is normal and should still produce a risk score.
         if quality == "UNAVAILABLE":
             return InferenceResult(
                 timestamp=time.time(), risk_score=0.0,
                 stgcn_score=0.0, feat_score=0.0,
                 pose_quality="UNAVAILABLE",
                 skeleton=buf[-1].tolist(),
-                key_factors=["pose unavailable"],
+                key_factors=["pose unavailable — ensure full body is visible"],
                 frame_count=self._frame_count,
             )
 

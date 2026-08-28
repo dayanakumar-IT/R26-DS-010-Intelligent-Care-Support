@@ -14,7 +14,9 @@ UR_FALL_SOURCE_DIR = os.path.join(DATASET_DIR, "UR Fall Detection Dataset", "fal
 UR_ADL_CAM0_DIR   = os.path.join(DATASET_DIR, "UR Fall Detection Dataset", "adl_cam0")
 UR_FALL_CAM0_DIR  = os.path.join(DATASET_DIR, "UR Fall Detection Dataset", "fall_cam0")
 
-BACKEND_DIR = os.path.join(BASE_PROJECT_DIR, "backend")
+# BASE_PROJECT_DIR resolves to …/backend_services/ (3 dirnames up from config/settings.py)
+# models/saved/ lives at …/backend_services/fall-detection/models/saved/
+BACKEND_DIR = os.path.join(BASE_PROJECT_DIR, "fall-detection")
 PROCESSED_DATA_DIR = os.path.join(BACKEND_DIR, "data", "processed")
 MODELS_DIR = os.path.join(BACKEND_DIR, "models", "saved")
 
@@ -206,17 +208,23 @@ FEATURE_DISPLAY_NAMES = {
 # Risk-level thresholds (see backend/docs/risk_levels.md)
 # Tuned later on val set; these are sensible defaults.
 # ---------------------------------------------------------------------------
-RISK_TAU_LOW = 0.35
-RISK_TAU_HIGH = 0.65
-RISK_EMA_ALPHA = 0.4
+RISK_TAU_LOW = 0.35       # NORMAL→MODERATE — raised so calm standing noise stays green
+RISK_TAU_HIGH = 0.65      # MODERATE→HIGH — raised: brief standing spike won't reach this
+RISK_EMA_ALPHA = 0.35     # lower alpha = more smoothing — single frame spikes decay fast
 DWELL_S = {
-    "to_moderate": 1.5,
-    "to_high":     0.5,
-    "to_moderate_from_high": 3.0,
-    "to_normal":   3.0,
+    "to_moderate": 0.5,
+    "to_high":     3.0,   # EMA must stay above tau_high for 3s — only real sustained falls
+    "to_moderate_from_high": 0.8,
+    "to_normal":   1.0,
+    "high_to_normal": 1.5,
 }
-ALERT_COOLDOWN_S = 30.0
-ALERT_HIGH_DWELL_S = 0.5
+ALERT_COOLDOWN_S = 20.0
+ALERT_HIGH_DWELL_S = 0.2
+# MODERATE alerts are logged too (not just HIGH) so a caregiver who was away
+# can still see them when they open the app — longer cooldown since MODERATE
+# is a lower-urgency, single-notification event, not a repeating siren.
+ALERT_MODERATE_COOLDOWN_S = 120.0
+ALERT_MODERATE_DWELL_S = 0.2
 
 # ---------------------------------------------------------------------------
 # Training hyperparameters
