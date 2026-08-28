@@ -6,6 +6,8 @@
 -- Teammates reference id (PK) and read patient_code + gender.
 -- ============================================================
 
+drop table if exists patients cascade;
+
 create table patients (
   id            bigint generated always as identity primary key,
   patient_code  text not null unique,

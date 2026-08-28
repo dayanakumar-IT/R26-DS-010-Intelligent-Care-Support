@@ -1,0 +1,13 @@
+{
+  "sql.dialect": "postgresql",
+  "sqltools.dialect": "PostgreSQL",
+  "mssql.intelliSense.enableIntelliSense": false,
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": false
+  },
+  "files.associations": {
+    "supabase/migrations/*.sql": "plaintext"
+  }
+}

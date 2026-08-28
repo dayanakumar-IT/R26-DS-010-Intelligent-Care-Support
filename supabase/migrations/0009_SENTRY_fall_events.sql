@@ -2,22 +2,25 @@
 -- 0009_SENTRY_fall_events.sql
 -- SENTRY Component — Fall Risk Detection (Component 2)
 -- One row per inference window (every ~3 seconds per camera).
--- High-frequency table — keep only recent windows for performance.
+-- High-frequency table — records every ST-GCN inference result.
 -- ============================================================
 
+drop table if exists fall_events cascade;
+
 create table fall_events (
-  id           bigserial primary key,
-  patient_id   text references patients(id) on delete set null,
-  room_id      text references rooms(id) on delete set null,
-  timestamp    timestamptz not null default now(),
-  risk_score   real not null check (risk_score >= 0 and risk_score <= 100),
-  risk_level   text not null check (risk_level in ('NORMAL', 'MODERATE', 'HIGH')),
-  posture      text,
-  zone         text,
-  pose_quality text,
-  confidence   real,
-  key_factors  jsonb default '[]',
-  alert_id     bigint
+  id            bigint generated always as identity primary key,
+  patient_id    bigint references patients(id) on delete set null,
+  room_id       bigint references rooms(id) on delete set null,
+  timestamp     timestamptz not null default now(),
+  risk_score    real not null check (risk_score >= 0 and risk_score <= 100),
+  risk_level    text not null check (risk_level in ('NORMAL', 'MODERATE', 'HIGH')),
+  posture       text,
+  zone          text,
+  pose_quality  text,
+  confidence    real,
+  key_factors   jsonb default '[]',
+  alert_id      bigint,
+  created_at    timestamptz not null default now()
 );
 
 comment on table fall_events is
@@ -32,15 +35,14 @@ create index idx_fall_events_timestamp on fall_events(timestamp desc);
 
 alter table fall_events enable row level security;
 
+create policy "Admins can manage fall events"
+  on fall_events for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
 create policy "Authenticated users can read fall events"
   on fall_events for select
   using (auth.role() = 'authenticated');
 
-create policy "Service role can manage fall events"
-  on fall_events for all
-  using (auth.role() = 'service_role')
-  with check (auth.role() = 'service_role');
-
 grant select on fall_events to authenticated;
 grant select, insert, update, delete on fall_events to service_role;
-grant usage, select on sequence fall_events_id_seq to service_role;
