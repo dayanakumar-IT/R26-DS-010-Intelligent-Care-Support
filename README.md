@@ -22,26 +22,38 @@ _Placeholder — details to follow._
 Each component owns its own tables. Follow this exact pattern —
 skipping any step causes real, hard-to-diagnose errors.
 
-1. Create your migration file in `supabase/migrations/`, numbered after the last existing one (e.g. `0007_SENTRY_patients.sql`, `0008_SENTRY_rooms.sql`). Never edit an already-pushed migration file — create a new one instead.
+### SENTRY (Component 2 — Fall Detection) tables
 
-2. Enable RLS on every table you create:
+SENTRY uses 4 tables, all created in `supabase/migrations/`:
+
+| File | Table | Purpose |
+|------|-------|---------|
+| `0007_SENTRY_patients.sql` | `patients` | Patient registry — `patient_code` (e.g. P01), `gender`. No real names stored. |
+| `0008_SENTRY_rooms.sql` | `rooms` | Monitored rooms — camera source, ward, zone config, caregiver FK to PULSE |
+| `0009_SENTRY_fall_events.sql` | `fall_events` | Every ST-GCN inference window (~3 s) — `risk_score`, `risk_level`, `posture` |
+| `0010_SENTRY_fall_alerts.sql` | `fall_alerts` | Fired alerts (MODERATE / HIGH) — `acknowledged`, R2 replay key |
+
+### Rules for all components
+
+1. Name your file after the last existing migration number, prefixed with your component name (e.g. `0011_PULSE_yourwork.sql`). **Never edit an already-pushed migration — create a new one instead.**
+
+2. Always use `bigint generated always as identity primary key` — not `serial` or `bigserial`.
+
+3. Enable RLS on every table:
    ```sql
-   alter table your_table_name enable row level security;
+   alter table your_table enable row level security;
    ```
 
-3. Write at least one RLS policy — without one, the table exists but nobody (not even you) can read/write any rows, even with correct grants. Example: authenticated users can read everything in your own component's tables, or restrict by role as needed.
+4. Add RLS policies using `public.is_admin()` (see 0001–0006 for the pattern). Without a policy, nobody can read/write rows even with correct grants.
 
-4. Explicitly grant privileges to the roles that need them. This project has "Automatically expose new tables" disabled by design — nothing gets API access until you grant it, so this step is required, not optional:
+5. Grant access explicitly — this project has "Automatically expose new tables" disabled:
    ```sql
-   grant select, insert, update, delete on your_table_name to authenticated;
-   grant select, insert, update, delete on your_table_name to service_role;
+   grant select on your_table to authenticated;
+   grant select, insert, update, delete on your_table to service_role;
    ```
-   Adjust which privileges/roles based on what your table actually needs — e.g. a read-only public table might only need `select`.
 
-5. Test locally before pushing: `supabase db push --dry-run` if available, or review the CLI's diff preview carefully when it asks for confirmation.
+6. Run `supabase db push` from the **REPO ROOT** — never from inside `frontend/`.
 
-6. Run `supabase db push` from the **REPO ROOT**, never from inside `frontend/` — running it from the wrong directory silently creates a stray, disconnected `supabase/` folder instead of using the linked project.
+7. Verify in Supabase Table Editor after pushing — don't just trust the CLI success message.
 
-7. After pushing, verify in the Supabase dashboard (Table Editor) that the table actually appears with the columns you expect — don't just trust the CLI's success message.
-
-**Common error:** "permission denied for table X" looks like an RLS problem but is almost always a missing GRANT (step 4) — RLS and table-level grants are two separate permission layers in Postgres, and both are required.
+**Common error:** `"permission denied for table X"` is almost always a missing GRANT (step 5), not an RLS problem — both layers are required in Postgres.
