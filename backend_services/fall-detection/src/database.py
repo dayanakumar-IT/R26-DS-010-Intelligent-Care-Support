@@ -70,17 +70,13 @@ def init_db():
 # Patients
 # ---------------------------------------------------------------------------
 
-def upsert_patient(id: str, name: str, age: int = None, gender: str = None,
-                   room_id: str = None, bed: str = None, notes: str = None):
+def upsert_patient(patient_code: str, gender: str = None, room_id: str = None):
+    """Insert or update a patient by patient_code. id is auto-generated."""
     _get_client().table("patients").upsert({
-        "id":      id,
-        "name":    name,
-        "age":     age,
-        "gender":  gender,
-        "room_id": room_id,
-        "bed":     bed,
-        "notes":   notes,
-    }).execute()
+        "patient_code": patient_code,
+        "gender":       gender,
+        "room_id":      room_id,
+    }, on_conflict="patient_code").execute()
 
 
 def get_patients() -> List[dict]:
@@ -97,17 +93,16 @@ def get_patient(patient_id: str) -> Optional[dict]:
 # Rooms
 # ---------------------------------------------------------------------------
 
-def upsert_room(id: str, name: str, ward: str = None,
-                camera_src: str = None, camera_suffix: str = "",
+def upsert_room(room_code: str, ward: str = None,
+                camera_src: str = None,
                 zone_config: dict = None):
+    """Insert or update a room by room_code. id is auto-generated."""
     _get_client().table("rooms").upsert({
-        "id":            id,
-        "name":          name,
-        "ward":          ward,
-        "camera_src":    camera_src,
-        "camera_suffix": camera_suffix or "",
-        "zone_config":   zone_config,
-    }).execute()
+        "room_code":   room_code,
+        "ward":        ward,
+        "camera_src":  camera_src,
+        "zone_config": zone_config,
+    }, on_conflict="room_code").execute()
 
 
 def get_rooms() -> List[dict]:
@@ -128,11 +123,10 @@ def get_rooms_with_camera() -> List[dict]:
     return res.data or []
 
 
-def update_room_camera(room_id: str, camera_src: str, camera_suffix: str = ""):
+def update_room_camera(room_id: str, camera_src: str):
     """Set or update the camera source for a room."""
     _get_client().table("rooms").update({
-        "camera_src":    camera_src,
-        "camera_suffix": camera_suffix or "",
+        "camera_src": camera_src,
     }).eq("id", room_id).execute()
 
 
@@ -349,20 +343,20 @@ def get_dashboard_summary() -> dict:
 def seed_demo_data():
     """Insert demo rooms and patients. Camera sources configured via portal."""
     rooms = [
-        ("ROOM_01", "Ward A - Room 1", "Ward A"),
-        ("ROOM_02", "Ward A - Room 2", "Ward A"),
-        ("ROOM_03", "Ward B - Room 1", "Ward B"),
+        ("ROOM_01", "Ward A"),
+        ("ROOM_02", "Ward A"),
+        ("ROOM_03", "Ward B"),
     ]
     for r in rooms:
-        upsert_room(r[0], r[1], ward=r[2])
+        upsert_room(r[0], ward=r[1])
 
     patients = [
-        ("P001", "Patient 01", 72, "M", "ROOM_01", "Bed A1"),
-        ("P002", "Patient 02", 68, "F", "ROOM_02", "Bed A2"),
-        ("P003", "Patient 03", 80, "M", "ROOM_03", "Bed B1"),
+        ("P01", "M"),
+        ("P02", "F"),
+        ("P03", "M"),
     ]
     for p in patients:
-        upsert_patient(p[0], p[1], age=p[2], gender=p[3], room_id=p[4], bed=p[5])
+        upsert_patient(p[0], gender=p[1])
 
     print("[db] Demo data seeded.")
 

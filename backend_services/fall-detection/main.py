@@ -26,7 +26,7 @@ def main():
     # Initialise database
     print("[startup] Initialising database...")
     init_db()
-    seed_demo_data()
+    # seed_demo_data()  # disabled — real data added via frontend
     print("[startup] Database ready.")
 
     # Start server

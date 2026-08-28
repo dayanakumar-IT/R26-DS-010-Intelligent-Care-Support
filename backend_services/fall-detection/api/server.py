@@ -43,13 +43,13 @@ from pydantic import BaseModel
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.database import (
-    init_db, seed_demo_data,
+    init_db,
     get_patients, get_patient, upsert_patient, get_rooms, get_rooms_with_camera,
     get_alerts, acknowledge_alert, get_replay,
     get_patient_history, get_dashboard_summary,
     insert_event, insert_alert, save_replay_frames,
     get_room_zones, set_room_zones, update_room_camera, assign_caregiver_to_room,
-    get_caregivers, get_caregiver, upsert_caregiver,
+    get_caregivers, get_caregiver,
 )
 from src.inference import InferenceEngine
 from src.postprocess import RiskPostProcessor
@@ -85,7 +85,7 @@ _replay_buf:  Dict[str, list]              = {}   # room_id → rolling 5-sec bu
 @app.on_event("startup")
 async def startup():
     init_db()
-    seed_demo_data()
+    # seed_demo_data() — disabled, real data added via frontend
     # Auto-start engines for every room that already has a camera configured in DB
     rooms_with_cam = get_rooms_with_camera()
     for room in rooms_with_cam:
