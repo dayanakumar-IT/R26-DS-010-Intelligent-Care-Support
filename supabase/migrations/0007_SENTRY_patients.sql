@@ -1,34 +1,35 @@
 -- ============================================================
 -- 0007_SENTRY_patients.sql
 -- SENTRY Component — Fall Risk Detection (Component 2)
--- Stores patient records monitored by the SENTRY system.
+-- Patients monitored by the SENTRY fall detection system.
+-- patient_code (e.g. P01, P02) shown in UI — no real names stored.
+-- Teammates reference id (PK) and read patient_code + gender.
 -- ============================================================
 
 create table patients (
-  id          text primary key,
-  name        text not null,
-  age         integer,
-  gender      text check (gender in ('M', 'F', 'Other')),
-  room_id     text,
-  bed         text,
-  notes       text,
-  created_at  timestamptz not null default now()
+  id            bigint generated always as identity primary key,
+  patient_code  text not null unique,
+  gender        text check (gender in ('M', 'F', 'Other')),
+  room_id       text,
+  created_at    timestamptz not null default now()
 );
 
 comment on table patients is
-  'Static patient records for SENTRY fall risk monitoring.
-  Each patient is assigned to a room and monitored via USB camera.';
+  'SENTRY patient registry. patient_code (e.g. P01) is the display
+  identifier — no real names stored. room_id links the patient to
+  the monitored room. Teammates use id as FK and read patient_code
+  and gender.';
 
 alter table patients enable row level security;
 
-create policy "Authenticated users can read patients"
+create policy "Admins can manage patients"
+  on patients for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Supervisors can read patients"
   on patients for select
   using (auth.role() = 'authenticated');
-
-create policy "Service role can manage patients"
-  on patients for all
-  using (auth.role() = 'service_role')
-  with check (auth.role() = 'service_role');
 
 grant select on patients to authenticated;
 grant select, insert, update, delete on patients to service_role;
