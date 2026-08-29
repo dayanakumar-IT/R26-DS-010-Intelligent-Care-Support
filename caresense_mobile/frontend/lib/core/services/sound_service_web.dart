@@ -8,13 +8,11 @@ class SoundService {
   static bool _highPlaying = false;
   static Timer? _highTimer;
 
-  // HIGH risk: continuous repeating beep every 1.5s until stopped
+  // HIGH risk: two short beeps (no loop — avoids continuous sound in demo)
   static void playHighAlert() {
-    if (_highPlaying) return;
-    _highPlaying = true;
-    _beep(frequency: 920, duration: 0.35);
-    _highTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
-      if (_highPlaying) _beep(frequency: 920, duration: 0.35);
+    _beep(frequency: 920, duration: 0.3);
+    _highTimer = Timer(const Duration(milliseconds: 500), () {
+      _beep(frequency: 920, duration: 0.3);
     });
   }
 

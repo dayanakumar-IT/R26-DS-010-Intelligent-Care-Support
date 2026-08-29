@@ -198,37 +198,43 @@ class _AlertRow extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: _surface,
-        border: Border(
-          left: BorderSide(color: color, width: 3),
-          top: BorderSide(color: _border),
-          right: BorderSide(color: _border),
-          bottom: BorderSide(color: _border),
-        ),
+        border: Border.all(color: _border),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Room ${a['room_id'] ?? '-"'} -- Patient ${a['patient_id'] ?? '-"'}',
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: _text)),
-          Text(level == 'HIGH' ? 'High risk -- Immediate'
-             : level == 'MODERATE' ? 'Unstable movement' : 'Stable',
-              style: TextStyle(fontSize: 11, color: _muted)),
-        ])),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
-          child: Text(level == 'MODERATE' ? 'MOD' : level,
-              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
-        ),
-        const SizedBox(width: 8),
-        Text(timeStr, style: TextStyle(fontSize: 10, color: _dim)),
-      ]),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(children: [
+          // Left accent stripe
+          Container(width: 4, color: color),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              child: Row(children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Room ${a['room_id'] ?? '--'} - Patient ${a['patient_id'] ?? '--'}',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w700, color: _text)),
+                  Text(level == 'HIGH' ? 'High risk - Immediate'
+                     : level == 'MODERATE' ? 'Unstable movement' : 'Stable',
+                      style: TextStyle(fontSize: 11, color: _muted)),
+                ])),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+                  child: Text(level == 'MODERATE' ? 'MOD' : level,
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(width: 8),
+                Text(timeStr, style: TextStyle(fontSize: 10, color: _dim)),
+              ]),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }
