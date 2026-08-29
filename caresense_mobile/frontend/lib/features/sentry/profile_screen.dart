@@ -18,7 +18,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _notifications = true;
-  bool _darkMode      = true; // always dark
+  bool _darkMode      = false;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +43,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   gradient: AppColors.brandGradient,
                   shape: BoxShape.circle,
                 ),
-                child: const Center(child: Text('š*ï¸', style: TextStyle(fontSize: 36))),
+                child: const Center(child: Text('C', style: TextStyle(fontSize: 36))),
               ),
               const SizedBox(height: 12),
               Text(auth.caregiverName ?? 'Caregiver',
@@ -56,7 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.accentBlue.withOpacity(0.3)),
                 ),
-                child: const Text('Caregiver Â- Ward: East Wing',
+                child: const Text('Caregiver - Ward: East Wing',
                     style: TextStyle(fontSize: 11, color: AppColors.accentBlue,
                         fontWeight: FontWeight.w600)),
               ),

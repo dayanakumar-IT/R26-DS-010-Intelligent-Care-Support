@@ -47,13 +47,13 @@ class ModuleSelectScreen extends ConsumerWidget {
                   style: TextStyle(fontSize: 13, color: AppColors.mutedLight)),
                 const SizedBox(height: 24),
 
-                // SENTRY â€" accessible
+                // SENTRY €" accessible
                 _ModuleCard(
-                  emoji: '[icon]',
+                  emoji: 'S',
                   name: 'SENTRY',
                   tagline: 'Fall Risk Detection',
                   desc: 'Real-time skeletal AI monitors patient movement and detects fall risk before incidents happen.',
-                  stat: 'â- 2 high-risk alerts active',
+                  stat: '2 high-risk alerts active',
                   color: AppColors.sentry,
                   accessible: true,
                   onTap: () {
@@ -63,13 +63,13 @@ class ModuleSelectScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // SCRIBE â€" accessible
+                // SCRIBE €" accessible
                 _ModuleCard(
-                  emoji: '[icon]',
+                  emoji: 'D',
                   name: 'SCRIBE',
                   tagline: 'Voice to ADL Documentation',
-                  desc: 'Speak naturally â€" AI converts free caregiver speech into structured ADL records instantly.',
-                  stat: 'â- 6 patients active today',
+                  desc: 'Speak naturally , AI converts free caregiver speech into structured ADL records instantly.',
+                  stat: '6 patients active today',
                   color: AppColors.scribe,
                   accessible: true,
                   onTap: () {
@@ -182,8 +182,6 @@ class _LockedPill extends StatelessWidget {
             border: Border.all(color: AppColors.borderLight),
           ),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(emoji, style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
             Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 4),
             Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),

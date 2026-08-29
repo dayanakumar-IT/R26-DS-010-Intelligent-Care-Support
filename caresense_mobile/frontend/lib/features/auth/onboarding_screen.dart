@@ -219,7 +219,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-// â"€â"€ Page 1: Welcome â€" all 4 modules â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â"€â"€ Page 1: Welcome  -  all 4 modules â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _Page1 extends StatelessWidget {
   final Animation<double> fade, pulse;
   final Animation<double> float;
@@ -305,7 +305,7 @@ class _Page2 extends StatelessWidget {
             _FeatureCard(
               gradient: AppColors.sentryGradient,
               icon: 'S',
-              title: 'SENTRY â€" Fall Risk',
+              title: 'SENTRY  -  Fall Risk',
               desc: 'ST-GCN skeletal AI detects fall risk in real-time. 98.3% accuracy on all patient movements.',
               stat: '< 1 sec alert delivery',
             ),
@@ -313,8 +313,8 @@ class _Page2 extends StatelessWidget {
             _FeatureCard(
               gradient: AppColors.scribeGradient,
               icon: 'D',
-              title: 'SCRIBE â€" Voice to ADL',
-              desc: 'Speak naturally â€" AI converts your words into structured ADL documentation instantly.',
+              title: 'SCRIBE  -  Voice to ADL',
+              desc: 'Speak naturally  -  AI converts your words into structured ADL documentation instantly.',
               stat: 'Free speech, structured output',
             ),
           ],
@@ -357,7 +357,7 @@ class _Page3 extends StatelessWidget {
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFDB2777)]),
               icon: 'P',
-              title: 'PULSE â€" Caregiver Stress',
+              title: 'PULSE  -  Caregiver Stress',
               desc: 'Personalized stress-risk detection using proximity networks and physiological signals.',
               stat: 'Causally-ordered detection',
             ),
@@ -365,7 +365,7 @@ class _Page3 extends StatelessWidget {
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFD97706), Color(0xFF059669)]),
               icon: 'G',
-              title: 'GLOSS â€" Sign Language',
+              title: 'GLOSS  -  Sign Language',
               desc: 'Real-time sign recognition and training for caregivers with Deaf patients.',
               stat: 'Per-landmark error localization',
             ),
@@ -386,7 +386,7 @@ class _Page3 extends StatelessWidget {
                     color: Colors.white, size: 18))),
                 const SizedBox(width: 12),
                 const Expanded(child: Text(
-                  'Switch between your assigned modules anytime â€" no re-login needed.',
+                  'Switch between your assigned modules anytime  -  no re-login needed.',
                   style: TextStyle(fontSize: 12, color: AppColors.mutedLight, height: 1.5))),
               ]),
             ),
