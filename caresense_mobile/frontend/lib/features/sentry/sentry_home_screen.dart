@@ -49,23 +49,32 @@ class SentryHomeScreen extends ConsumerWidget {
                     style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 16),
 
-                // ── Stat cards ───────────────────────────────────────────
-                FutureBuilder<Map<String, dynamic>>(
-                  future: SentryService.getDashboardSummary(),
+                // ── Stat cards — built from alerts + patients ─────────────
+                FutureBuilder<List<dynamic>>(
+                  future: Future.wait([
+                    SentryService.getAlerts(unackedOnly: false),
+                    SentryService.getDashboardSummary(),
+                  ]),
                   builder: (context, snap) {
-                    final byLevel = (snap.data?['patients_by_level'] as Map?) ?? {};
-                    final total   = snap.data?['total_patients'] ?? 0;
+                    final alerts = (snap.data?[0] as List<Map<String,dynamic>>?) ?? [];
+                    final summary = (snap.data?[1] as Map<String,dynamic>?) ?? {};
+                    final total  = summary['total_patients'] ?? 0;
+                    // Count unacknowledged alerts by risk level — what the caregiver needs to act on
+                    final unacked = alerts.where((a) => a['acknowledged_at'] == null).toList();
+                    final high = unacked.where((a) => a['risk_level'] == 'HIGH').length;
+                    final mod  = unacked.where((a) => a['risk_level'] == 'MODERATE').length;
+                    final low  = unacked.where((a) => a['risk_level'] == 'NORMAL').length;
                     return Column(children: [
                       Row(children: [
-                        _StatCard('High Risk',  (byLevel['HIGH']     ?? 0).toString(), 'Rooms/Beds', AppColors.high),
+                        _StatCard('High Risk',  high.toString(), 'Unacknowledged', AppColors.high),
                         const SizedBox(width: 8),
-                        _StatCard('Moderate',   (byLevel['MODERATE'] ?? 0).toString(), 'Rooms/Beds', AppColors.moderate),
+                        _StatCard('Moderate',   mod.toString(),  'Unacknowledged', AppColors.moderate),
                       ]),
                       const SizedBox(height: 8),
                       Row(children: [
-                        _StatCard('Low Risk',   (byLevel['NORMAL']   ?? 0).toString(), 'Rooms/Beds', AppColors.low),
+                        _StatCard('Low Risk',   low.toString(),   'Unacknowledged', AppColors.low),
                         const SizedBox(width: 8),
-                        _StatCard('Monitored',  total.toString(),                      'Total',      AppColors.primary),
+                        _StatCard('Monitored',  total.toString(), 'Total',          AppColors.primary),
                       ]),
                     ]);
                   },
