@@ -418,8 +418,8 @@ async def rooms():
 
 
 @app.get("/api/patients")
-async def patients():
-    return await asyncio.to_thread(get_patients)
+async def patients(caregiver_id: str = None):
+    return await asyncio.to_thread(get_patients, caregiver_id)
 
 
 @app.get("/api/patients/{patient_id}")
