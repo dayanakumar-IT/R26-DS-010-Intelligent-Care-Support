@@ -1,0 +1,61 @@
+{
+  "summary": {
+    "video": "..\\Datasets\\Webcam\\raw_videos\\normal\\subject1_normal_001.mp4",
+    "total_windows": 2,
+    "scored_windows": 2,
+    "overall_level": "MODERATE",
+    "max_score": 0.4659,
+    "mean_score": 0.4355,
+    "level_counts": {
+      "MODERATE": 2
+    },
+    "peak_window": {
+      "window": 1,
+      "t_start": 3.0,
+      "t_end": 5.967,
+      "pose_quality": "DEGRADED",
+      "stgcn_score": 0.7061,
+      "feat_score": 0.3122,
+      "fusion_score": 0.4659,
+      "risk_level": "MODERATE",
+      "key_factors": [
+        "peak vertical acceleration",
+        "mean torso inclination",
+        "max torso lean angle"
+      ]
+    },
+    "fusion_threshold": 0.94
+  },
+  "windows": [
+    {
+      "window": 0,
+      "t_start": 0.0,
+      "t_end": 2.967,
+      "pose_quality": "DEGRADED",
+      "stgcn_score": 0.6347,
+      "feat_score": 0.2936,
+      "fusion_score": 0.405,
+      "risk_level": "MODERATE",
+      "key_factors": [
+        "peak vertical acceleration",
+        "mean torso inclination",
+        "max torso lean angle"
+      ]
+    },
+    {
+      "window": 1,
+      "t_start": 3.0,
+      "t_end": 5.967,
+      "pose_quality": "DEGRADED",
+      "stgcn_score": 0.7061,
+      "feat_score": 0.3122,
+      "fusion_score": 0.4659,
+      "risk_level": "MODERATE",
+      "key_factors": [
+        "peak vertical acceleration",
+        "mean torso inclination",
+        "max torso lean angle"
+      ]
+    }
+  ]
+}
