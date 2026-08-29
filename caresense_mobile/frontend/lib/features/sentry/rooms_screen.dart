@@ -31,15 +31,40 @@ class _RoomsScreenState extends State<RoomsScreen> {
     setState(() { _patients = null; _error = null; });
     try {
       final db = Supabase.instance.client;
-      final myId = db.auth.currentUser?.id;
+      final authId = db.auth.currentUser?.id;
 
-      // 1) Try to find rooms explicitly assigned to this caregiver.
-      List<dynamic> roomsRes = myId != null
-          ? await db.from('rooms').select('room_code, ward, caregiver_id').eq('caregiver_id', myId)
+      // rooms.caregiver_id references caregiver_profiles.id (synthetic PULSE table),
+      // NOT the real auth UUID. So we look up the logged-in user's name from
+      // profiles, then find the matching caregiver_profiles entry by display_name,
+      // and use that synthetic id to filter rooms.
+      String? syntheticCgId;
+      if (authId != null) {
+        // Step 1: get real user's name from profiles
+        final profileRes = await db
+            .from('profiles')
+            .select('name')
+            .eq('id', authId)
+            .maybeSingle();
+        final realName = profileRes?['name']?.toString();
+
+        if (realName != null && realName.isNotEmpty) {
+          // Step 2: find matching caregiver_profiles by display_name (case-insensitive)
+          final cgRes = await db
+              .from('caregiver_profiles')
+              .select('id')
+              .ilike('display_name', '%$realName%')
+              .limit(1)
+              .maybeSingle();
+          syntheticCgId = cgRes?['id']?.toString();
+        }
+      }
+
+      // Step 3: filter rooms by synthetic caregiver id if found,
+      // otherwise fall back to showing all rooms (for demo when names don't match).
+      List<dynamic> roomsRes = syntheticCgId != null
+          ? await db.from('rooms').select('room_code, ward, caregiver_id').eq('caregiver_id', syntheticCgId)
           : [];
 
-      // 2) Fallback: if no rooms assigned yet (PULSE hasn't set caregiver_id),
-      //    show all rooms so the demo is still functional.
       if (roomsRes.isEmpty) {
         roomsRes = await db.from('rooms').select('room_code, ward, caregiver_id');
       }
