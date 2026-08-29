@@ -229,7 +229,7 @@ class _Page1 extends StatelessWidget {
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: fade,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
           children: [
@@ -281,7 +281,7 @@ class _Page2 extends StatelessWidget {
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: fade,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +334,7 @@ class _Page3 extends StatelessWidget {
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: fade,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,10 +427,12 @@ class _ModuleTile extends StatelessWidget {
           decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
           child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18)))),
         const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
-          Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.mutedLight)),
-        ]),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
+              overflow: TextOverflow.ellipsis),
+          Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.mutedLight),
+              overflow: TextOverflow.ellipsis),
+        ])),
       ]),
     ),
   );
