@@ -1,11 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../core/constants/colors.dart';
 import '../../core/config/api_config.dart';
 
-// ── Bone pairs — 14-joint MediaPipe subset (matches backend config/settings.py)
+// â”€â”€ Bone pairs â€” 14-joint MediaPipe subset (matches backend config/settings.py)
 const List<List<int>> kBones = [
   [0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7],
   [1, 8], [1, 9], [8, 10], [9, 11], [10, 12], [11, 13],
@@ -81,18 +81,18 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   Widget build(BuildContext context) {
     final level     = (_frame?['risk_level'] ?? 'NORMAL').toString();
     final score     = _frame?['risk_score'];
-    final posture   = _frame?['posture']   ?? '—';
-    final zone      = _frame?['zone']      ?? '—';
+    final posture   = _frame?['posture']   ?? 'â€”';
+    final zone      = _frame?['zone']      ?? 'â€”';
     final conf      = _frame?['confidence'];
     final color     = _levelColor(level);
-    final scoreText = score != null ? '${score.toStringAsFixed(0)}/100' : '—';
-    final confText  = conf  != null ? '${(conf * 100).toStringAsFixed(0)}%' : '—';
+    final scoreText = score != null ? '${score.toStringAsFixed(0)}/100' : 'â€”';
+    final confText  = conf  != null ? '${(conf * 100).toStringAsFixed(0)}%' : 'â€”';
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       body: SafeArea(
         child: Column(children: [
-          // ── Header ───────────────────────────────────────────────────
+          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(children: [
@@ -100,7 +100,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 onTap: () => Navigator.pop(context),
                 child: Row(children: [
                   const Icon(Icons.arrow_back_ios_rounded, size: 16, color: AppColors.primary),
-                  Text('${widget.roomId} · ${widget.patientCode}',
+                  Text('${widget.roomId} Â· ${widget.patientCode}',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary)),
                 ]),
               ),
@@ -112,14 +112,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                         color: _connected ? AppColors.low : AppColors.high,
                         shape: BoxShape.circle)),
                 const SizedBox(width: 5),
-                Text(_connected ? 'LIVE' : 'Reconnecting…',
+                Text(_connected ? 'LIVE' : 'Reconnectingâ€¦',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
                         color: _connected ? AppColors.low : AppColors.high)),
               ]),
             ]),
           ),
 
-          // ── Skeleton canvas ──────────────────────────────────────────
+          // â”€â”€ Skeleton canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -138,7 +138,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           ),
           const SizedBox(height: 14),
 
-          // ── Metrics row ───────────────────────────────────────────────
+          // â”€â”€ Metrics row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
@@ -151,7 +151,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           ),
           const SizedBox(height: 10),
 
-          // ── Info cards ────────────────────────────────────────────────
+          // â”€â”€ Info cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
@@ -162,7 +162,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           ),
           const SizedBox(height: 12),
 
-          // ── Key factors ───────────────────────────────────────────────
+          // â”€â”€ Key factors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (_frame?['key_factors'] != null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -203,7 +203,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   }
 }
 
-// ── Skeleton CustomPainter ────────────────────────────────────────────────────
+// â”€â”€ Skeleton CustomPainter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _SkeletonPainter extends CustomPainter {
   final Map<String, dynamic>? frame;
   final String level;
@@ -244,7 +244,7 @@ class _SkeletonPainter extends CustomPainter {
       // "Waiting" text
       final tp = TextPainter(
         text: const TextSpan(
-          text: 'Waiting for skeleton data…',
+          text: 'Waiting for skeleton dataâ€¦',
           style: TextStyle(color: Color(0x8094A3B8), fontSize: 13),
         ),
         textDirection: TextDirection.ltr,
@@ -264,7 +264,7 @@ class _SkeletonPainter extends CustomPainter {
       ];
     }).toList();
 
-    bool vis(int i) => i < joints.length && joints[i][3] > 0.3;
+    bool vis(int i) => i < joints.length && joints[i][3] > 0.1;
     double px(int i) => joints[i][0] * W;
     double py(int i) => joints[i][1] * H;
 
@@ -327,7 +327,7 @@ class _SkeletonPainter extends CustomPainter {
       old.frame != frame || old.level != level;
 }
 
-// ── Helper widgets ────────────────────────────────────────────────────────────
+// â”€â”€ Helper widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _MetricBox extends StatelessWidget {
   final String label, value;
   final Color color;
