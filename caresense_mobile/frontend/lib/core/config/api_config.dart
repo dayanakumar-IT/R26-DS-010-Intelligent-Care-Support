@@ -7,7 +7,9 @@ class ApiConfig {
   // ║  4. Paste it below, keep :8000                                      ║
   // ║  5. flutter run                                                     ║
   // ╚══════════════════════════════════════════════════════════════════════╝
-  static const String baseUrl = 'http://localhost:8000'; // USB: adb reverse tcp:8000 tcp:8000
+  // WiFi hotspot: connect laptop to phone hotspot → run ipconfig → paste IPv4 here
+  // Android hotspot usually gives laptop an IP like 192.168.43.x
+  static const String baseUrl = 'http://192.168.43.100:8000'; // ← run ipconfig on viva day, update this
 
   static const Duration timeout = Duration(seconds: 10);
 
