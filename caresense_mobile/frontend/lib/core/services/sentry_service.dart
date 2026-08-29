@@ -25,9 +25,18 @@ class SentryService {
 
   // ── Patients ──────────────────────────────────────────────────────────────
 
-  static Future<List<Map<String, dynamic>>> getPatients() async {
+  /// [caregiverId] = logged-in caregiver's UUID → returns only their patients.
+  /// Omit (null) for supervisor/admin → returns all patients.
+  static Future<List<Map<String, dynamic>>> getPatients({
+    String? caregiverId,
+  }) async {
     try {
-      final res = await _dio.get(ApiConfig.patients);
+      final res = await _dio.get(
+        ApiConfig.patients,
+        queryParameters: caregiverId != null
+            ? {'caregiver_id': caregiverId}
+            : null,
+      );
       final list = res.data as List;
       return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     } catch (_) {

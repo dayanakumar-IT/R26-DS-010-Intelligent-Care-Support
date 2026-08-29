@@ -92,12 +92,31 @@ def upsert_patient(patient_code: str, gender: str = None, room_id: str = None):
     }, on_conflict="patient_code").execute()
 
 
-def get_patients() -> List[dict]:
+def get_patients(caregiver_id: str = None) -> List[dict]:
+    """Return all patients, or only those in rooms assigned to caregiver_id."""
     try:
-        res = _get_client().table("patients").select("*").order("id").execute()
+        client = _get_client()
+        if caregiver_id:
+            # 1. Find rooms assigned to this caregiver
+            rooms_res = client.table("rooms") \
+                .select("room_code") \
+                .eq("caregiver_id", caregiver_id) \
+                .execute()
+            room_codes = [r["room_code"] for r in (rooms_res.data or [])]
+            if not room_codes:
+                return []
+            # 2. Return patients in those rooms
+            res = client.table("patients") \
+                .select("*") \
+                .in_("room_id", room_codes) \
+                .order("id") \
+                .execute()
+        else:
+            # Supervisor / admin — return all patients
+            res = client.table("patients").select("*").order("id").execute()
         return res.data or []
     except Exception as e:
-        print(f"[db] get_patients timeout/error: {e.__class__.__name__} — returning []")
+        print(f"[db] get_patients error: {e.__class__.__name__} — returning []")
         return []
 
 

@@ -418,8 +418,11 @@ async def rooms():
 
 
 @app.get("/api/patients")
-async def patients():
-    return await asyncio.to_thread(get_patients)
+async def patients(caregiver_id: str = None):
+    """Return patients filtered by caregiver's assigned rooms.
+    Supervisor/admin: omit caregiver_id → all patients.
+    Caregiver: pass caregiver_id (UUID) → only their rooms' patients."""
+    return await asyncio.to_thread(get_patients, caregiver_id)
 
 
 @app.get("/api/patients/{patient_id}")
