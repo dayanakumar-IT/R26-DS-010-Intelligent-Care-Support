@@ -4,7 +4,7 @@ import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import '../../store/auth_store.dart';
 import '../../widgets/module_switcher_pill.dart';
-import 'patient_detail_screen.dart';
+import 'live_room_screen.dart';
 
 class RoomsScreen extends ConsumerWidget {
   const RoomsScreen({super.key});
@@ -83,7 +83,10 @@ class _RoomCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => PatientDetailScreen(patient: patient))),
+          MaterialPageRoute(builder: (_) => LiveRoomScreen(
+            roomId: patient['room_id']?.toString() ?? '',
+            patientCode: patient['patient_code']?.toString() ?? '',
+          ))),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -149,7 +152,10 @@ class _RoomCard extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => PatientDetailScreen(patient: patient))),
+                  MaterialPageRoute(builder: (_) => LiveRoomScreen(
+                    roomId: patient['room_id']?.toString() ?? '',
+                    patientCode: patient['patient_code']?.toString() ?? '',
+                  ))),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: const BorderSide(color: AppColors.primary),
