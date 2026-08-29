@@ -1,8 +1,0 @@
-Cross-Subject (CS) split summary
-================================
-Random seed     : 42
-Total sequences : 4797
-
-TRAIN n=3121  ( 65.1%)  subjects= 98  risk={'moderate_risk': 1290, 'low_risk': 1211, 'high_risk': 620}  dataset={'NTU': 3090, 'UR': 31}
-VAL   n= 877  ( 18.3%)  subjects= 21  risk={'low_risk': 374, 'moderate_risk': 312, 'high_risk': 191}  dataset={'NTU': 870, 'UR': 7}
-TEST  n= 799  ( 16.7%)  subjects= 21  risk={'low_risk': 326, 'moderate_risk': 306, 'high_risk': 167}  dataset={'NTU': 792, 'UR': 7}

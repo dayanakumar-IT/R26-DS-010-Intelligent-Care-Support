@@ -1,5 +1,0 @@
-,pred_Lying,pred_Sitting,pred_Standing,pred_Walking
-true_Lying,249,46,11,10
-true_Sitting,52,454,116,14
-true_Standing,10,71,227,8
-true_Walking,2,5,4,305

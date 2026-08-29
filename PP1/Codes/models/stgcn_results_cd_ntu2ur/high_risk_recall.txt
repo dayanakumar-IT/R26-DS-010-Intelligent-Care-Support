@@ -1,5 +1,0 @@
-High-risk class (n=30) recall = 0.0000
-
-Of 30 actual high-risk events in the test set,
-  0 were correctly flagged.
-  The remaining 30 would be MISSED FALLS.
