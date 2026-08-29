@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
 import '../../store/auth_store.dart';
 
-const _bg      = AppColors.bgDark;
-const _surface = AppColors.surfaceDark;
-const _border  = AppColors.borderDark;
-const _text    = AppColors.textDark;
-const _muted   = AppColors.mutedDark;
+const _bg      = AppColors.bgLight;
+const _surface = AppColors.surfaceLight;
+const _border  = AppColors.borderLight;
+const _text    = AppColors.textLight;
+const _muted   = AppColors.mutedLight;
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -145,7 +145,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(text,
       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-          color: AppColors.mutedDark, letterSpacing: 0.5));
+          color: AppColors.mutedLight, letterSpacing: 0.5));
 }
 
 class _ActionTile extends StatelessWidget {
@@ -177,7 +177,7 @@ class _ActionTile extends StatelessWidget {
         ),
         title: Text(label,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _text)),
-        trailing: Icon(Icons.chevron_right_rounded, color: AppColors.dimDark, size: 18),
+        trailing: Icon(Icons.chevron_right_rounded, color: AppColors.dimLight, size: 18),
         onTap: onTap,
       ),
     );
@@ -216,7 +216,7 @@ class _ToggleTile extends StatelessWidget {
         title: Text(label,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _text)),
         subtitle: Text(sub,
-            style: TextStyle(fontSize: 10, color: AppColors.dimDark)),
+            style: TextStyle(fontSize: 10, color: AppColors.dimLight)),
         trailing: Switch(
           value: value,
           onChanged: onChanged,

@@ -6,12 +6,12 @@ import '../../widgets/module_switcher_pill.dart';
 import 'event_replay_screen.dart';
 
 // Dark theme constants
-const _bg      = AppColors.bgDark;
-const _surface = AppColors.surfaceDark;
-const _border  = AppColors.borderDark;
-const _text    = AppColors.textDark;
-const _muted   = AppColors.mutedDark;
-const _dim     = AppColors.dimDark;
+const _bg      = AppColors.bgLight;
+const _surface = AppColors.surfaceLight;
+const _border  = AppColors.borderLight;
+const _text    = AppColors.textLight;
+const _muted   = AppColors.mutedLight;
+const _dim     = AppColors.dimLight;
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -340,7 +340,7 @@ class _AlertCard extends StatelessWidget {
   }
 
   Widget _vDivider() => Container(
-    width: 1, height: 28, color: AppColors.borderDark,
+    width: 1, height: 28, color: AppColors.borderLight,
     margin: const EdgeInsets.symmetric(horizontal: 8),
   );
 }
@@ -353,7 +353,7 @@ class _DataCell extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: TextStyle(fontSize: 9, color: AppColors.dimDark)),
+      Text(label, style: TextStyle(fontSize: 9, color: AppColors.dimLight)),
       const SizedBox(height: 2),
       Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: valueColor),
           overflow: TextOverflow.ellipsis),

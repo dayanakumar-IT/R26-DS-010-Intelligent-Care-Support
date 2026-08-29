@@ -3,12 +3,12 @@ import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import 'event_replay_screen.dart';
 
-const _bg      = AppColors.bgDark;
-const _surface = AppColors.surfaceDark;
-const _border  = AppColors.borderDark;
-const _text    = AppColors.textDark;
-const _muted   = AppColors.mutedDark;
-const _dim     = AppColors.dimDark;
+const _bg      = AppColors.bgLight;
+const _surface = AppColors.surfaceLight;
+const _border  = AppColors.borderLight;
+const _text    = AppColors.textLight;
+const _muted   = AppColors.mutedLight;
+const _dim     = AppColors.dimLight;
 
 class PatientDetailScreen extends StatefulWidget {
   final Map<String, dynamic> patient;
@@ -41,7 +41,6 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
     final roomId = p['room_id']      ?? 'â€"';
     final code   = p['patient_code'] ?? 'â€"';
     final gender = p['gender']       ?? 'â€"';
-    final age    = p['age'];
 
     return Scaffold(
       backgroundColor: _bg,
@@ -75,7 +74,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                 ),
               ]),
               const SizedBox(height: 4),
-              Text('$code Â- ${age != null ? 'Age: $age Â- ' : ''}$gender',
+              Text('$code - ${age != null ? 'Age: $age - ' : ''}$gender',
                   style: TextStyle(fontSize: 12, color: _muted)),
             ]),
           ),
@@ -198,7 +197,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                                     decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
                                 const SizedBox(width: 10),
                                 Expanded(child: Text(
-                                  'Score: ${(e['risk_score'] ?? 0.0).toStringAsFixed(2)} Â- $lvl',
+                                  'Score: ${(e['risk_score'] ?? 0.0).toStringAsFixed(2)} - $lvl',
                                   style: TextStyle(fontSize: 12, color: _text),
                                 )),
                                 Text(

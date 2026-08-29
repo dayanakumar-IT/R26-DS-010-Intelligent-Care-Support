@@ -4,12 +4,12 @@ import '../../core/constants/colors.dart';
 import '../../widgets/module_switcher_pill.dart';
 import 'live_room_screen.dart';
 
-const _bg      = AppColors.bgDark;
-const _surface = AppColors.surfaceDark;
-const _border  = AppColors.borderDark;
-const _text    = AppColors.textDark;
-const _muted   = AppColors.mutedDark;
-const _dim     = AppColors.dimDark;
+const _bg      = AppColors.bgLight;
+const _surface = AppColors.surfaceLight;
+const _border  = AppColors.borderLight;
+const _text    = AppColors.textLight;
+const _muted   = AppColors.mutedLight;
+const _dim     = AppColors.dimLight;
 
 class RoomsScreen extends StatefulWidget {
   const RoomsScreen({super.key});
@@ -54,7 +54,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
 
       final patientsRes = await db
           .from('patients')
-          .select('id, patient_code, room_id, gender, age')
+          .select('id, patient_code, room_id, gender')
           .inFilter('room_id', roomCodes)
           .order('room_id');
 
@@ -86,7 +86,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
               ]),
               Row(children: [
                 IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.mutedDark),
+                  icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.mutedLight),
                   onPressed: _load,
                 ),
                 Container(
@@ -115,7 +115,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                 ? const Center(child: CircularProgressIndicator(color: AppColors.accentBlue, strokeWidth: 2))
                 : _patients!.isEmpty
                     ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.meeting_room_outlined, size: 48, color: AppColors.dimDark),
+                        const Icon(Icons.meeting_room_outlined, size: 48, color: AppColors.dimLight),
                         const SizedBox(height: 12),
                         Text(_error != null ? 'Connection error' : 'No rooms assigned.',
                             style: TextStyle(color: _muted, fontSize: 13)),
@@ -209,7 +209,7 @@ class _RoomCard extends StatelessWidget {
             child: Container(
               width: double.infinity, height: 90,
               decoration: BoxDecoration(
-                color: const Color(0xFF060D1A),
+                color: const AppColors.bgLight,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: _border),
               ),

@@ -12,11 +12,11 @@ const List<List<int>> kBones = [
   [1, 8], [1, 9], [8, 10], [9, 11], [10, 12], [11, 13],
 ];
 
-const _bg      = AppColors.bgDark;
-const _surface = AppColors.surfaceDark;
-const _border  = AppColors.borderDark;
-const _text    = AppColors.textDark;
-const _muted   = AppColors.mutedDark;
+const _bg      = AppColors.bgLight;
+const _surface = AppColors.surfaceLight;
+const _border  = AppColors.borderLight;
+const _text    = AppColors.textLight;
+const _muted   = AppColors.mutedLight;
 
 class LiveRoomScreen extends StatefulWidget {
   final String roomId;
@@ -154,7 +154,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF060D1A),
+                  color: const AppColors.bgLight,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: _border),
                 ),
@@ -285,7 +285,7 @@ class _SkeletonPainter extends CustomPainter {
 
     // Background
     canvas.drawRect(Rect.fromLTWH(0, 0, W, H),
-        Paint()..color = const Color(0xFF060D1A));
+        Paint()..color = const AppColors.bgLight);
 
     // Subtle grid
     final gridPaint = Paint()

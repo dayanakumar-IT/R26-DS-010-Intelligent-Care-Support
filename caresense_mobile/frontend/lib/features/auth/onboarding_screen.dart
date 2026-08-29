@@ -304,7 +304,7 @@ class _Page2 extends StatelessWidget {
             const SizedBox(height: 20),
             _FeatureCard(
               gradient: AppColors.sentryGradient,
-              icon: '[icon]',
+              icon: 'S',
               title: 'SENTRY â€" Fall Risk',
               desc: 'ST-GCN skeletal AI detects fall risk in real-time. 98.3% accuracy on all patient movements.',
               stat: '< 1 sec alert delivery',
@@ -312,7 +312,7 @@ class _Page2 extends StatelessWidget {
             const SizedBox(height: 12),
             _FeatureCard(
               gradient: AppColors.scribeGradient,
-              icon: '[icon]',
+              icon: 'D',
               title: 'SCRIBE â€" Voice to ADL',
               desc: 'Speak naturally â€" AI converts your words into structured ADL documentation instantly.',
               stat: 'Free speech, structured output',
@@ -356,7 +356,7 @@ class _Page3 extends StatelessWidget {
             const SizedBox(height: 20),
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFDB2777)]),
-              icon: '[icon]',
+              icon: 'P',
               title: 'PULSE â€" Caregiver Stress',
               desc: 'Personalized stress-risk detection using proximity networks and physiological signals.',
               stat: 'Causally-ordered detection',
@@ -364,7 +364,7 @@ class _Page3 extends StatelessWidget {
             const SizedBox(height: 12),
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFD97706), Color(0xFF059669)]),
-              icon: '[gloss]',
+              icon: 'G',
               title: 'GLOSS â€" Sign Language',
               desc: 'Real-time sign recognition and training for caregivers with Deaf patients.',
               stat: 'Per-landmark error localization',

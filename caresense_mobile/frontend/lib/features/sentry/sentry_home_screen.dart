@@ -5,12 +5,12 @@ import '../../core/services/sentry_service.dart';
 import '../../store/auth_store.dart';
 import '../../widgets/module_switcher_pill.dart';
 
-const _bg      = AppColors.bgDark;
-const _surface = AppColors.surfaceDark;
-const _border  = AppColors.borderDark;
-const _text    = AppColors.textDark;
-const _muted   = AppColors.mutedDark;
-const _dim     = AppColors.dimDark;
+const _bg      = AppColors.bgLight;
+const _surface = AppColors.surfaceLight;
+const _border  = AppColors.borderLight;
+const _text    = AppColors.textLight;
+const _muted   = AppColors.mutedLight;
+const _dim     = AppColors.dimLight;
 
 class SentryHomeScreen extends ConsumerWidget {
   const SentryHomeScreen({super.key});
