@@ -9,7 +9,7 @@ class ApiConfig {
   // ╚══════════════════════════════════════════════════════════════════════╝
   // WiFi hotspot: connect laptop to phone hotspot → run ipconfig → paste IPv4 here
   // Android hotspot usually gives laptop an IP like 192.168.43.x
-  static const String baseUrl = 'http://192.168.43.100:8000'; // ← run ipconfig on viva day, update this
+  static const String baseUrl = 'http://192.168.8.154:8000'; // home WiFi — update on viva day
 
   static const Duration timeout = Duration(seconds: 10);
 

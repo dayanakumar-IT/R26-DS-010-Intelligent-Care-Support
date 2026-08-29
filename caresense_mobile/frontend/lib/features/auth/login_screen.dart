@@ -181,28 +181,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Divider
-                      Row(children: [
-                        Expanded(child: Divider(color: AppColors.borderLight)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('or', style: TextStyle(fontSize: 12, color: AppColors.mutedLight)),
-                        ),
-                        Expanded(child: Divider(color: AppColors.borderLight)),
-                      ]),
-                      const SizedBox(height: 20),
-
-                      // Biometric
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _BiometricBtn(icon: Icons.fingerprint_rounded, label: 'Fingerprint'),
-                          const SizedBox(width: 16),
-                          _BiometricBtn(icon: Icons.face_retouching_natural, label: 'Face ID'),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
                       // Account info note
                       Center(
                         child: Text(

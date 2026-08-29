@@ -38,15 +38,19 @@ class SentryHomeScreen extends ConsumerWidget {
             FutureBuilder<Map<String, dynamic>>(
               future: SentryService.getDashboardSummary(),
               builder: (context, snap) {
-                final summary = snap.data ?? {'highRisk': 0, 'moderateRisk': 0, 'lowRisk': 0};
+                final summary = snap.data ?? {};
+                final byLevel = summary['patients_by_level'] as Map? ?? {};
+                final high = (byLevel['HIGH']     ?? 0).toString();
+                final mod  = (byLevel['MODERATE'] ?? 0).toString();
+                final low  = (byLevel['NORMAL']   ?? 0).toString();
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(children: [
-                    _StatCard('High Risk',   summary['highRisk'].toString(),    AppColors.high),
+                    _StatCard('High Risk', high, AppColors.high),
                     const SizedBox(width: 8),
-                    _StatCard('Moderate',    summary['moderateRisk'].toString(), AppColors.moderate),
+                    _StatCard('Moderate',  mod,  AppColors.moderate),
                     const SizedBox(width: 8),
-                    _StatCard('Low Risk',    summary['lowRisk'].toString(),      AppColors.low),
+                    _StatCard('Low Risk',  low,  AppColors.low),
                   ]),
                 );
               },
