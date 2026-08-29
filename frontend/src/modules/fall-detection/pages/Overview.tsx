@@ -309,7 +309,16 @@ function PatientDetailPanel({ patient, rooms, alerts, onBack }: {
     if (!room?.room_code || !room.camera_src) return
     const ws = new WebSocket(`ws://localhost:8000/ws/live/${room.room_code}`)
     wsRef.current = ws
-    ws.onmessage = (e) => { try { setFrame(JSON.parse(e.data) as LiveFrame) } catch { /* */ } }
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data) as any
+        if (data.type === 'skeleton') {
+          setFrame(f => f ? { ...f, skeleton: data.skeleton } : { skeleton: data.skeleton, risk_score: 0, risk_level: 'NORMAL', posture: '', zone: '', confidence: 0, key_factors: [] } as LiveFrame)
+        } else {
+          setFrame(data as LiveFrame)
+        }
+      } catch { /* */ }
+    }
     return () => { ws.close() }
   }, [room?.room_code, room?.camera_src])
 
@@ -1304,7 +1313,9 @@ function ReplayPanel({ alerts, initialAlert, onAcknowledge }: { alerts: Alert[];
 }
 
 // ── PANEL: History ────────────────────────────────────────────────────────────
-function HistoryPanel({ alerts, loading, patients }: { alerts: Alert[]; loading: boolean; patients: Patient[] }) {
+function HistoryPanel({ alerts, loading, patients, rooms, caregivers }: { alerts: Alert[]; loading: boolean; patients: Patient[]; rooms: Room[]; caregivers: Caregiver[] }) {
+  const cgMap = Object.fromEntries(caregivers.map(c => [c.id, c.display_name]))
+  const roomCgMap = Object.fromEntries(rooms.map(r => [String(r.id), r.caregiver_id ? (cgMap[r.caregiver_id] ?? '—') : '—']))
   const [patientFilter, setPatientFilter] = useState('all')
 
   if (loading && !alerts.length) return <div className={styles.empty}>Loading…</div>
@@ -1417,7 +1428,7 @@ function HistoryPanel({ alerts, loading, patients }: { alerts: Alert[]; loading:
                       </td>
                       <td>{a.posture ?? '—'}</td>
                       <td className={styles.tdFactors}>{(a.key_factors ?? []).slice(0,2).join(', ') || '—'}</td>
-                      <td className={styles.tdTime}>{a.ack_by ?? '—'}</td>
+                      <td className={styles.tdTime}>{a.room_id ? (roomCgMap[String(a.room_id)] ?? '—') : '—'}</td>
                       <td>
                         {a.acknowledged
                           ? <span className={styles.ackedPill}>Acked</span>
@@ -1590,7 +1601,7 @@ function AnalyticsPanel({ summary, alerts, patients, rooms }: {
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:14}}>
         {[
           {label:'Total Alerts',      val:periodAlerts.length, sub:`in last ${period} days`,   c:'#60a5fa'},
-          {label:'Avg Response Time', val:avgResponseLabel,    sub:responseTimes.length ? 'time to acknowledge' : 'no acknowledged alerts yet', c:'#22c55e'},
+          {label:'Avg Response Time', val:avgResponseLabel,    sub:responseTimes.length ? 'time to acknowledge' : 'no acknowledged alerts yet', c:avgResponseS !== null ? '#22c55e' : '#64748b'},
           {label:'High Risk Share',   val:`${periodAlerts.length?Math.round(highCount/periodAlerts.length*100):0}%`, sub:'of alerts in period', c:'#ef4444'},
           {label:'Acknowledged',      val:`${ackedCount}/${periodAlerts.length}`, sub:`${ackedPct}% responded to`, c:'#22c55e'},
         ].map(k => (
@@ -2564,7 +2575,7 @@ export default function Overview() {
           />
         )}
         {activeTab === 'replay'    && <ReplayPanel alerts={alerts} initialAlert={replayTarget} onAcknowledge={handleAcknowledge} />}
-        {activeTab === 'history'   && <HistoryPanel alerts={alerts} loading={loading} patients={patients} />}
+        {activeTab === 'history'   && <HistoryPanel alerts={alerts} loading={loading} patients={patients} rooms={rooms} caregivers={caregivers} />}
         {activeTab === 'analytics' && <AnalyticsPanel summary={summary} alerts={alerts} patients={patients} rooms={rooms} />}
         {activeTab === 'reports'   && <ReportsPanel alerts={alerts} patients={patients} rooms={rooms} />}
         {activeTab === 'users'     && <UsersPanel caregivers={caregivers} rooms={rooms} />}
