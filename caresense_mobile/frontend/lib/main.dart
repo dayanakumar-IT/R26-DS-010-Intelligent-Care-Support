@@ -37,7 +37,7 @@ class CareSenseApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.dark, // ← DARK MODE by default
+      themeMode: ThemeMode.light, // auth screens stay light; SENTRY screens use hardcoded dark colors
       routerConfig: router,
     );
   }
