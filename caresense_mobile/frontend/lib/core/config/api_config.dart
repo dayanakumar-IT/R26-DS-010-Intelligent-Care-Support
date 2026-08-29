@@ -7,7 +7,7 @@ class ApiConfig {
   // ║  4. Paste it below, keep :8000                                      ║
   // ║  5. flutter run                                                     ║
   // ╚══════════════════════════════════════════════════════════════════════╝
-  static const String baseUrl = 'http://192.168.8.154:8000'; // ← YOUR PC IP
+  static const String baseUrl = 'http://localhost:8000'; // USB: adb reverse tcp:8000 tcp:8000
 
   static const Duration timeout = Duration(seconds: 10);
 
