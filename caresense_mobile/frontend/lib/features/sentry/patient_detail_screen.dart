@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import 'event_replay_screen.dart';
@@ -25,10 +26,32 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
-    final id = widget.patient['id'];
-    if (id != null) {
-      _historyFuture = SentryService.getPatientHistory(id.toString());
+    _tabs = TabController(length: 2, vsync: this); // Overview + History only
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    var id = widget.patient['id'];
+
+    // If id not passed, look it up from Supabase using patient_code
+    if (id == null) {
+      final code = widget.patient['patient_code']?.toString();
+      if (code != null && code.isNotEmpty) {
+        try {
+          final res = await Supabase.instance.client
+              .from('patients')
+              .select('id')
+              .eq('patient_code', code)
+              .maybeSingle();
+          id = res?['id'];
+        } catch (_) {}
+      }
+    }
+
+    if (id != null && mounted) {
+      setState(() {
+        _historyFuture = SentryService.getPatientHistory(id.toString());
+      });
     }
   }
 
@@ -38,15 +61,16 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
   @override
   Widget build(BuildContext context) {
     final p      = widget.patient;
-    final roomId = p['room_id']      ?? 'â€"';
-    final code   = p['patient_code'] ?? 'â€"';
-    final gender = p['gender']       ?? 'â€"';
+    final roomId = p['room_id']      ?? '--';
+    final code   = p['patient_code'] ?? '--';
+    final gender = p['gender']       ?? '--';
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
-          // â"€â"€ Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+
+          // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: _surface,
@@ -56,7 +80,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                   onTap: () => Navigator.pop(context),
                   child: Row(children: [
                     const Icon(Icons.arrow_back_ios_rounded, size: 16, color: AppColors.accentBlue),
-                    Text('$roomId â€" $code',
+                    Text('$roomId - $code',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                             color: AppColors.accentBlue)),
                   ]),
@@ -65,21 +89,20 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.high.withOpacity(0.15),
+                    color: AppColors.high.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.high.withOpacity(0.4)),
+                    border: Border.all(color: AppColors.high.withValues(alpha: 0.4)),
                   ),
                   child: const Text('HIGH',
                       style: TextStyle(color: AppColors.high, fontSize: 10, fontWeight: FontWeight.w800)),
                 ),
               ]),
               const SizedBox(height: 4),
-              Text('$code - $gender',
-                  style: TextStyle(fontSize: 12, color: _muted)),
+              Text('$code - $gender', style: TextStyle(fontSize: 12, color: _muted)),
             ]),
           ),
 
-          // â"€â"€ Tab bar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+          // Tab bar — Overview + History only (Notes removed)
           Container(
             color: _surface,
             child: TabBar(
@@ -89,26 +112,24 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
               indicatorColor: AppColors.accentBlue,
               dividerColor: _border,
               labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              tabs: const [Tab(text: 'Overview'), Tab(text: 'History'), Tab(text: 'Notes')],
+              tabs: const [Tab(text: 'Overview'), Tab(text: 'History')],
             ),
           ),
 
-          // â"€â"€ Tab content â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+          // Tab content
           Expanded(
             child: TabBarView(
               controller: _tabs,
               children: [
-                // â"€â"€ OVERVIEW â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+
+                // ── OVERVIEW ────────────────────────────────────────────────
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     // Risk score trend
                     _SectionCard(
                       title: 'Risk Score Trend (Last 1hr)',
-                      child: SizedBox(
-                        height: 90,
-                        child: CustomPaint(painter: _TrendPainter()),
-                      ),
+                      child: SizedBox(height: 90, child: CustomPaint(painter: _TrendPainter())),
                     ),
                     const SizedBox(height: 12),
 
@@ -125,7 +146,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                     ),
                     const SizedBox(height: 12),
 
-                    // Last alert + replay
+                    // Replay button
                     FutureBuilder<List<Map<String, dynamic>>>(
                       future: SentryService.getAlerts(unackedOnly: false),
                       builder: (context, snap) {
@@ -139,8 +160,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             icon: const Icon(Icons.play_arrow_rounded, size: 18),
                             label: const Text('View Replay (5 Sec)',
@@ -155,69 +175,76 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                   ]),
                 ),
 
-                // â"€â"€ HISTORY â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+                // ── HISTORY ─────────────────────────────────────────────────
                 _historyFuture == null
-                  ? Center(child: Text('No patient ID.', style: TextStyle(color: _muted)))
+                  ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const CircularProgressIndicator(color: AppColors.accentBlue, strokeWidth: 2),
+                      const SizedBox(height: 12),
+                      Text('Loading history...', style: TextStyle(color: _muted, fontSize: 13)),
+                    ]))
                   : FutureBuilder<List<Map<String, dynamic>>>(
                       future: _historyFuture,
                       builder: (context, snap) {
                         if (snap.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator(
-                                  color: AppColors.accentBlue, strokeWidth: 2));
+                          return const Center(child: CircularProgressIndicator(
+                              color: AppColors.accentBlue, strokeWidth: 2));
                         }
                         final events = snap.data ?? [];
                         if (events.isEmpty) {
-                          return Center(child: Text('No history yet.',
-                              style: TextStyle(color: _muted, fontSize: 13)));
+                          return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.history_rounded, size: 40, color: _dim),
+                            const SizedBox(height: 8),
+                            Text('No history yet.', style: TextStyle(color: _muted, fontSize: 13)),
+                          ]));
                         }
                         return ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: events.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 8),
                           itemBuilder: (_, i) {
-                            final e = events[i];
-                            final lvl = e['risk_level'] ?? 'NORMAL';
+                            final e   = events[i];
+                            final lvl = (e['risk_level'] ?? 'NORMAL').toString();
                             final col = lvl == 'HIGH' ? AppColors.high
                                       : lvl == 'MODERATE' ? AppColors.moderate
                                       : AppColors.low;
-                            final ts = (e['timestamp'] ?? '').toString();
+                            final ts  = (e['timestamp'] ?? '').toString();
+                            final timeStr = ts.length >= 16 ? ts.substring(11, 16) : '--';
+                            final score = e['risk_score'];
+                            final scoreStr = score != null
+                                ? (score as num).toStringAsFixed(1)
+                                : '--';
                             return Container(
-                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: _surface,
-                                border: Border(left: BorderSide(color: col, width: 3),
-                                    top: BorderSide(color: _border),
-                                    right: BorderSide(color: _border),
-                                    bottom: BorderSide(color: _border)),
+                                border: Border.all(color: _border),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Row(children: [
-                                Container(width: 7, height: 7,
-                                    decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(
-                                  'Score: ${(e['risk_score'] ?? 0.0).toStringAsFixed(2)} - $lvl',
-                                  style: TextStyle(fontSize: 12, color: _text),
-                                )),
-                                Text(
-                                  ts.length >= 16 ? ts.substring(11, 16) : 'â€"',
-                                  style: TextStyle(fontSize: 10, color: _dim),
-                                ),
-                              ]),
+                              clipBehavior: Clip.antiAlias,
+                              child: IntrinsicHeight(
+                                child: Row(children: [
+                                  Container(width: 4, color: col),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      child: Row(children: [
+                                        Container(width: 7, height: 7,
+                                            decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
+                                        const SizedBox(width: 10),
+                                        Expanded(child: Text(
+                                          'Score: $scoreStr - $lvl',
+                                          style: TextStyle(fontSize: 12, color: _text),
+                                        )),
+                                        Text(timeStr, style: TextStyle(fontSize: 10, color: _dim)),
+                                      ]),
+                                    ),
+                                  ),
+                                ]),
+                              ),
                             );
                           },
                         );
                       },
                     ),
-
-                // â"€â"€ NOTES â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-                Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.note_outlined, size: 40, color: _dim),
-                  const SizedBox(height: 8),
-                  Text('Clinical notes coming soon.',
-                      style: TextStyle(color: _muted, fontSize: 13)),
-                ])),
               ],
             ),
           ),
@@ -243,8 +270,7 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: _text)),
+        Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _text)),
         const SizedBox(height: 10),
         child,
       ]),
@@ -267,7 +293,7 @@ class _MetricRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: valueColor.withOpacity(0.12),
+            color: valueColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(value,
@@ -281,17 +307,17 @@ class _MetricRow extends StatelessWidget {
 class _TrendPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // Grid
+    // Light-theme grid
     final gridP = Paint()
-      ..color = Colors.white.withOpacity(0.04)
+      ..color = const Color(0xFFE2E8F0)
       ..strokeWidth = 1;
     for (double y = 0; y <= size.height; y += size.height / 4) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridP);
     }
 
-    // Trend line (rising risk)
-    final path = Path();
+    // Trend line (rising risk demo data)
     final pts = [0.20, 0.22, 0.25, 0.32, 0.40, 0.55, 0.62, 0.70, 0.75, 0.82];
+    final path = Path();
     for (int i = 0; i < pts.length; i++) {
       final x = size.width * i / (pts.length - 1);
       final y = size.height * (1 - pts[i]);
@@ -306,7 +332,7 @@ class _TrendPainter extends CustomPainter {
     canvas.drawPath(fill, Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [AppColors.high.withOpacity(0.25), Colors.transparent],
+        colors: [AppColors.high.withValues(alpha: 0.18), Colors.transparent],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.fill);
 
@@ -323,8 +349,7 @@ class _TrendPainter extends CustomPainter {
     final lastY = size.height * (1 - pts.last);
     canvas.drawCircle(Offset(lastX, lastY), 5, Paint()..color = AppColors.high);
     canvas.drawCircle(Offset(lastX, lastY), 5,
-        Paint()..color = Colors.white.withOpacity(0.3)
-        ..style = PaintingStyle.stroke..strokeWidth = 1.5);
+        Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 1.5);
   }
   @override
   bool shouldRepaint(_) => false;
