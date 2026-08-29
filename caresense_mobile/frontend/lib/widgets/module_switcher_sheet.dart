@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/constants/colors.dart';
@@ -36,7 +36,7 @@ class ModuleSwitcherSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _ModuleRow(
-            emoji: 'ðŸ›¡', name: 'SENTRY', sub: 'Fall Risk Detection',
+            emoji: 'ame: 'SENTRY', sub: 'Fall Risk Detection',
             color: AppColors.sentry,
             isActive: active == ActiveModule.sentry,
             onTap: () {
@@ -47,7 +47,7 @@ class ModuleSwitcherSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _ModuleRow(
-            emoji: 'ðŸŽ¤', name: 'SCRIBE', sub: 'Voice to ADL Documentation',
+            emoji: 'ame: 'SCRIBE', sub: 'Voice to ADL Documentation',
             color: AppColors.scribe,
             isActive: active == ActiveModule.scribe,
             onTap: () {
@@ -65,7 +65,7 @@ class ModuleSwitcherSheet extends ConsumerWidget {
               border: Border.all(color: AppColors.borderLight),
             ),
             child: Row(children: [
-              const Text('ðŸ"'', style: TextStyle(fontSize: 14)),
+              const Text('tyle: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
               Text('PULSE & GLOSS â€" Not assigned to you',
                 style: TextStyle(fontSize: 12, color: AppColors.mutedLight)),

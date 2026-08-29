@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
@@ -43,7 +43,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   gradient: AppColors.brandGradient,
                   shape: BoxShape.circle,
                 ),
-                child: const Center(child: Text('ðŸ'©â€âš*ï¸', style: TextStyle(fontSize: 36))),
+                child: const Center(child: Text('š*ï¸', style: TextStyle(fontSize: 36))),
               ),
               const SizedBox(height: 12),
               Text(auth.caregiverName ?? 'Caregiver',

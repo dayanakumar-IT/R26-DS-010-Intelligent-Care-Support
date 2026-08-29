@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
@@ -49,7 +49,7 @@ class ModuleSelectScreen extends ConsumerWidget {
 
                 // SENTRY â€" accessible
                 _ModuleCard(
-                  emoji: 'ðŸ›¡',
+                  emoji: '
                   name: 'SENTRY',
                   tagline: 'Fall Risk Detection',
                   desc: 'Real-time skeletal AI monitors patient movement and detects fall risk before incidents happen.',
@@ -65,7 +65,7 @@ class ModuleSelectScreen extends ConsumerWidget {
 
                 // SCRIBE â€" accessible
                 _ModuleCard(
-                  emoji: 'ðŸŽ¤',
+                  emoji: '
                   name: 'SCRIBE',
                   tagline: 'Voice to ADL Documentation',
                   desc: 'Speak naturally â€" AI converts free caregiver speech into structured ADL records instantly.',
@@ -85,9 +85,9 @@ class ModuleSelectScreen extends ConsumerWidget {
                     color: AppColors.mutedLight)),
                 const SizedBox(height: 10),
                 Row(children: [
-                  _LockedPill('ðŸ'"', 'PULSE', AppColors.pulse),
+                  _LockedPill('PULSE', AppColors.pulse),
                   const SizedBox(width: 8),
-                  _LockedPill('ðŸ¤Ÿ', 'GLOSS', AppColors.gloss),
+                  _LockedPill('[gloss]', 'GLOSS', AppColors.gloss),
                 ]),
               ],
             ),
@@ -182,7 +182,7 @@ class _LockedPill extends StatelessWidget {
             border: Border.all(color: AppColors.borderLight),
           ),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Text('ðŸ"'', style: TextStyle(fontSize: 14)),
+            const Text('tyle: TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
             Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 4),
