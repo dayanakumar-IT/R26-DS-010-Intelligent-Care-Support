@@ -33,12 +33,18 @@ class _RoomsScreenState extends State<RoomsScreen> {
       final db = Supabase.instance.client;
       final myId = db.auth.currentUser?.id;
 
-      // Filter rooms to only this caregiver's assigned rooms using their auth UUID.
-      final roomsRes = myId != null
+      // 1) Try to find rooms explicitly assigned to this caregiver.
+      List<dynamic> roomsRes = myId != null
           ? await db.from('rooms').select('room_code, ward, caregiver_id').eq('caregiver_id', myId)
-          : await db.from('rooms').select('room_code, ward, caregiver_id').not('caregiver_id', 'is', null);
+          : [];
 
-      final roomCodes = (roomsRes as List)
+      // 2) Fallback: if no rooms assigned yet (PULSE hasn't set caregiver_id),
+      //    show all rooms so the demo is still functional.
+      if (roomsRes.isEmpty) {
+        roomsRes = await db.from('rooms').select('room_code, ward, caregiver_id');
+      }
+
+      final roomCodes = roomsRes
           .map((r) => r['room_code'].toString())
           .toList();
 
