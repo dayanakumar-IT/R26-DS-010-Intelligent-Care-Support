@@ -1,9 +1,13 @@
 class ApiConfig {
-  // ── Dev: phone on the same WiFi as your PC ──────────────────────────────
-  // Run `ipconfig` on your PC → find IPv4 under your WiFi adapter → put it here.
-  // Example: 'http://192.168.1.42:8000'
-  // Leave as localhost only when testing on an Android emulator.
-  static const String baseUrl = 'http://192.168.8.154:8000';
+  // ╔══════════════════════════════════════════════════════════════════════╗
+  // ║  VIVA DAY — change ONLY this one line                               ║
+  // ║  1. Turn on phone hotspot                                           ║
+  // ║  2. Connect PC to that hotspot                                      ║
+  // ║  3. Run `ipconfig` on PC → IPv4 under Wi-Fi adapter                 ║
+  // ║  4. Paste it below, keep :8000                                      ║
+  // ║  5. flutter run                                                     ║
+  // ╚══════════════════════════════════════════════════════════════════════╝
+  static const String baseUrl = 'http://192.168.8.154:8000'; // ← YOUR PC IP
 
   static const Duration timeout = Duration(seconds: 10);
 
