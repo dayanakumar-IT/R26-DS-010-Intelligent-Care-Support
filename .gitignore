@@ -63,5 +63,10 @@ temp/
 *~
 
 Instructions.docx
-"SUPERBASE Project - caresense-pp2-d.txt"
-"SUPERBASE Project - caresense-pp2-d.txt"
+SUPERBASE Project - caresense-pp2-d.txt
+
+# Backup / temp editor files
+*.bak
+Phase 02.zip
+package-lock.json
+LICENSE
