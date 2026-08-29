@@ -209,7 +209,7 @@ class _RoomCard extends StatelessWidget {
             child: Container(
               width: double.infinity, height: 90,
               decoration: BoxDecoration(
-                color: const AppColors.bgLight,
+                color: AppColors.bgLight,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: _border),
               ),

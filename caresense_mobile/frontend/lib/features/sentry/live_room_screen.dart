@@ -154,7 +154,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.40,
                 decoration: BoxDecoration(
-                  color: const AppColors.bgLight,
+                  color: AppColors.bgLight,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: _border),
                 ),
@@ -285,7 +285,7 @@ class _SkeletonPainter extends CustomPainter {
 
     // Background
     canvas.drawRect(Rect.fromLTWH(0, 0, W, H),
-        Paint()..color = const AppColors.bgLight);
+        Paint()..color = AppColors.bgLight);
 
     // Subtle grid
     final gridPaint = Paint()

@@ -74,7 +74,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                 ),
               ]),
               const SizedBox(height: 4),
-              Text('$code - ${age != null ? 'Age: $age - ' : ''}$gender',
+              Text('$code - $gender',
                   style: TextStyle(fontSize: 12, color: _muted)),
             ]),
           ),
