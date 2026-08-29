@@ -1,16 +1,16 @@
-// Web Audio API beep generator — works in Chrome without any packages
+// Web Audio API beep via dart:js — works in Chrome without any extra packages
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:js' as js;
 import 'dart:async';
 
 class SoundService {
-  static html.AudioContext? _ctx;
+  static js.JsObject? _ctx;
   static bool _highPlaying = false;
   static Timer? _highTimer;
 
   // HIGH risk: continuous repeating beep every 1.5s until stopped
   static void playHighAlert() {
-    if (_highPlaying) return; // already running
+    if (_highPlaying) return;
     _highPlaying = true;
     _beep(frequency: 920, duration: 0.35);
     _highTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
@@ -30,33 +30,39 @@ class SoundService {
     _highTimer = null;
   }
 
-  static void stopAll() {
-    stopHighAlert();
-  }
+  static void stopAll() => stopHighAlert();
 
   static void _beep({double frequency = 880, double duration = 0.3}) {
     try {
-      _ctx ??= html.AudioContext();
-      final osc = _ctx!.createOscillator();
-      final gain = _ctx!.createGain();
-      osc.connectNode(gain);
-      gain.connectNode(_ctx!.destination!);
+      // Create AudioContext lazily using JS interop
+      if (_ctx == null) {
+        final ctor = js.context['AudioContext'] ?? js.context['webkitAudioContext'];
+        if (ctor == null) return;
+        _ctx = js.JsObject(ctor as js.JsFunction);
+      }
 
-      // Configure oscillator
-      final oscJs = osc as dynamic;
-      oscJs.frequency.value = frequency;
-      oscJs.type = 'sine';
+      final osc  = _ctx!.callMethod('createOscillator') as js.JsObject;
+      final gain = _ctx!.callMethod('createGain')       as js.JsObject;
 
-      // Configure gain (volume ramp — prevents click artefacts)
-      final gainJs = gain as dynamic;
-      gainJs.gain.value = 0.0;
-      gainJs.gain.linearRampToValueAtTime(0.25, _ctx!.currentTime! + 0.01);
-      gainJs.gain.linearRampToValueAtTime(0.0,  _ctx!.currentTime! + duration);
+      // osc → gain → destination
+      osc.callMethod('connect',  [gain]);
+      gain.callMethod('connect', [_ctx!['destination']]);
 
-      osc.start();
-      osc.stop(_ctx!.currentTime! + duration + 0.05);
+      // Frequency
+      (osc['frequency'] as js.JsObject)['value'] = frequency;
+      osc['type'] = 'sine';
+
+      // Volume envelope
+      final gainParam = gain['gain'] as js.JsObject;
+      final now = (_ctx!['currentTime'] as num).toDouble();
+      gainParam['value'] = 0.0;
+      gainParam.callMethod('linearRampToValueAtTime', [0.22, now + 0.01]);
+      gainParam.callMethod('linearRampToValueAtTime', [0.0,  now + duration]);
+
+      osc.callMethod('start', []);
+      osc.callMethod('stop',  [now + duration + 0.05]);
     } catch (_) {
-      // Silently fail if AudioContext is not available
+      // Silently fail if Web Audio is blocked or unavailable
     }
   }
 }

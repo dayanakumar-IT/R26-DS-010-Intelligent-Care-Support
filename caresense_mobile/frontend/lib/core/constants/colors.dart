@@ -57,6 +57,9 @@ class AppColors {
   static const LinearGradient sentryGradient = LinearGradient(
     colors: [Color(0xFF1A56DB), Color(0xFF0891B2)],
   );
+  static const LinearGradient scribeGradient = LinearGradient(
+    colors: [Color(0xFF059669), Color(0xFF0891B2)],
+  );
   static const LinearGradient darkBgGradient = LinearGradient(
     colors: [Color(0xFF060D1A), Color(0xFF0D1B2E)],
     begin: Alignment.topCenter,
