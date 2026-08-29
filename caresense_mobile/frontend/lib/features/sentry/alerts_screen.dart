@@ -188,47 +188,52 @@ class _AlertCard extends StatelessWidget {
     final label = level == 'HIGH' ? 'High risk Â- Immediate attention'
                 : level == 'MODERATE' ? 'Unstable movement detected' : 'Stable';
     final time  = (a['created_at'] ?? '').toString();
-    final timeStr = time.length >= 16 ? time.substring(11, 16) : 'â€"';
+    final timeStr = time.length >= 16 ? time.substring(11, 16) : '--';
 
+    // Use uniform border + inner left-strip to avoid borderRadius constraint error
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: _surface,
-        border: Border(
-          left: BorderSide(color: color, width: 4),
-          top: BorderSide(color: color.withOpacity(0.2)),
-          right: BorderSide(color: _border),
-          bottom: BorderSide(color: _border),
-        ),
+        border: Border.all(color: _border),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // â"€â"€ Top row â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-          Row(children: [
-            Text(icon, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 8),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Room ${a['room_id'] ?? 'â€"'} Â- Patient ${a['patient_id'] ?? 'â€"'}',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: _text)),
-              Text(label, style: TextStyle(fontSize: 11, color: _muted)),
-            ])),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(5)),
-                child: Text(level == 'MODERATE' ? 'MOD' : level,
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(height: 3),
-              Text(timeStr, style: TextStyle(fontSize: 10, color: _dim)),
-            ]),
-          ]),
-          const SizedBox(height: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(9),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left accent strip (replaces non-uniform Border left)
+              Container(width: 4, color: color),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    // Top row
+                    Row(children: [
+                      Text(icon, style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 8),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Room ${a['room_id'] ?? '--'} / Patient ${a['patient_id'] ?? '--'}',
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w700, color: _text)),
+                        Text(label, style: TextStyle(fontSize: 11, color: _muted)),
+                      ])),
+                      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(5)),
+                          child: Text(level == 'MODERATE' ? 'MOD' : level,
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(timeStr, style: TextStyle(fontSize: 10, color: _dim)),
+                      ]),
+                    ]),
+                    const SizedBox(height: 10),
 
-          // â"€â"€ Action buttons â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+                    // Action buttons
           Row(children: [
             // Replay button
             Expanded(
@@ -272,9 +277,14 @@ class _AlertCard extends StatelessWidget {
                 ),
               ),
             ),
-          ]),
-        ]),
-      ),
-    );
+                  ]),   // closes action buttons Row(children:[...])
+                ]),     // closes Column(children:[...])
+              ),        // closes Padding(child:)
+            ),          // closes Expanded(child:)
+          ],            // closes outer Row children
+        ),              // closes Row(crossAxisAlignment:..., children:[])
+      ),                // closes IntrinsicHeight(child: Row)
+    ),                  // closes ClipRRect(child: IntrinsicHeight)
+  );
   }
 }
