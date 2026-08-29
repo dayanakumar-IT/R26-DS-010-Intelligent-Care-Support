@@ -203,7 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         onTap: () => _page.previousPage(
                           duration: const Duration(milliseconds: 400),
                           curve: Curves.easeInOut),
-                        child: const Text('â† Back',
+                        child: const Text('-> Back',
                           style: TextStyle(fontSize: 13, color: AppColors.mutedLight,
                             fontWeight: FontWeight.w500)),
                       ),
@@ -254,13 +254,13 @@ class _Page1 extends StatelessWidget {
               style: TextStyle(fontSize: 14, color: AppColors.mutedLight, height: 1.65)),
             const SizedBox(height: 22),
             Row(children: [
-              _ModuleTile('PULSE', 'Stress Risk', AppColors.pulse),
+              _ModuleTile('[P]', 'PULSE', 'Stress Risk', AppColors.pulse),
               const SizedBox(width: 10),
-              _ModuleTile('SENTRY', 'Fall Risk', AppColors.sentry),
+              _ModuleTile('[S]', 'SENTRY', 'Fall Risk', AppColors.sentry),
             ]),
             const SizedBox(height: 10),
             Row(children: [
-              _ModuleTile('SCRIBE', 'ADL Docs', AppColors.scribe),
+              _ModuleTile('[D]', 'SCRIBE', 'ADL Docs', AppColors.scribe),
               const SizedBox(width: 10),
               _ModuleTile('[gloss]', 'GLOSS', 'Sign Lang', AppColors.gloss),
             ]),
@@ -304,7 +304,7 @@ class _Page2 extends StatelessWidget {
             const SizedBox(height: 20),
             _FeatureCard(
               gradient: AppColors.sentryGradient,
-              icon: '
+              icon: '[icon]',
               title: 'SENTRY â€" Fall Risk',
               desc: 'ST-GCN skeletal AI detects fall risk in real-time. 98.3% accuracy on all patient movements.',
               stat: '< 1 sec alert delivery',
@@ -312,7 +312,7 @@ class _Page2 extends StatelessWidget {
             const SizedBox(height: 12),
             _FeatureCard(
               gradient: AppColors.scribeGradient,
-              icon: '
+              icon: '[icon]',
               title: 'SCRIBE â€" Voice to ADL',
               desc: 'Speak naturally â€" AI converts your words into structured ADL documentation instantly.',
               stat: 'Free speech, structured output',
@@ -356,7 +356,7 @@ class _Page3 extends StatelessWidget {
             const SizedBox(height: 20),
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFDB2777)]),
-              icon: '
+              icon: '[icon]',
               title: 'PULSE â€" Caregiver Stress',
               desc: 'Personalized stress-risk detection using proximity networks and physiological signals.',
               stat: 'Causally-ordered detection',
@@ -517,9 +517,9 @@ class _CarePainter extends CustomPainter {
       Paint()..color = const Color(0xFF7C3AED));
 
     // Module badges
-    _badge(canvas, Offset(w*0.15, h*0.25), 'ppColors.sentry);
-    _badge(canvas, Offset(w*0.85, h*0.25), 'ppColors.scribe);
-    _badge(canvas, Offset(w*0.15, h*0.65), 'ppColors.pulse);
+    _badge(canvas, Offset(w*0.15, h*0.25), '[S]', AppColors.sentry);
+    _badge(canvas, Offset(w*0.85, h*0.25), '[D]', AppColors.scribe);
+    _badge(canvas, Offset(w*0.15, h*0.65), '[P]', AppColors.pulse);
     _badge(canvas, Offset(w*0.85, h*0.65), '[gloss]', AppColors.gloss);
   }
 
@@ -613,7 +613,7 @@ class _PulsePainter extends CustomPainter {
       Paint()..color = AppColors.pulse.withOpacity(0.15));
     // Heart
     final tp = TextPainter(
-      text: const TextSpan(text: 'tyle: TextStyle(fontSize: 40)),
+      text: const TextSpan(text: '[P]', style: TextStyle(fontSize: 40)),
       textDirection: TextDirection.ltr)..layout();
     tp.paint(canvas, Offset(w*0.5 - tp.width/2, h*0.5 - tp.height/2));
     // ECG line

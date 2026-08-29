@@ -103,7 +103,7 @@ class SentryHomeScreen extends ConsumerWidget {
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Recent Alerts',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _text)),
-                  Text('View All ->'',
+                  Text('View All ->',
                       style: TextStyle(fontSize: 11, color: AppColors.accentBlue, fontWeight: FontWeight.w600)),
                 ]),
                 const SizedBox(height: 10),
@@ -129,7 +129,7 @@ class SentryHomeScreen extends ConsumerWidget {
                         child: Row(children: [
                           const Text('-...', style: TextStyle(fontSize: 20)),
                           const SizedBox(width: 12),
-                          Text('No active alerts -" all clear!',
+                          Text('No active alerts -- all clear!',
                               style: TextStyle(fontSize: 13, color: _muted)),
                         ]),
                       );

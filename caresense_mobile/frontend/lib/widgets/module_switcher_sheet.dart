@@ -36,7 +36,7 @@ class ModuleSwitcherSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _ModuleRow(
-            emoji: 'ame: 'SENTRY', sub: 'Fall Risk Detection',
+            emoji: '[S]', name: 'SENTRY', sub: 'Fall Risk Detection',
             color: AppColors.sentry,
             isActive: active == ActiveModule.sentry,
             onTap: () {
@@ -47,7 +47,7 @@ class ModuleSwitcherSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _ModuleRow(
-            emoji: 'ame: 'SCRIBE', sub: 'Voice to ADL Documentation',
+            emoji: '[D]', name: 'SCRIBE', sub: 'Voice to ADL Documentation',
             color: AppColors.scribe,
             isActive: active == ActiveModule.scribe,
             onTap: () {
@@ -65,9 +65,9 @@ class ModuleSwitcherSheet extends ConsumerWidget {
               border: Border.all(color: AppColors.borderLight),
             ),
             child: Row(children: [
-              const Text('tyle: TextStyle(fontSize: 14)),
+              const Text('[lock]', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
-              Text('PULSE & GLOSS â€" Not assigned to you',
+              Text('PULSE & GLOSS - Not assigned to you',
                 style: TextStyle(fontSize: 12, color: AppColors.mutedLight)),
             ]),
           ),

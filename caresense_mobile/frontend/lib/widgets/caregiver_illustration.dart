@@ -168,9 +168,9 @@ class _CaregiverPainter extends CustomPainter {
     );
 
     // â"€â"€ Floating badges â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-    _drawBadge(canvas, Offset(w * 0.82, h * 0.22), 'SENTRY', AppColors.sentry);
-    _drawBadge(canvas, Offset(w * 0.82, h * 0.52), 'SCRIBE', AppColors.scribe);
-    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), 'PULSE', AppColors.pulse);
+    _drawBadge(canvas, Offset(w * 0.82, h * 0.22), '[S]', 'SENTRY', AppColors.sentry);
+    _drawBadge(canvas, Offset(w * 0.82, h * 0.52), '[D]', 'SCRIBE', AppColors.scribe);
+    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), '[P]', 'PULSE', AppColors.pulse);
   }
 
   void _drawBadge(Canvas canvas, Offset center, String emoji, String label, Color color) {

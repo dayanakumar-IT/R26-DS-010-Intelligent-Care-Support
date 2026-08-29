@@ -49,7 +49,7 @@ class ModuleSelectScreen extends ConsumerWidget {
 
                 // SENTRY â€" accessible
                 _ModuleCard(
-                  emoji: '
+                  emoji: '[icon]',
                   name: 'SENTRY',
                   tagline: 'Fall Risk Detection',
                   desc: 'Real-time skeletal AI monitors patient movement and detects fall risk before incidents happen.',
@@ -65,7 +65,7 @@ class ModuleSelectScreen extends ConsumerWidget {
 
                 // SCRIBE â€" accessible
                 _ModuleCard(
-                  emoji: '
+                  emoji: '[icon]',
                   name: 'SCRIBE',
                   tagline: 'Voice to ADL Documentation',
                   desc: 'Speak naturally â€" AI converts free caregiver speech into structured ADL records instantly.',
@@ -85,7 +85,7 @@ class ModuleSelectScreen extends ConsumerWidget {
                     color: AppColors.mutedLight)),
                 const SizedBox(height: 10),
                 Row(children: [
-                  _LockedPill('PULSE', AppColors.pulse),
+                  _LockedPill('[P]', 'PULSE', AppColors.pulse),
                   const SizedBox(width: 8),
                   _LockedPill('[gloss]', 'GLOSS', AppColors.gloss),
                 ]),
@@ -182,7 +182,7 @@ class _LockedPill extends StatelessWidget {
             border: Border.all(color: AppColors.borderLight),
           ),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Text('tyle: TextStyle(fontSize: 14)),
+            Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
             Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 4),
