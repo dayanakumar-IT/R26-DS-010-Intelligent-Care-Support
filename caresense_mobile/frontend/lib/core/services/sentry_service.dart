@@ -1,86 +1,87 @@
 // SENTRY Service — Harishalinee
-// Connects to backend endpoints for fall risk detection module.
-// Using mock data for now — replace with real Dio calls when backend is ready.
+// Real API calls to the fall-detection backend.
+
+import 'package:dio/dio.dart';
+import '../config/api_config.dart';
 
 class SentryService {
-  // ── MOCK DATA ──────────────────────────────────────────────────────────────
+  static final Dio _dio = Dio(BaseOptions(
+    baseUrl:        ApiConfig.baseUrl,
+    connectTimeout: ApiConfig.timeout,
+    receiveTimeout: ApiConfig.timeout,
+  ));
 
-  static List<Map<String, dynamic>> getMockPatients() {
-    return [
-      {
-        'id': 'P001',
-        'name': 'Mary Johnson',
-        'age': 74,
-        'room': 'R01-Bed1',
-        'riskScore': 82,
-        'riskLevel': 'HIGH',
-        'posture': 'Standing',
-        'zone': 'Bed Edge',
-      },
-      {
-        'id': 'P002',
-        'name': 'James Smith',
-        'age': 68,
-        'room': 'R01-Bed2',
-        'riskScore': 58,
-        'riskLevel': 'MODERATE',
-        'posture': 'Sitting',
-        'zone': 'Chair Zone',
-      },
-      {
-        'id': 'P003',
-        'name': 'Ruth Davis',
-        'age': 81,
-        'room': 'R01-Bed3',
-        'riskScore': 25,
-        'riskLevel': 'LOW',
-        'posture': 'Lying',
-        'zone': 'Bed Zone',
-      },
-    ];
+  // ── Dashboard summary ─────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getDashboardSummary() async {
+    try {
+      final res = await _dio.get(ApiConfig.dashboardSummary);
+      return Map<String, dynamic>.from(res.data as Map);
+    } catch (_) {
+      return {'highRisk': 0, 'moderateRisk': 0, 'lowRisk': 0,
+              'totalPatients': 0, 'alertsToday': 0};
+    }
   }
 
-  static List<Map<String, dynamic>> getMockAlerts() {
-    return [
-      {
-        'id': 'A001',
-        'patientName': 'Mary Johnson',
-        'room': 'R01-Bed1',
-        'riskScore': 82,
-        'riskLevel': 'HIGH',
-        'time': '2 min ago',
-        'acknowledged': false,
-      },
-      {
-        'id': 'A002',
-        'patientName': 'Thomas Brown',
-        'room': 'R02-Bed1',
-        'riskScore': 76,
-        'riskLevel': 'HIGH',
-        'time': '8 min ago',
-        'acknowledged': false,
-      },
-    ];
+  // ── Patients ──────────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getPatients() async {
+    try {
+      final res = await _dio.get(ApiConfig.patients);
+      final list = res.data as List;
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
-  static Map<String, dynamic> getMockDashboardSummary() {
-    return {
-      'totalPatients': 12,
-      'highRisk': 2,
-      'moderateRisk': 4,
-      'lowRisk': 6,
-      'alertsToday': 5,
-    };
+  static Future<List<Map<String, dynamic>>> getPatientHistory(
+      String patientId) async {
+    try {
+      final res = await _dio.get(ApiConfig.patientHistory(patientId));
+      final list = res.data as List;
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
-  // ── TODO: Real API calls (uncomment when backend ready) ───────────────────
+  // ── Alerts ────────────────────────────────────────────────────────────────
 
-  // static Future<List<Patient>> getPatients(String token) async {
-  //   final dio = Dio();
-  //   final response = await dio.get(
-  //     '${ApiConfig.baseUrl}${ApiConfig.patients}',
-  //     options: Options(headers: {'Authorization': 'Bearer $token'}),
-  //   );
-  //   return (response.data as List).map((e) => Patient.fromJson(e)).toList();
-  // }
+  static Future<List<Map<String, dynamic>>> getAlerts({
+    bool unackedOnly = false,
+  }) async {
+    try {
+      final res = await _dio.get(ApiConfig.alerts,
+          queryParameters: {'unacked_only': unackedOnly});
+      final list = res.data as List;
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<bool> acknowledgeAlert(int alertId) async {
+    try {
+      await _dio.patch(
+        ApiConfig.alertAcknowledge(alertId.toString()),
+        data: {'ack_by': 'caregiver'},
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Event replay ──────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getReplay(int alertId) async {
+    try {
+      final res = await _dio.get(ApiConfig.eventReplay(alertId.toString()));
+      final frames = res.data['frames'] as List;
+      return frames.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
 }

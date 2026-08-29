@@ -1,8 +1,9 @@
 class ApiConfig {
-  // TODO: Replace with your deployed backend URL
-  // For local dev with ngrok: 'https://xxxx.ngrok.io'
-  // For production: 'https://your-backend.com'
-  static const String baseUrl = 'http://localhost:8000';
+  // ── Dev: phone on the same WiFi as your PC ──────────────────────────────
+  // Run `ipconfig` on your PC → find IPv4 under your WiFi adapter → put it here.
+  // Example: 'http://192.168.1.42:8000'
+  // Leave as localhost only when testing on an Android emulator.
+  static const String baseUrl = 'http://192.168.8.154:8000';
 
   static const Duration timeout = Duration(seconds: 10);
 

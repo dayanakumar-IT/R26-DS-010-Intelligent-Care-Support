@@ -27,6 +27,9 @@ dependencies:
   # Biometric auth
   local_auth: ^2.1.8
 
+  # Supabase auth
+  supabase_flutter: ^2.5.0
+
   # UI
   cupertino_icons: ^1.0.6
 

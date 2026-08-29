@@ -21,16 +21,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() { _emailCtrl.dispose(); _passCtrl.dispose(); super.dispose(); }
 
   Future<void> _login() async {
+    final email = _emailCtrl.text.trim();
+    final pass  = _passCtrl.text;
+    if (email.isEmpty || pass.isEmpty) return;
+
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 800)); // mock — replace with Supabase Auth
-    if (mounted) {
-      setState(() => _loading = false);
-      // Admin creates caregiver accounts — no signup or OTP needed
-      ref.read(authProvider.notifier).login(
-        caregiverId: 'CG001',
-        caregiverName: 'Caregiver',
-        token: 'mock-token',
+    final error = await ref.read(authProvider.notifier).signIn(email, pass);
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
       );
+    } else {
       context.go('/modules');
     }
   }
