@@ -58,8 +58,12 @@ from src.data_splits import load_scaler
 
 # Run model inference every N captured frames (≈5 inferences/sec at 30 FPS)
 INFER_EVERY_N = 3
-# Minimum fraction of buffer that must have valid joints before inference fires
-MIN_BUFFER_FILL = 0.3      # was 0.5 — fire sooner, don't wait for full 45 frames
+# Minimum fraction of buffer that must have valid joints before inference fires.
+# Must be 1.0 (full 90-frame buffer) — partial buffers stretched to 90 frames by
+# enforce_temporal_uniformity produce out-of-distribution sequences that cause the
+# model to output spurious HIGH scores during the first 2-3 seconds of warmup,
+# even when the patient is standing still.  Full buffer = 3 s of real data = reliable.
+MIN_BUFFER_FILL = 1.0
 # Per-joint visibility threshold — lower = more joints count as "visible"
 VIS_THRESH = 0.2           # was 0.4 — laptop webcam gives lower visibility scores
 # Fraction of joints that must be visible for GOOD / DEGRADED quality
@@ -211,12 +215,19 @@ class InferenceEngine:
                     last_joints = joint_frame
                     self._latest_skeleton = joint_frame   # expose for per-frame WS streaming
 
+                # Show live buffer fill % so caregiver knows warmup is in progress
+                buf_fill_pct = int(len(self._buffer) / TARGET_FRAMES * 100)
+                if len(self._buffer) < TARGET_FRAMES:
+                    self._disp_buffering = True
+                    self._disp_level = "NORMAL"
+                    self._disp_score = 0.0
+
                 if (self._frame_count % INFER_EVERY_N == 0
                         and len(self._buffer) >= int(TARGET_FRAMES * MIN_BUFFER_FILL)):
                     result = self._infer()
                     if result:
                         self._result_queue.append(result)
-                        print(f"[inference] score={result.risk_score:.3f} quality={result.pose_quality} frame={result.frame_count}")
+                        print(f"[inference] score={result.risk_score:.3f} quality={result.pose_quality} frame={result.frame_count} buf={buf_fill_pct}%")
                         # Use calibrated thresholds from settings, not hardcoded 0.50
                         from config.settings import RISK_TAU_HIGH, RISK_TAU_LOW
                         self._disp_level    = "HIGH" if result.risk_score >= RISK_TAU_HIGH else "MODERATE" if result.risk_score >= RISK_TAU_LOW else "NORMAL"

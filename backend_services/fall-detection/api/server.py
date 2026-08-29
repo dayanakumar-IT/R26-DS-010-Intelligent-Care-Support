@@ -234,12 +234,13 @@ async def _broadcast_loop(room_id: str):
         last_frame = np.array(result.skeleton, dtype=np.float32)
         ctx_result = ctx.update(last_frame, result.timestamp)
 
-        # Apply zone modifier to fusion score before post-processing
-        adjusted_score = float(np.clip(
-            result.risk_score + ctx_result.zone_modifier, 0.0, 1.0))
-
-        # Risk state
-        state = proc.update(adjusted_score, result.timestamp)
+        # Feed raw model score directly to postprocessor — no zone modifier.
+        # Zone modifier was causing false HIGHs: harmless posture jitter (TRANSITION)
+        # in a configured BED/CHAIR zone added +0.12–+0.15 to the score, pushing
+        # normal standing (0.35–0.45) over the HIGH threshold. The trained model
+        # already encodes fall risk; zone context is shown in the UI for caregiver
+        # awareness only, not as a score boost.
+        state = proc.update(result.risk_score, result.timestamp)
 
         # ── Posture-aware clamping ────────────────────────────────────────────
         # Only one rule: confirmed stable SITTING → cap at MODERATE.
@@ -348,8 +349,9 @@ async def _broadcast_loop(room_id: str):
             "key_factors": result.key_factors,
             "stgcn_score": result.stgcn_score,
             "feat_score":  result.feat_score,
-            "alert":       state.alert,
-            "alert_id":    alert_id,
+            "alert":          state.alert,           # True every ALERT_COOLDOWN_S while HIGH
+            "moderate_alert": state.moderate_alert,   # True once per MODERATE episode
+            "alert_id":       alert_id,
         }
 
         # Push to room live clients (dashboard)
@@ -471,12 +473,23 @@ async def replay(alert_id: int):
 
 @app.delete("/api/alerts/clear-demo")
 async def clear_demo_alerts():
-    """Clear ALL alerts and replay memory — use before a viva/demo to start fresh."""
+    """Clear ALL alerts and reset all in-memory risk state — use before a viva/demo."""
     try:
+        # 1. Clear DB alerts and replay memory
         _replay_mem.clear()
         deleted = _get_client().table("fall_alerts").delete().neq("id", 0).execute()
         count = len(deleted.data) if deleted.data else 0
-        return {"status": "cleared", "alerts_deleted": count, "replay_memory_cleared": True}
+
+        # 2. Reset postprocessor EMA so accumulated history can't immediately re-trigger HIGH
+        for proc in _processors.values():
+            proc.reset()
+
+        # 3. Reset fast display EMA so display also starts fresh
+        for key in list(_disp_ema.keys()):
+            _disp_ema[key] = 0.0
+
+        return {"status": "cleared", "alerts_deleted": count,
+                "replay_memory_cleared": True, "ema_reset": True}
     except Exception as e:
         raise HTTPException(500, f"Clear failed: {e}")
 

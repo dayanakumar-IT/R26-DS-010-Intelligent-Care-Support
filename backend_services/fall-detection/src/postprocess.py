@@ -74,6 +74,15 @@ class RiskPostProcessor:
         self._last_alert_t: float   = 0.0
         self._last_moderate_alert_t: float = 0.0
         self._initialised: bool     = False
+        # Sustained-HIGH counter: counts consecutive inference windows where EMA >= tau_high
+        # while in MODERATE state.  HIGH transition only fires when this exceeds the threshold.
+        self._sustained_high_count: int = 0
+        # At INFER_EVERY_N=3 frames, 25fps → ~8 inferences/sec.
+        # Require 25 consecutive above-threshold readings ≈ 3 seconds sustained.
+        # Real fall: person on floor 5+ seconds → easily hits 25.
+        # Standing spike: decays in <1s, counter resets before reaching 25.
+        self._SUSTAINED_HIGH_REQUIRED = 25
+        self._last_raw_score: float = 0.0   # track raw score for dual-gate check
 
     # ------------------------------------------------------------------
     def update(self, score: float, timestamp: Optional[float] = None) -> RiskState:
@@ -94,6 +103,7 @@ class RiskPostProcessor:
             self._initialised = True
         else:
             self._ema = self.alpha * score + (1.0 - self.alpha) * self._ema
+        self._last_raw_score = score
 
         new_level = self._transition(self._ema, now)
         if new_level != self._level:
@@ -125,6 +135,7 @@ class RiskPostProcessor:
         self._last_alert_t          = 0.0
         self._last_moderate_alert_t = 0.0
         self._initialised           = False
+        self._sustained_high_count  = 0
 
     # ------------------------------------------------------------------
     def _dwell_elapsed(self, now: float) -> float:
@@ -136,23 +147,36 @@ class RiskPostProcessor:
 
         if current == "NORMAL":
             if ema >= self.tau_low and elapsed >= self.dwell["to_moderate"]:
+                self._sustained_high_count = 0   # reset counter entering MODERATE
                 return "MODERATE"
 
         elif current == "MODERATE":
-            if ema >= self.tau_high and elapsed >= self.dwell["to_high"]:
+            # Dual gate: BOTH EMA AND raw score must be above tau_high to increment counter.
+            # EMA alone can stay high from old accumulated history while raw score has dropped.
+            # Raw score alone can spike briefly without accumulating.
+            # Both high together = genuine sustained fall signal.
+            both_high = (ema >= self.tau_high and self._last_raw_score >= self.tau_high)
+            if both_high:
+                self._sustained_high_count += 1
+            else:
+                # Decay counter when either gate fails — brief spikes don't accumulate
+                self._sustained_high_count = max(0, self._sustained_high_count - 2)
+            if self._sustained_high_count >= self._SUSTAINED_HIGH_REQUIRED:
                 return "HIGH"
             # Descend back to NORMAL with hysteresis
             if ema < self.tau_low and elapsed >= self.dwell["to_normal"]:
+                self._sustained_high_count = 0
                 return "NORMAL"
 
         elif current == "HIGH":
             # Fast path: score drops well below NORMAL threshold → skip MODERATE, go straight to NORMAL
-            # This handles the demo case where someone stands up after a fall — recovery feels instant.
             fast_to_normal = self.dwell.get("high_to_normal", 1.5)
             if ema < self.tau_low * 0.8 and elapsed >= fast_to_normal:
+                self._sustained_high_count = 0
                 return "NORMAL"
             # Normal path: score just below HIGH threshold → MODERATE first
             if ema < self.tau_high and elapsed >= self.dwell["to_moderate_from_high"]:
+                self._sustained_high_count = 0
                 return "MODERATE"
 
         return current

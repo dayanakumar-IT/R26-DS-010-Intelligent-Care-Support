@@ -208,9 +208,9 @@ FEATURE_DISPLAY_NAMES = {
 # Risk-level thresholds (see backend/docs/risk_levels.md)
 # Tuned later on val set; these are sensible defaults.
 # ---------------------------------------------------------------------------
-RISK_TAU_LOW = 0.35       # NORMAL→MODERATE — raised so calm standing noise stays green
-RISK_TAU_HIGH = 0.65      # MODERATE→HIGH — raised: brief standing spike won't reach this
-RISK_EMA_ALPHA = 0.35     # lower alpha = more smoothing — single frame spikes decay fast
+RISK_TAU_LOW = 0.55       # NORMAL→MODERATE — MJPEG test confirmed standing < 0.50; set above that
+RISK_TAU_HIGH = 0.72      # MODERATE→HIGH — only genuine sustained fall crosses this
+RISK_EMA_ALPHA = 0.25     # heavy smoothing — spikes need many frames to accumulate
 DWELL_S = {
     "to_moderate": 0.5,
     "to_high":     3.0,   # EMA must stay above tau_high for 3s — only real sustained falls

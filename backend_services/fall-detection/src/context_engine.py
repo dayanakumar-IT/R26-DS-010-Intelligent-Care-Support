@@ -28,7 +28,7 @@ from config.settings import JOINT
 
 _VIS_THRESH  = 0.3    # minimum visibility to trust a joint
 _WALK_SPEED  = 0.15   # torso-lengths/s ankle speed → walking
-_TRANS_TTL   = 0.25   # seconds a TRANSITION label persists — long enough to gate HIGH during real falls
+_TRANS_TTL   = 0.20   # seconds a TRANSITION label persists after a real posture change
 
 # Lateral lean threshold (degrees shoulder tilt) to flag sideways instability
 _LATERAL_LEAN_THRESH = 12.0
@@ -136,10 +136,11 @@ class ContextEngine:
 
         if angle > 75.0:
             posture = "LYING"
-        elif h2k is not None and h2k > -0.06 and angle < 50.0:
+        elif h2k is not None and h2k > -0.12 and angle < 55.0:
             # SITTING: hips roughly level with knees (h2k near 0, slightly negative at most).
             # STANDING has hips well above knees → h2k ≈ −0.15 to −0.25 → excluded here.
-            # Threshold −0.06 gives a 6 cm normalised margin for slouched-sit noise.
+            # Threshold −0.12 (was −0.06) — looser margin handles desk-height webcams where
+            # the camera angle makes hips appear slightly higher than they truly are.
             posture = "SITTING"
         else:
             # Determine walking via ankle velocity
@@ -155,7 +156,10 @@ class ContextEngine:
             self._prev_ank = ank
             posture = "WALKING" if walking else "STANDING"
 
-        if posture != self._prev_posture and self._prev_posture != "UNKNOWN":
+        # Only trigger TRANSITION on REAL posture changes (not from/to UNKNOWN — noisy skeleton)
+        if (posture != self._prev_posture
+                and self._prev_posture not in ("UNKNOWN", "TRANSITION")
+                and posture != "UNKNOWN"):
             self._trans_until = now + _TRANS_TTL
         if now < self._trans_until:
             return "TRANSITION"

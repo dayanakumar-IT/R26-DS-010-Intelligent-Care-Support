@@ -716,10 +716,24 @@ function LivePanel({ rooms, patients, alerts, onBeep, onReplay, onViewPatient }:
   const [highOnly,   setHighOnly]   = useState(false)
   const [frame,      setFrame]      = useState<LiveFrame | null>(null)
   const [wsStatus,   setWsStatus]   = useState<'disconnected'|'connecting'|'connected'|'error'>('disconnected')
-  const wsRef = useRef<WebSocket | null>(null)
-  const prevLevelRef  = useRef<string>('NORMAL')
-  const lastBeepRef   = useRef<number>(0)          // timestamp of last HIGH beep — 30s cooldown
-  const BEEP_COOLDOWN = 30_000                     // ms — prevents false-alarm re-beeps
+  const wsRef          = useRef<WebSocket | null>(null)
+  const prevLevelRef   = useRef<string>('NORMAL')
+  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Start continuous HIGH alarm (beeps every 3s while level stays HIGH)
+  const startHighAlarm = () => {
+    if (alarmIntervalRef.current) return   // already running
+    onBeep(880, 300)                       // immediate first beep
+    setTimeout(() => onBeep(880, 300), 400)
+    setTimeout(() => onBeep(880, 300), 800)
+    alarmIntervalRef.current = setInterval(() => {
+      try { onBeep(880, 300); setTimeout(() => onBeep(880, 300), 400); setTimeout(() => onBeep(880, 300), 800) }
+      catch { /* audio blocked */ }
+    }, 3000)
+  }
+  const stopHighAlarm = () => {
+    if (alarmIntervalRef.current) { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null }
+  }
   const unackedHigh = alerts.filter(a => !a.acknowledged && a.risk_level === 'HIGH')
   const highRoomIds = new Set(unackedHigh.map(a => String(a.room_id)))
   const visibleRooms = highOnly ? activeRooms.filter(r => highRoomIds.has(String(r.id))) : activeRooms
@@ -750,27 +764,26 @@ function LivePanel({ rooms, patients, alerts, onBeep, onReplay, onViewPatient }:
         } else {
           // Set frame FIRST — skeleton must update even if beep throws
           setFrame(data as LiveFrame)
-          // alert_level = EMA-smoothed (stable) — beep decisions only, avoids spike beeps
-          // risk_level  = fast-EMA display level — drives the display colors
           const alertLevel = (data.alert_level ?? data.risk_level) as string
           const prev = prevLevelRef.current
           prevLevelRef.current = alertLevel
-          // Beep on EMA-stable escalation + 30s cooldown — wrapped in own try/catch
-          // so a Web Audio API failure never blocks the skeleton display
           try {
-            const now = Date.now()
-            if (alertLevel === 'HIGH' && prev !== 'HIGH' && now - lastBeepRef.current > BEEP_COOLDOWN) {
-              lastBeepRef.current = now
-              onBeep(880, 260); setTimeout(() => onBeep(880, 260), 400); setTimeout(() => onBeep(880, 260), 800)
-            } else if (alertLevel === 'MODERATE' && prev === 'NORMAL' && now - lastBeepRef.current > BEEP_COOLDOWN) {
-              lastBeepRef.current = now
-              onBeep(660, 240)
+            if (alertLevel === 'HIGH') {
+              // Continuous alarm while HIGH — start interval on entry, keep running
+              startHighAlarm()
+            } else {
+              // Level dropped below HIGH — stop the continuous alarm
+              stopHighAlarm()
+              if (alertLevel === 'MODERATE' && prev !== 'MODERATE' && data.moderate_alert) {
+                // Single beep on new MODERATE episode (backend gates via 120s cooldown)
+                onBeep(660, 300)
+              }
             }
           } catch { /* audio not available */ }
         }
       } catch { /* */ }
     }
-    return () => { ws.close() }
+    return () => { ws.close(); stopHighAlarm() }
   }, [selected])
 
   const riskColor = (lvl?: string) => lvl==='HIGH'?'#ef4444':lvl==='MODERATE'?'#f59e0b':'#22c55e'
