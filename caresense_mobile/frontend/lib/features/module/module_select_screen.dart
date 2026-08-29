@@ -47,13 +47,13 @@ class ModuleSelectScreen extends ConsumerWidget {
                   style: TextStyle(fontSize: 13, color: AppColors.mutedLight)),
                 const SizedBox(height: 24),
 
-                // SENTRY â€” accessible
+                // SENTRY â€" accessible
                 _ModuleCard(
                   emoji: 'ðŸ›¡',
                   name: 'SENTRY',
                   tagline: 'Fall Risk Detection',
                   desc: 'Real-time skeletal AI monitors patient movement and detects fall risk before incidents happen.',
-                  stat: 'â— 2 high-risk alerts active',
+                  stat: 'â- 2 high-risk alerts active',
                   color: AppColors.sentry,
                   accessible: true,
                   onTap: () {
@@ -63,13 +63,13 @@ class ModuleSelectScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // SCRIBE â€” accessible
+                // SCRIBE â€" accessible
                 _ModuleCard(
                   emoji: 'ðŸŽ¤',
                   name: 'SCRIBE',
                   tagline: 'Voice to ADL Documentation',
-                  desc: 'Speak naturally â€” AI converts free caregiver speech into structured ADL records instantly.',
-                  stat: 'â— 6 patients active today',
+                  desc: 'Speak naturally â€" AI converts free caregiver speech into structured ADL records instantly.',
+                  stat: 'â- 6 patients active today',
                   color: AppColors.scribe,
                   accessible: true,
                   onTap: () {
@@ -85,7 +85,7 @@ class ModuleSelectScreen extends ConsumerWidget {
                     color: AppColors.mutedLight)),
                 const SizedBox(height: 10),
                 Row(children: [
-                  _LockedPill('ðŸ’“', 'PULSE', AppColors.pulse),
+                  _LockedPill('ðŸ'"', 'PULSE', AppColors.pulse),
                   const SizedBox(width: 8),
                   _LockedPill('ðŸ¤Ÿ', 'GLOSS', AppColors.gloss),
                 ]),
@@ -182,7 +182,7 @@ class _LockedPill extends StatelessWidget {
             border: Border.all(color: AppColors.borderLight),
           ),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Text('ðŸ”’', style: TextStyle(fontSize: 14)),
+            const Text('ðŸ"'', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
             Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 4),

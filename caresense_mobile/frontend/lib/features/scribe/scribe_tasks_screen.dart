@@ -6,6 +6,6 @@ class ScribeTasksScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.bgLight,
-    body: const Center(child: Text('SCRIBE Tasks — Teammate builds here 🎤',
+    body: const Center(child: Text('SCRIBE Tasks - Teammate builds here 🎤',
       style: TextStyle(color: AppColors.mutedLight))));
 }

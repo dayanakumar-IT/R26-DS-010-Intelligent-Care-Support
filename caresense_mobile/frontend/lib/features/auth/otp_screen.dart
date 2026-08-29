@@ -82,7 +82,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       color: AppColors.accent.withOpacity(0.3),
                       blurRadius: 16, offset: const Offset(0, 6))],
                   ),
-                  child: const Center(child: Text('ðŸ“±', style: TextStyle(fontSize: 38))),
+                  child: const Center(child: Text('ðŸ"±', style: TextStyle(fontSize: 38))),
                 ),
                 const SizedBox(height: 24),
                 const Text('Verify your number',

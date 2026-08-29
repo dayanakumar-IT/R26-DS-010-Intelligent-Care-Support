@@ -36,14 +36,14 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(const AuthState());
 
-  /// Sign in with Supabase — checks profiles table for caregiver role.
+  /// Sign in with Supabase - checks profiles table for caregiver role.
   Future<String?> signIn(String email, String password) async {
     try {
       final response = await Supabase.instance.client.auth
           .signInWithPassword(email: email, password: password);
 
       final user = response.user;
-      if (user == null) return 'Login failed — no user returned.';
+      if (user == null) return 'Login failed - no user returned.';
 
       // Fetch profile to get name and role
       final profile = await Supabase.instance.client

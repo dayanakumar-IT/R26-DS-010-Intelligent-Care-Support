@@ -34,7 +34,7 @@ class SentryHomeScreen extends ConsumerWidget {
               children: [
                 const SizedBox(height: 14),
 
-                // â”€â”€ Top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // â"€â"€ Top bar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('Good Morning,',
@@ -60,12 +60,12 @@ class SentryHomeScreen extends ConsumerWidget {
                   Container(width: 6, height: 6,
                       decoration: const BoxDecoration(color: AppColors.low, shape: BoxShape.circle)),
                   const SizedBox(width: 5),
-                  Text('SENTRY Â· Shift Active',
+                  Text('SENTRY Â- Shift Active',
                       style: TextStyle(fontSize: 11, color: AppColors.low, fontWeight: FontWeight.w600)),
                 ]),
                 const SizedBox(height: 18),
 
-                // â”€â”€ Stat cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // â"€â"€ Stat cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                 Text('Your Assigned Patients',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _muted)),
                 const SizedBox(height: 10),
@@ -99,11 +99,11 @@ class SentryHomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 22),
 
-                // â”€â”€ Recent alerts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // â"€â"€ Recent alerts â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Recent Alerts',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _text)),
-                  Text('View All â†’',
+                  Text('View All â†'',
                       style: TextStyle(fontSize: 11, color: AppColors.accentBlue, fontWeight: FontWeight.w600)),
                 ]),
                 const SizedBox(height: 10),
@@ -129,7 +129,7 @@ class SentryHomeScreen extends ConsumerWidget {
                         child: Row(children: [
                           const Text('âœ…', style: TextStyle(fontSize: 20)),
                           const SizedBox(width: 12),
-                          Text('No active alerts â€” all clear!',
+                          Text('No active alerts â€" all clear!',
                               style: TextStyle(fontSize: 13, color: _muted)),
                         ]),
                       );
@@ -147,7 +147,7 @@ class SentryHomeScreen extends ConsumerWidget {
   }
 }
 
-// â”€â”€ Stat card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Stat card â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _StatCard extends StatelessWidget {
   final String label, value, sub;
   final Color color;
@@ -179,7 +179,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// â”€â”€ Alert row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Alert row â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _AlertRow extends StatelessWidget {
   final Map<String, dynamic> a;
   const _AlertRow(this.a);
@@ -194,7 +194,7 @@ class _AlertRow extends StatelessWidget {
                 : level == 'MODERATE' ? Icons.warning_amber_rounded
                 : Icons.check_circle_outline;
     final time  = (a['created_at'] ?? '').toString();
-    final timeStr = time.length >= 16 ? time.substring(11, 16) : 'â€”';
+    final timeStr = time.length >= 16 ? time.substring(11, 16) : 'â€"';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -213,10 +213,10 @@ class _AlertRow extends StatelessWidget {
         Icon(icon, color: color, size: 18),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Room ${a['room_id'] ?? 'â€”'} Â· Patient ${a['patient_id'] ?? 'â€”'}',
+          Text('Room ${a['room_id'] ?? 'â€"'} Â- Patient ${a['patient_id'] ?? 'â€"'}',
               style: const TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w700, color: _text)),
-          Text(level == 'HIGH' ? 'High risk Â· Immediate'
+          Text(level == 'HIGH' ? 'High risk Â- Immediate'
              : level == 'MODERATE' ? 'Unstable movement' : 'Stable',
               style: TextStyle(fontSize: 11, color: _muted)),
         ])),

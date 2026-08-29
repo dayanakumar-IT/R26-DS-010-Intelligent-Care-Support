@@ -219,7 +219,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-// â”€â”€ Page 1: Welcome â€” all 4 modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Page 1: Welcome â€" all 4 modules â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _Page1 extends StatelessWidget {
   final Animation<double> fade, pulse;
   final Animation<double> float;
@@ -254,7 +254,7 @@ class _Page1 extends StatelessWidget {
               style: TextStyle(fontSize: 14, color: AppColors.mutedLight, height: 1.65)),
             const SizedBox(height: 22),
             Row(children: [
-              _ModuleTile('ðŸ’“', 'PULSE', 'Stress Risk', AppColors.pulse),
+              _ModuleTile('ðŸ'"', 'PULSE', 'Stress Risk', AppColors.pulse),
               const SizedBox(width: 10),
               _ModuleTile('ðŸ›¡', 'SENTRY', 'Fall Risk', AppColors.sentry),
             ]),
@@ -271,7 +271,7 @@ class _Page1 extends StatelessWidget {
   }
 }
 
-// â”€â”€ Page 2: SENTRY + SCRIBE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Page 2: SENTRY + SCRIBE â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _Page2 extends StatelessWidget {
   final Animation<double> fade, wave;
   final Animation<double> float;
@@ -305,7 +305,7 @@ class _Page2 extends StatelessWidget {
             _FeatureCard(
               gradient: AppColors.sentryGradient,
               icon: 'ðŸ›¡',
-              title: 'SENTRY â€” Fall Risk',
+              title: 'SENTRY â€" Fall Risk',
               desc: 'ST-GCN skeletal AI detects fall risk in real-time. 98.3% accuracy on all patient movements.',
               stat: '< 1 sec alert delivery',
             ),
@@ -313,8 +313,8 @@ class _Page2 extends StatelessWidget {
             _FeatureCard(
               gradient: AppColors.scribeGradient,
               icon: 'ðŸŽ¤',
-              title: 'SCRIBE â€” Voice to ADL',
-              desc: 'Speak naturally â€” AI converts your words into structured ADL documentation instantly.',
+              title: 'SCRIBE â€" Voice to ADL',
+              desc: 'Speak naturally â€" AI converts your words into structured ADL documentation instantly.',
               stat: 'Free speech, structured output',
             ),
           ],
@@ -324,7 +324,7 @@ class _Page2 extends StatelessWidget {
   }
 }
 
-// â”€â”€ Page 3: PULSE + GLOSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Page 3: PULSE + GLOSS â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _Page3 extends StatelessWidget {
   final Animation<double> fade, pulse;
   final Animation<double> float;
@@ -356,8 +356,8 @@ class _Page3 extends StatelessWidget {
             const SizedBox(height: 20),
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFDB2777)]),
-              icon: 'ðŸ’“',
-              title: 'PULSE â€” Caregiver Stress',
+              icon: 'ðŸ'"',
+              title: 'PULSE â€" Caregiver Stress',
               desc: 'Personalized stress-risk detection using proximity networks and physiological signals.',
               stat: 'Causally-ordered detection',
             ),
@@ -365,7 +365,7 @@ class _Page3 extends StatelessWidget {
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFD97706), Color(0xFF059669)]),
               icon: 'ðŸ¤Ÿ',
-              title: 'GLOSS â€” Sign Language',
+              title: 'GLOSS â€" Sign Language',
               desc: 'Real-time sign recognition and training for caregivers with Deaf patients.',
               stat: 'Per-landmark error localization',
             ),
@@ -386,7 +386,7 @@ class _Page3 extends StatelessWidget {
                     color: Colors.white, size: 18))),
                 const SizedBox(width: 12),
                 const Expanded(child: Text(
-                  'Switch between your assigned modules anytime â€” no re-login needed.',
+                  'Switch between your assigned modules anytime â€" no re-login needed.',
                   style: TextStyle(fontSize: 12, color: AppColors.mutedLight, height: 1.5))),
               ]),
             ),
@@ -397,7 +397,7 @@ class _Page3 extends StatelessWidget {
   }
 }
 
-// â”€â”€ Custom widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Custom widgets â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _BgCircle extends StatelessWidget {
   final double size;
   final Color color;
@@ -470,7 +470,7 @@ class _FeatureCard extends StatelessWidget {
   );
 }
 
-// â”€â”€ Animated illustrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Animated illustrations â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _CareIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -519,7 +519,7 @@ class _CarePainter extends CustomPainter {
     // Module badges
     _badge(canvas, Offset(w*0.15, h*0.25), 'ðŸ›¡', AppColors.sentry);
     _badge(canvas, Offset(w*0.85, h*0.25), 'ðŸŽ¤', AppColors.scribe);
-    _badge(canvas, Offset(w*0.15, h*0.65), 'ðŸ’“', AppColors.pulse);
+    _badge(canvas, Offset(w*0.15, h*0.65), 'ðŸ'"', AppColors.pulse);
     _badge(canvas, Offset(w*0.85, h*0.65), 'ðŸ¤Ÿ', AppColors.gloss);
   }
 
@@ -613,7 +613,7 @@ class _PulsePainter extends CustomPainter {
       Paint()..color = AppColors.pulse.withOpacity(0.15));
     // Heart
     final tp = TextPainter(
-      text: const TextSpan(text: 'ðŸ’“', style: TextStyle(fontSize: 40)),
+      text: const TextSpan(text: 'ðŸ'"', style: TextStyle(fontSize: 40)),
       textDirection: TextDirection.ltr)..layout();
     tp.paint(canvas, Offset(w*0.5 - tp.width/2, h*0.5 - tp.height/2));
     // ECG line

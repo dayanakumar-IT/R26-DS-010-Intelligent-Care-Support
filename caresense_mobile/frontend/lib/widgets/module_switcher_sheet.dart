@@ -65,9 +65,9 @@ class ModuleSwitcherSheet extends ConsumerWidget {
               border: Border.all(color: AppColors.borderLight),
             ),
             child: Row(children: [
-              const Text('ðŸ”’', style: TextStyle(fontSize: 14)),
+              const Text('ðŸ"'', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
-              Text('PULSE & GLOSS â€” Not assigned to you',
+              Text('PULSE & GLOSS â€" Not assigned to you',
                 style: TextStyle(fontSize: 12, color: AppColors.mutedLight)),
             ]),
           ),

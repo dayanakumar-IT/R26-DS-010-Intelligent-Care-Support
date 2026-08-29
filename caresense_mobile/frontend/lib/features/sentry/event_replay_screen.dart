@@ -41,9 +41,9 @@ class _EventReplayScreenState extends State<EventReplayScreen>
   Widget build(BuildContext context) {
     final a = widget.alert;
     final level   = (a['risk_level'] ?? 'HIGH').toString();
-    final roomId  = a['room_id'] ?? 'â€”';
+    final roomId  = a['room_id'] ?? 'â€"';
     final time    = (a['created_at'] ?? '').toString();
-    final timeStr = time.length >= 16 ? time.substring(0, 16).replaceAll('T', ' ') : 'â€”';
+    final timeStr = time.length >= 16 ? time.substring(0, 16).replaceAll('T', ' ') : 'â€"';
     final color   = level == 'HIGH' ? AppColors.high
                   : level == 'MODERATE' ? AppColors.moderate
                   : AppColors.low;
@@ -52,7 +52,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
-          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(children: [
@@ -61,7 +61,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
                 child: Row(children: [
                   const Icon(Icons.arrow_back_ios_rounded, size: 16, color: AppColors.accentBlue),
                   const SizedBox(width: 2),
-                  Text('Replay â€“ Room $roomId',
+                  Text('Replay â€" Room $roomId',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
                           color: AppColors.accentBlue)),
                 ]),
@@ -81,7 +81,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
             ]),
           ),
 
-          // â”€â”€ Timestamp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Timestamp â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
@@ -100,7 +100,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
           ),
           const SizedBox(height: 10),
 
-          // â”€â”€ Skeleton canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Skeleton canvas â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -121,7 +121,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
           ),
           const SizedBox(height: 16),
 
-          // â”€â”€ Progress bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Progress bar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(children: [
@@ -153,7 +153,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
           ),
           const SizedBox(height: 14),
 
-          // â”€â”€ Controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Controls â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             _ControlBtn(icon: Icons.skip_previous_rounded, onTap: () => _ctrl.reset()),
             const SizedBox(width: 12),
@@ -173,7 +173,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
           ]),
           const SizedBox(height: 16),
 
-          // â”€â”€ Observation panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Observation panel â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -254,7 +254,7 @@ class _Tag extends StatelessWidget {
   }
 }
 
-// â”€â”€ Animated skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Animated skeleton â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _AnimatedSkeletonPainter extends CustomPainter {
   final double t;
   final Color riskColor;

@@ -1,6 +1,6 @@
-// ADL Service — Teammate
+// ADL Service - Teammate
 // Connects to backend endpoints for Activities of Daily Living module.
-// Using mock data for now — replace with real Dio calls when backend is ready.
+// Using mock data for now - replace with real Dio calls when backend is ready.
 
 class AdlService {
   // ── MOCK DATA ──────────────────────────────────────────────────────────────

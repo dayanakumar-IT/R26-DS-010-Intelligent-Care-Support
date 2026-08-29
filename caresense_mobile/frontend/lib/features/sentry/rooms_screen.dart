@@ -18,13 +18,13 @@ class RoomsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(authProvider); // keep auth state live (caregiverId not used for filtering — see comment below)
+    ref.watch(authProvider); // keep auth state live (caregiverId not used for filtering - see comment below)
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
-          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -55,10 +55,10 @@ class RoomsScreen extends ConsumerWidget {
             ]),
           ),
 
-          // â”€â”€ Patient/Room list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Patient/Room list â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: SentryService.getPatients(), // rooms.caregiver_id stores caregiver_profiles UUID, not auth UUID — show all
+              future: SentryService.getPatients(), // rooms.caregiver_id stores caregiver_profiles UUID, not auth UUID - show all
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -110,7 +110,7 @@ class _RoomCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(children: [
-          // â”€â”€ Card header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Card header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
             child: Row(children: [
@@ -120,7 +120,7 @@ class _RoomCard extends StatelessWidget {
                   color: AppColors.accentBlue.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(7),
                 ),
-                child: Text('${patient['room_id'] ?? 'â€”'} Â· ${patient['patient_code'] ?? 'â€”'}',
+                child: Text('${patient['room_id'] ?? 'â€"'} Â- ${patient['patient_code'] ?? 'â€"'}',
                     style: const TextStyle(
                         fontSize: 12, fontWeight: FontWeight.w700,
                         color: AppColors.accentBlue)),
@@ -144,7 +144,7 @@ class _RoomCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // â”€â”€ Skeleton canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Skeleton canvas â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Container(
@@ -162,14 +162,14 @@ class _RoomCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // â”€â”€ Info row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Info row â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Risk Score', style: TextStyle(fontSize: 10, color: _muted)),
                 Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('â€”', style: TextStyle(
+                  Text('â€"', style: TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.low)),
                   Text('/100', style: TextStyle(fontSize: 10, color: _dim)),
                 ]),
@@ -179,7 +179,7 @@ class _RoomCard extends StatelessWidget {
               ]),
               const Spacer(),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(patient['gender'] ?? 'â€”', style: TextStyle(fontSize: 11, color: _muted)),
+                Text(patient['gender'] ?? 'â€"', style: TextStyle(fontSize: 11, color: _muted)),
                 if (patient['age'] != null) ...[
                   const SizedBox(height: 2),
                   Text('Age: ${patient['age']}', style: TextStyle(fontSize: 11, color: _dim)),
@@ -189,7 +189,7 @@ class _RoomCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // â”€â”€ View details button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ View details button â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
             child: SizedBox(
@@ -215,7 +215,7 @@ class _RoomCard extends StatelessWidget {
   }
 }
 
-// â”€â”€ Stick figure painter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Stick figure painter â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _StickFigurePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

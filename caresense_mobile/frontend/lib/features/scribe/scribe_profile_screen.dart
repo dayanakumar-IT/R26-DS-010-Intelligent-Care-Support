@@ -6,6 +6,6 @@ class ScribeProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.bgLight,
-    body: const Center(child: Text('SCRIBE Profile — Teammate builds here',
+    body: const Center(child: Text('SCRIBE Profile - Teammate builds here',
       style: TextStyle(color: AppColors.mutedLight))));
 }

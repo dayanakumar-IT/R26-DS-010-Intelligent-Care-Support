@@ -66,7 +66,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
-          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -91,7 +91,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ]),
           ),
 
-          // â”€â”€ Filter tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Filter tabs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -121,7 +121,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // â”€â”€ Alert list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Alert list â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Expanded(
             child: _localAlerts == null
                 ? const Center(child: CircularProgressIndicator(color: AppColors.high, strokeWidth: 2))
@@ -145,7 +145,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         const Text('âœ…', style: TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
-        Text(_filter == 'All' ? 'No active alerts â€” all clear!'
+        Text(_filter == 'All' ? 'No active alerts â€" all clear!'
                               : 'No ${_filter.toLowerCase()} alerts',
             style: TextStyle(color: _muted, fontSize: 13)),
       ]));
@@ -157,7 +157,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       itemBuilder: (_, i) {
         if (i == 0) return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text('Active Â· ${alerts.length} alert${alerts.length == 1 ? '' : 's'}',
+          child: Text('Active Â- ${alerts.length} alert${alerts.length == 1 ? '' : 's'}',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _muted)),
         );
         return _AlertCard(
@@ -171,7 +171,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 }
 
-// â”€â”€ Alert card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Alert card â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 class _AlertCard extends StatelessWidget {
   final Map<String, dynamic> a;
   final VoidCallback onAck;
@@ -185,10 +185,10 @@ class _AlertCard extends StatelessWidget {
                 : level == 'MODERATE' ? AppColors.moderate
                 : AppColors.low;
     final icon  = level == 'HIGH' ? 'ðŸš¨' : level == 'MODERATE' ? 'âš ï¸' : 'âœ…';
-    final label = level == 'HIGH' ? 'High risk Â· Immediate attention'
+    final label = level == 'HIGH' ? 'High risk Â- Immediate attention'
                 : level == 'MODERATE' ? 'Unstable movement detected' : 'Stable';
     final time  = (a['created_at'] ?? '').toString();
-    final timeStr = time.length >= 16 ? time.substring(11, 16) : 'â€”';
+    final timeStr = time.length >= 16 ? time.substring(11, 16) : 'â€"';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -205,12 +205,12 @@ class _AlertCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // â”€â”€ Top row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Top row â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Row(children: [
             Text(icon, style: const TextStyle(fontSize: 20)),
             const SizedBox(width: 8),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Room ${a['room_id'] ?? 'â€”'} Â· Patient ${a['patient_id'] ?? 'â€”'}',
+              Text('Room ${a['room_id'] ?? 'â€"'} Â- Patient ${a['patient_id'] ?? 'â€"'}',
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w700, color: _text)),
               Text(label, style: TextStyle(fontSize: 11, color: _muted)),
@@ -228,7 +228,7 @@ class _AlertCard extends StatelessWidget {
           ]),
           const SizedBox(height: 10),
 
-          // â”€â”€ Action buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Action buttons â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Row(children: [
             // Replay button
             Expanded(

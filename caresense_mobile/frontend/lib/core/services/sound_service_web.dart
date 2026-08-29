@@ -1,4 +1,4 @@
-// Web Audio API beep via dart:js — works in Chrome without any extra packages
+// Web Audio API beep via dart:js - works in Chrome without any extra packages
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:js' as js;
 import 'dart:async';

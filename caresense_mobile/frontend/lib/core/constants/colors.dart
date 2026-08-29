@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // ── Primary clinical palette — matches web dashboard exactly ─────────────
+  // ── Primary clinical palette - matches web dashboard exactly ─────────────
   static const Color primary      = Color(0xFF1E3A8A); // web: #1e3a8a deep navy
   static const Color primaryLight = Color(0xFF3B82F6); // mid blue
   static const Color primaryDark  = Color(0xFF1E3A8A); // deep navy
@@ -21,7 +21,7 @@ class AppColors {
   static const Color mutedLight   = Color(0xFF64748B);
   static const Color dimLight     = Color(0xFF94A3B8);
 
-  // ── Dark theme — MAIN APP ─────────────────────────────────────────────────
+  // ── Dark theme - MAIN APP ─────────────────────────────────────────────────
   static const Color bgDark       = Color(0xFF060D1A);   // deepest navy
   static const Color surfaceDark  = Color(0xFF0D1B2E);   // card background
   static const Color cardDark     = Color(0xFF1A2940);   // elevated card
@@ -37,7 +37,7 @@ class AppColors {
   static const Color scribe       = Color(0xFF059669);
   static const Color gloss        = Color(0xFFD97706);
 
-  // ── Risk levels — matches web dashboard exactly ───────────────────────────
+  // ── Risk levels - matches web dashboard exactly ───────────────────────────
   static const Color high         = Color(0xFFEF4444);
   static const Color moderate     = Color(0xFFF59E0B);
   static const Color low          = Color(0xFF22C55E);

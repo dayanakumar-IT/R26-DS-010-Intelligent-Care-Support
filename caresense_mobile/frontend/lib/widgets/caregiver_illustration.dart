@@ -24,14 +24,14 @@ class _CaregiverPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // â”€â”€ Background circle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Background circle â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     final bgPaint = Paint()
       ..shader = const RadialGradient(
         colors: [Color(0xFFEFF6FF), Color(0xFFF5F3FF)],
       ).createShader(Rect.fromCircle(center: Offset(w * 0.5, h * 0.5), radius: h * 0.48));
     canvas.drawCircle(Offset(w * 0.5, h * 0.52), h * 0.46, bgPaint);
 
-    // â”€â”€ Caregiver body (scrubs â€” teal/blue) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Caregiver body (scrubs â€" teal/blue) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     final scrubPaint = Paint()
       ..color = const Color(0xFF60A5FA)
       ..style = PaintingStyle.fill;
@@ -167,10 +167,10 @@ class _CaregiverPainter extends CustomPainter {
       shoePaint,
     );
 
-    // â”€â”€ Floating badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Floating badges â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     _drawBadge(canvas, Offset(w * 0.82, h * 0.22), 'ðŸ›¡', 'SENTRY', AppColors.sentry);
     _drawBadge(canvas, Offset(w * 0.82, h * 0.52), 'ðŸŽ¤', 'SCRIBE', AppColors.scribe);
-    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), 'ðŸ’“', 'PULSE', AppColors.pulse);
+    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), 'ðŸ'"', 'PULSE', AppColors.pulse);
   }
 
   void _drawBadge(Canvas canvas, Offset center, String emoji, String label, Color color) {

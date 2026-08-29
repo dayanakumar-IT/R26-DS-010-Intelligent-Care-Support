@@ -38,16 +38,16 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
   @override
   Widget build(BuildContext context) {
     final p      = widget.patient;
-    final roomId = p['room_id']      ?? 'â€”';
-    final code   = p['patient_code'] ?? 'â€”';
-    final gender = p['gender']       ?? 'â€”';
+    final roomId = p['room_id']      ?? 'â€"';
+    final code   = p['patient_code'] ?? 'â€"';
+    final gender = p['gender']       ?? 'â€"';
     final age    = p['age'];
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
-          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: _surface,
@@ -57,7 +57,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                   onTap: () => Navigator.pop(context),
                   child: Row(children: [
                     const Icon(Icons.arrow_back_ios_rounded, size: 16, color: AppColors.accentBlue),
-                    Text('$roomId â€“ $code',
+                    Text('$roomId â€" $code',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                             color: AppColors.accentBlue)),
                   ]),
@@ -75,12 +75,12 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                 ),
               ]),
               const SizedBox(height: 4),
-              Text('$code Â· ${age != null ? 'Age: $age Â· ' : ''}$gender',
+              Text('$code Â- ${age != null ? 'Age: $age Â- ' : ''}$gender',
                   style: TextStyle(fontSize: 12, color: _muted)),
             ]),
           ),
 
-          // â”€â”€ Tab bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Tab bar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Container(
             color: _surface,
             child: TabBar(
@@ -94,12 +94,12 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
             ),
           ),
 
-          // â”€â”€ Tab content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // â"€â"€ Tab content â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
           Expanded(
             child: TabBarView(
               controller: _tabs,
               children: [
-                // â”€â”€ OVERVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // â"€â"€ OVERVIEW â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -156,7 +156,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                   ]),
                 ),
 
-                // â”€â”€ HISTORY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // â"€â"€ HISTORY â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                 _historyFuture == null
                   ? Center(child: Text('No patient ID.', style: TextStyle(color: _muted)))
                   : FutureBuilder<List<Map<String, dynamic>>>(
@@ -198,11 +198,11 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                                     decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
                                 const SizedBox(width: 10),
                                 Expanded(child: Text(
-                                  'Score: ${(e['risk_score'] ?? 0.0).toStringAsFixed(2)} Â· $lvl',
+                                  'Score: ${(e['risk_score'] ?? 0.0).toStringAsFixed(2)} Â- $lvl',
                                   style: TextStyle(fontSize: 12, color: _text),
                                 )),
                                 Text(
-                                  ts.length >= 16 ? ts.substring(11, 16) : 'â€”',
+                                  ts.length >= 16 ? ts.substring(11, 16) : 'â€"',
                                   style: TextStyle(fontSize: 10, color: _dim),
                                 ),
                               ]),
@@ -212,7 +212,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                       },
                     ),
 
-                // â”€â”€ NOTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // â"€â"€ NOTES â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
                 Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.note_outlined, size: 40, color: _dim),
                   const SizedBox(height: 8),

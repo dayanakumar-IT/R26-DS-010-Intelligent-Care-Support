@@ -1,4 +1,4 @@
-// SENTRY Service — Harishalinee
+// SENTRY Service - Harishalinee
 // Real API calls to the fall-detection backend.
 
 import 'package:dio/dio.dart';

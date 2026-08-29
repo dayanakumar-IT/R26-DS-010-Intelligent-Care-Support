@@ -6,6 +6,6 @@ class ScribeAlertsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.bgLight,
-    body: const Center(child: Text('SCRIBE Alerts — Teammate builds here',
+    body: const Center(child: Text('SCRIBE Alerts - Teammate builds here',
       style: TextStyle(color: AppColors.mutedLight))));
 }
