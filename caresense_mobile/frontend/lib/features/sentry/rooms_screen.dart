@@ -30,18 +30,13 @@ class _RoomsScreenState extends State<RoomsScreen> {
   Future<void> _load() async {
     setState(() { _patients = null; _error = null; });
     try {
-      // Query Supabase directly:
-      // 1. Get rooms where caregiver_id IS NOT NULL (assigned rooms)
-      // 2. Get patients in those rooms
-      // rooms.caregiver_id stores caregiver_profiles UUID (set by web dashboard
-      // via PATCH /api/rooms/:id/caregiver). We filter IS NOT NULL rather than
-      // matching auth UUID since they differ in schema.
       final db = Supabase.instance.client;
+      final myId = db.auth.currentUser?.id;
 
-      final roomsRes = await db
-          .from('rooms')
-          .select('room_code, ward, caregiver_id')
-          .not('caregiver_id', 'is', null);
+      // Filter rooms to only this caregiver's assigned rooms using their auth UUID.
+      final roomsRes = myId != null
+          ? await db.from('rooms').select('room_code, ward, caregiver_id').eq('caregiver_id', myId)
+          : await db.from('rooms').select('room_code, ward, caregiver_id').not('caregiver_id', 'is', null);
 
       final roomCodes = (roomsRes as List)
           .map((r) => r['room_code'].toString())
