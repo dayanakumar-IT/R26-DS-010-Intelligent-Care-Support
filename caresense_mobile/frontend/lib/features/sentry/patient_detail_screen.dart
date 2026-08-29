@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import 'event_replay_screen.dart';
@@ -38,16 +38,16 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
   @override
   Widget build(BuildContext context) {
     final p      = widget.patient;
-    final roomId = p['room_id']      ?? '—';
-    final code   = p['patient_code'] ?? '—';
-    final gender = p['gender']       ?? '—';
+    final roomId = p['room_id']      ?? 'â€”';
+    final code   = p['patient_code'] ?? 'â€”';
+    final gender = p['gender']       ?? 'â€”';
     final age    = p['age'];
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
-          // ── Header ──────────────────────────────────────────────────────
+          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: _surface,
@@ -57,7 +57,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                   onTap: () => Navigator.pop(context),
                   child: Row(children: [
                     const Icon(Icons.arrow_back_ios_rounded, size: 16, color: AppColors.accentBlue),
-                    Text('$roomId – $code',
+                    Text('$roomId â€“ $code',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                             color: AppColors.accentBlue)),
                   ]),
@@ -66,21 +66,21 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.high.withValues(alpha: 0.15),
+                    color: AppColors.high.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.high.withValues(alpha: 0.4)),
+                    border: Border.all(color: AppColors.high.withOpacity(0.4)),
                   ),
                   child: const Text('HIGH',
                       style: TextStyle(color: AppColors.high, fontSize: 10, fontWeight: FontWeight.w800)),
                 ),
               ]),
               const SizedBox(height: 4),
-              Text('$code · ${age != null ? 'Age: $age · ' : ''}$gender',
+              Text('$code Â· ${age != null ? 'Age: $age Â· ' : ''}$gender',
                   style: TextStyle(fontSize: 12, color: _muted)),
             ]),
           ),
 
-          // ── Tab bar ──────────────────────────────────────────────────────
+          // â”€â”€ Tab bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Container(
             color: _surface,
             child: TabBar(
@@ -94,12 +94,12 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
             ),
           ),
 
-          // ── Tab content ──────────────────────────────────────────────────
+          // â”€â”€ Tab content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             child: TabBarView(
               controller: _tabs,
               children: [
-                // ── OVERVIEW ──────────────────────────────────────────────
+                // â”€â”€ OVERVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -156,7 +156,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                   ]),
                 ),
 
-                // ── HISTORY ───────────────────────────────────────────────
+                // â”€â”€ HISTORY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 _historyFuture == null
                   ? Center(child: Text('No patient ID.', style: TextStyle(color: _muted)))
                   : FutureBuilder<List<Map<String, dynamic>>>(
@@ -198,11 +198,11 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                                     decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
                                 const SizedBox(width: 10),
                                 Expanded(child: Text(
-                                  'Score: ${(e['risk_score'] ?? 0.0).toStringAsFixed(2)} · $lvl',
+                                  'Score: ${(e['risk_score'] ?? 0.0).toStringAsFixed(2)} Â· $lvl',
                                   style: TextStyle(fontSize: 12, color: _text),
                                 )),
                                 Text(
-                                  ts.length >= 16 ? ts.substring(11, 16) : '—',
+                                  ts.length >= 16 ? ts.substring(11, 16) : 'â€”',
                                   style: TextStyle(fontSize: 10, color: _dim),
                                 ),
                               ]),
@@ -212,7 +212,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
                       },
                     ),
 
-                // ── NOTES ─────────────────────────────────────────────────
+                // â”€â”€ NOTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.note_outlined, size: 40, color: _dim),
                   const SizedBox(height: 8),
@@ -268,7 +268,7 @@ class _MetricRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: valueColor.withValues(alpha: 0.12),
+            color: valueColor.withOpacity(0.12),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(value,
@@ -284,7 +284,7 @@ class _TrendPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Grid
     final gridP = Paint()
-      ..color = Colors.white.withValues(alpha: 0.04)
+      ..color = Colors.white.withOpacity(0.04)
       ..strokeWidth = 1;
     for (double y = 0; y <= size.height; y += size.height / 4) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridP);
@@ -307,7 +307,7 @@ class _TrendPainter extends CustomPainter {
     canvas.drawPath(fill, Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [AppColors.high.withValues(alpha: 0.25), Colors.transparent],
+        colors: [AppColors.high.withOpacity(0.25), Colors.transparent],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.fill);
 
@@ -324,7 +324,7 @@ class _TrendPainter extends CustomPainter {
     final lastY = size.height * (1 - pts.last);
     canvas.drawCircle(Offset(lastX, lastY), 5, Paint()..color = AppColors.high);
     canvas.drawCircle(Offset(lastX, lastY), 5,
-        Paint()..color = Colors.white.withValues(alpha: 0.3)
+        Paint()..color = Colors.white.withOpacity(0.3)
         ..style = PaintingStyle.stroke..strokeWidth = 1.5);
   }
   @override

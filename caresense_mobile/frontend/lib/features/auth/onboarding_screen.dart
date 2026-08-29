@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/colors.dart';
@@ -80,11 +80,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             animation: _floatAnim,
             builder: (_, __) => Stack(children: [
               Positioned(top: -60 + _floatAnim.value, right: -40,
-                child: _BgCircle(120, AppColors.primary.withValues(alpha: 0.06))),
+                child: _BgCircle(120, AppColors.primary.withOpacity(0.06))),
               Positioned(bottom: 100 - _floatAnim.value, left: -50,
-                child: _BgCircle(160, AppColors.secondary.withValues(alpha: 0.05))),
+                child: _BgCircle(160, AppColors.secondary.withOpacity(0.05))),
               Positioned(top: 200 + _floatAnim.value * 0.5, left: 20,
-                child: _BgCircle(60, AppColors.teal.withValues(alpha: 0.07))),
+                child: _BgCircle(60, AppColors.teal.withOpacity(0.07))),
             ]),
           ),
 
@@ -119,7 +119,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.08),
+                            color: AppColors.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: AppColors.borderLight),
                           ),
@@ -177,7 +177,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           gradient: AppColors.brandGradient,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.35),
+                            color: AppColors.primary.withOpacity(0.35),
                             blurRadius: 20, offset: const Offset(0, 8),
                           )],
                         ),
@@ -203,7 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         onTap: () => _page.previousPage(
                           duration: const Duration(milliseconds: 400),
                           curve: Curves.easeInOut),
-                        child: const Text('← Back',
+                        child: const Text('â† Back',
                           style: TextStyle(fontSize: 13, color: AppColors.mutedLight,
                             fontWeight: FontWeight.w500)),
                       ),
@@ -219,7 +219,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-// ── Page 1: Welcome — all 4 modules ────────────────────────────────────────
+// â”€â”€ Page 1: Welcome â€” all 4 modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _Page1 extends StatelessWidget {
   final Animation<double> fade, pulse;
   final Animation<double> float;
@@ -254,15 +254,15 @@ class _Page1 extends StatelessWidget {
               style: TextStyle(fontSize: 14, color: AppColors.mutedLight, height: 1.65)),
             const SizedBox(height: 22),
             Row(children: [
-              _ModuleTile('💓', 'PULSE', 'Stress Risk', AppColors.pulse),
+              _ModuleTile('ðŸ’“', 'PULSE', 'Stress Risk', AppColors.pulse),
               const SizedBox(width: 10),
-              _ModuleTile('🛡', 'SENTRY', 'Fall Risk', AppColors.sentry),
+              _ModuleTile('ðŸ›¡', 'SENTRY', 'Fall Risk', AppColors.sentry),
             ]),
             const SizedBox(height: 10),
             Row(children: [
-              _ModuleTile('🎤', 'SCRIBE', 'ADL Docs', AppColors.scribe),
+              _ModuleTile('ðŸŽ¤', 'SCRIBE', 'ADL Docs', AppColors.scribe),
               const SizedBox(width: 10),
-              _ModuleTile('🤟', 'GLOSS', 'Sign Lang', AppColors.gloss),
+              _ModuleTile('ðŸ¤Ÿ', 'GLOSS', 'Sign Lang', AppColors.gloss),
             ]),
           ],
         ),
@@ -271,7 +271,7 @@ class _Page1 extends StatelessWidget {
   }
 }
 
-// ── Page 2: SENTRY + SCRIBE ─────────────────────────────────────────────────
+// â”€â”€ Page 2: SENTRY + SCRIBE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _Page2 extends StatelessWidget {
   final Animation<double> fade, wave;
   final Animation<double> float;
@@ -304,17 +304,17 @@ class _Page2 extends StatelessWidget {
             const SizedBox(height: 20),
             _FeatureCard(
               gradient: AppColors.sentryGradient,
-              icon: '🛡',
-              title: 'SENTRY — Fall Risk',
+              icon: 'ðŸ›¡',
+              title: 'SENTRY â€” Fall Risk',
               desc: 'ST-GCN skeletal AI detects fall risk in real-time. 98.3% accuracy on all patient movements.',
               stat: '< 1 sec alert delivery',
             ),
             const SizedBox(height: 12),
             _FeatureCard(
               gradient: AppColors.scribeGradient,
-              icon: '🎤',
-              title: 'SCRIBE — Voice to ADL',
-              desc: 'Speak naturally — AI converts your words into structured ADL documentation instantly.',
+              icon: 'ðŸŽ¤',
+              title: 'SCRIBE â€” Voice to ADL',
+              desc: 'Speak naturally â€” AI converts your words into structured ADL documentation instantly.',
               stat: 'Free speech, structured output',
             ),
           ],
@@ -324,7 +324,7 @@ class _Page2 extends StatelessWidget {
   }
 }
 
-// ── Page 3: PULSE + GLOSS ───────────────────────────────────────────────────
+// â”€â”€ Page 3: PULSE + GLOSS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _Page3 extends StatelessWidget {
   final Animation<double> fade, pulse;
   final Animation<double> float;
@@ -356,16 +356,16 @@ class _Page3 extends StatelessWidget {
             const SizedBox(height: 20),
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFDB2777)]),
-              icon: '💓',
-              title: 'PULSE — Caregiver Stress',
+              icon: 'ðŸ’“',
+              title: 'PULSE â€” Caregiver Stress',
               desc: 'Personalized stress-risk detection using proximity networks and physiological signals.',
               stat: 'Causally-ordered detection',
             ),
             const SizedBox(height: 12),
             _FeatureCard(
               gradient: const LinearGradient(colors: [Color(0xFFD97706), Color(0xFF059669)]),
-              icon: '🤟',
-              title: 'GLOSS — Sign Language',
+              icon: 'ðŸ¤Ÿ',
+              title: 'GLOSS â€” Sign Language',
               desc: 'Real-time sign recognition and training for caregivers with Deaf patients.',
               stat: 'Per-landmark error localization',
             ),
@@ -373,7 +373,7 @@ class _Page3 extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.06),
+                color: AppColors.primary.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.borderLight),
               ),
@@ -386,7 +386,7 @@ class _Page3 extends StatelessWidget {
                     color: Colors.white, size: 18))),
                 const SizedBox(width: 12),
                 const Expanded(child: Text(
-                  'Switch between your assigned modules anytime — no re-login needed.',
+                  'Switch between your assigned modules anytime â€” no re-login needed.',
                   style: TextStyle(fontSize: 12, color: AppColors.mutedLight, height: 1.5))),
               ]),
             ),
@@ -397,7 +397,7 @@ class _Page3 extends StatelessWidget {
   }
 }
 
-// ── Custom widgets ──────────────────────────────────────────────────────────
+// â”€â”€ Custom widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _BgCircle extends StatelessWidget {
   final double size;
   final Color color;
@@ -419,12 +419,12 @@ class _ModuleTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: color.withOpacity(0.25)),
+        boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Row(children: [
         Container(width: 36, height: 36,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
           child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18)))),
         const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -448,7 +448,7 @@ class _FeatureCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: AppColors.borderLight),
-      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
     ),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(width: 46, height: 46,
@@ -462,7 +462,7 @@ class _FeatureCard extends StatelessWidget {
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
           child: Text(stat, style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w600)),
         ),
       ])),
@@ -470,7 +470,7 @@ class _FeatureCard extends StatelessWidget {
   );
 }
 
-// ── Animated illustrations ───────────────────────────────────────────────────
+// â”€â”€ Animated illustrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _CareIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -517,19 +517,19 @@ class _CarePainter extends CustomPainter {
       Paint()..color = const Color(0xFF7C3AED));
 
     // Module badges
-    _badge(canvas, Offset(w*0.15, h*0.25), '🛡', AppColors.sentry);
-    _badge(canvas, Offset(w*0.85, h*0.25), '🎤', AppColors.scribe);
-    _badge(canvas, Offset(w*0.15, h*0.65), '💓', AppColors.pulse);
-    _badge(canvas, Offset(w*0.85, h*0.65), '🤟', AppColors.gloss);
+    _badge(canvas, Offset(w*0.15, h*0.25), 'ðŸ›¡', AppColors.sentry);
+    _badge(canvas, Offset(w*0.85, h*0.25), 'ðŸŽ¤', AppColors.scribe);
+    _badge(canvas, Offset(w*0.15, h*0.65), 'ðŸ’“', AppColors.pulse);
+    _badge(canvas, Offset(w*0.85, h*0.65), 'ðŸ¤Ÿ', AppColors.gloss);
   }
 
   void _badge(Canvas canvas, Offset c, String emoji, Color color) {
     canvas.drawRRect(RRect.fromRectAndRadius(
       Rect.fromCenter(center: c, width: 38, height: 26), const Radius.circular(8)),
-      Paint()..color = color.withValues(alpha: 0.15));
+      Paint()..color = color.withOpacity(0.15));
     canvas.drawRRect(RRect.fromRectAndRadius(
       Rect.fromCenter(center: c, width: 38, height: 26), const Radius.circular(8)),
-      Paint()..color = color.withValues(alpha: 0.4)..style = PaintingStyle.stroke..strokeWidth = 1);
+      Paint()..color = color.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 1);
     final tp = TextPainter(
       text: TextSpan(text: emoji, style: const TextStyle(fontSize: 14)),
       textDirection: TextDirection.ltr)..layout();
@@ -562,7 +562,7 @@ class _SkelPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width; final h = size.height;
-    canvas.drawCircle(Offset(w*0.5, h*0.1), 14, Paint()..color = AppColors.primary.withValues(alpha: 0.8));
+    canvas.drawCircle(Offset(w*0.5, h*0.1), 14, Paint()..color = AppColors.primary.withOpacity(0.8));
     final p = Paint()..color = AppColors.primary..strokeWidth = 3..strokeCap = StrokeCap.round;
     // Body sway
     final sway = sin(t * 2 * pi) * 6;
@@ -573,14 +573,14 @@ class _SkelPainter extends CustomPainter {
     canvas.drawLine(Offset(w*0.5+sway, h*0.55), Offset(w*0.6, h*0.82), p);
     // Risk score badge
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w*0.65, h*0.1, 60, 28), const Radius.circular(8)),
-      Paint()..color = AppColors.high.withValues(alpha: 0.12));
+      Paint()..color = AppColors.high.withOpacity(0.12));
     final tp = TextPainter(
       text: const TextSpan(text: 'HIGH 82',
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.high)),
       textDirection: TextDirection.ltr)..layout();
     tp.paint(canvas, Offset(w*0.67, h*0.14));
     // Waveform at bottom
-    final wp = Paint()..color = AppColors.primary.withValues(alpha: 0.4)..strokeWidth = 2
+    final wp = Paint()..color = AppColors.primary.withOpacity(0.4)..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final wavePath = Path();
     for (double x = 0; x <= w; x += 2) {
@@ -610,10 +610,10 @@ class _PulsePainter extends CustomPainter {
         Paint()..color = AppColors.pulse.withValues(alpha: 0.06 * (4 - i)));
     }
     canvas.drawCircle(Offset(w*0.5, h*0.5), 36,
-      Paint()..color = AppColors.pulse.withValues(alpha: 0.15));
+      Paint()..color = AppColors.pulse.withOpacity(0.15));
     // Heart
     final tp = TextPainter(
-      text: const TextSpan(text: '💓', style: TextStyle(fontSize: 40)),
+      text: const TextSpan(text: 'ðŸ’“', style: TextStyle(fontSize: 40)),
       textDirection: TextDirection.ltr)..layout();
     tp.paint(canvas, Offset(w*0.5 - tp.width/2, h*0.5 - tp.height/2));
     // ECG line

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
@@ -30,12 +30,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ── Page title ────────────────────────────────────────────────
+            // â”€â”€ Page title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             const Text('Profile',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _text)),
             const SizedBox(height: 20),
 
-            // ── Avatar + name ─────────────────────────────────────────────
+            // â”€â”€ Avatar + name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Center(child: Column(children: [
               Container(
                 width: 80, height: 80,
@@ -43,7 +43,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   gradient: AppColors.brandGradient,
                   shape: BoxShape.circle,
                 ),
-                child: const Center(child: Text('👩‍⚕️', style: TextStyle(fontSize: 36))),
+                child: const Center(child: Text('ðŸ‘©â€âš•ï¸', style: TextStyle(fontSize: 36))),
               ),
               const SizedBox(height: 12),
               Text(auth.caregiverName ?? 'Caregiver',
@@ -52,18 +52,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withValues(alpha: 0.12),
+                  color: AppColors.accentBlue.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.accentBlue.withValues(alpha: 0.3)),
+                  border: Border.all(color: AppColors.accentBlue.withOpacity(0.3)),
                 ),
-                child: const Text('Caregiver · Ward: East Wing',
+                child: const Text('Caregiver Â· Ward: East Wing',
                     style: TextStyle(fontSize: 11, color: AppColors.accentBlue,
                         fontWeight: FontWeight.w600)),
               ),
             ])),
             const SizedBox(height: 24),
 
-            // ── Quick actions ─────────────────────────────────────────────
+            // â”€â”€ Quick actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _SectionHeader('Quick Actions'),
             const SizedBox(height: 8),
             _ActionTile(
@@ -92,13 +92,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 22),
 
-            // ── App settings ──────────────────────────────────────────────
+            // â”€â”€ App settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _SectionHeader('App Settings'),
             const SizedBox(height: 8),
             _ToggleTile(
               icon: Icons.notifications_outlined,
               label: 'Sound Alerts',
-              sub: 'HIGH: continuous · MODERATE: single beep',
+              sub: 'HIGH: continuous Â· MODERATE: single beep',
               value: _notifications,
               color: AppColors.accentBlue,
               onChanged: (v) => setState(() => _notifications = v),
@@ -113,7 +113,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Sign out ──────────────────────────────────────────────────
+            // â”€â”€ Sign out â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -125,7 +125,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 label: const Text('Sign Out',
                     style: TextStyle(color: AppColors.high, fontWeight: FontWeight.w700)),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppColors.high.withValues(alpha: 0.5)),
+                  side: BorderSide(color: AppColors.high.withOpacity(0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
@@ -170,7 +170,7 @@ class _ActionTile extends StatelessWidget {
         leading: Container(
           width: 34, height: 34,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
+            color: color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 18),
@@ -208,7 +208,7 @@ class _ToggleTile extends StatelessWidget {
         leading: Container(
           width: 34, height: 34,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 18),

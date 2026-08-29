@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/colors.dart';
 
@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen>
                       borderRadius: BorderRadius.circular(26),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.accent.withValues(alpha: 0.3),
+                          color: AppColors.accent.withOpacity(0.3),
                           blurRadius: 24, offset: const Offset(0, 8),
                         ),
                       ],
@@ -90,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen>
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
                       valueColor: AlwaysStoppedAnimation(
-                        AppColors.accent.withValues(alpha: 0.5)),
+                        AppColors.accent.withOpacity(0.5)),
                     ),
                   ),
                 ],

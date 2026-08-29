@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/constants/colors.dart';
@@ -36,7 +36,7 @@ class ModuleSwitcherSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _ModuleRow(
-            emoji: '🛡', name: 'SENTRY', sub: 'Fall Risk Detection',
+            emoji: 'ðŸ›¡', name: 'SENTRY', sub: 'Fall Risk Detection',
             color: AppColors.sentry,
             isActive: active == ActiveModule.sentry,
             onTap: () {
@@ -47,7 +47,7 @@ class ModuleSwitcherSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _ModuleRow(
-            emoji: '🎤', name: 'SCRIBE', sub: 'Voice to ADL Documentation',
+            emoji: 'ðŸŽ¤', name: 'SCRIBE', sub: 'Voice to ADL Documentation',
             color: AppColors.scribe,
             isActive: active == ActiveModule.scribe,
             onTap: () {
@@ -65,9 +65,9 @@ class ModuleSwitcherSheet extends ConsumerWidget {
               border: Border.all(color: AppColors.borderLight),
             ),
             child: Row(children: [
-              const Text('🔒', style: TextStyle(fontSize: 14)),
+              const Text('ðŸ”’', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
-              Text('PULSE & GLOSS — Not assigned to you',
+              Text('PULSE & GLOSS â€” Not assigned to you',
                 style: TextStyle(fontSize: 12, color: AppColors.mutedLight)),
             ]),
           ),
@@ -92,7 +92,7 @@ class _ModuleRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isActive ? color.withValues(alpha: 0.06) : AppColors.bgLight,
+          color: isActive ? color.withOpacity(0.06) : AppColors.bgLight,
           border: Border.all(
             color: isActive ? color : AppColors.borderLight,
             width: isActive ? 2 : 1,
@@ -103,7 +103,7 @@ class _ModuleRow extends StatelessWidget {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
@@ -117,7 +117,7 @@ class _ModuleRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('Active', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),

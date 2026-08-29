@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/services/sentry_service.dart';
 import '../features/sentry/sentry_home_screen.dart';
@@ -101,7 +101,7 @@ class _NavItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: active ? BoxDecoration(
-                color: AppColors.accentBlue.withValues(alpha: 0.12),
+                color: AppColors.accentBlue.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ) : null,
               child: Icon(active ? activeIcon : icon, color: col, size: 22),

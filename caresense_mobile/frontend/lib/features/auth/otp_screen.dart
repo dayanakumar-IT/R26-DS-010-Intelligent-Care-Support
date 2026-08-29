@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -79,10 +79,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     ),
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [BoxShadow(
-                      color: AppColors.accent.withValues(alpha: 0.3),
+                      color: AppColors.accent.withOpacity(0.3),
                       blurRadius: 16, offset: const Offset(0, 6))],
                   ),
-                  child: const Center(child: Text('📱', style: TextStyle(fontSize: 38))),
+                  child: const Center(child: Text('ðŸ“±', style: TextStyle(fontSize: 38))),
                 ),
                 const SizedBox(height: 24),
                 const Text('Verify your number',
@@ -145,7 +145,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         colors: [AppColors.blueStart, AppColors.purpleEnd]),
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.3),
+                        color: AppColors.accent.withOpacity(0.3),
                         blurRadius: 12, offset: const Offset(0, 4))],
                     ),
                     child: Center(

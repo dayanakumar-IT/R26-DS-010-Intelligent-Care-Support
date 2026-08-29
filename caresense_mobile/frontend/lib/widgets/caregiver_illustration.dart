@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 
 /// Inline SVG-style caregiver illustration drawn with Canvas
@@ -24,14 +24,14 @@ class _CaregiverPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // ── Background circle ───────────────────────────────────────────────────
+    // â”€â”€ Background circle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     final bgPaint = Paint()
       ..shader = const RadialGradient(
         colors: [Color(0xFFEFF6FF), Color(0xFFF5F3FF)],
       ).createShader(Rect.fromCircle(center: Offset(w * 0.5, h * 0.5), radius: h * 0.48));
     canvas.drawCircle(Offset(w * 0.5, h * 0.52), h * 0.46, bgPaint);
 
-    // ── Caregiver body (scrubs — teal/blue) ─────────────────────────────────
+    // â”€â”€ Caregiver body (scrubs â€” teal/blue) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     final scrubPaint = Paint()
       ..color = const Color(0xFF60A5FA)
       ..style = PaintingStyle.fill;
@@ -167,16 +167,16 @@ class _CaregiverPainter extends CustomPainter {
       shoePaint,
     );
 
-    // ── Floating badges ─────────────────────────────────────────────────────
-    _drawBadge(canvas, Offset(w * 0.82, h * 0.22), '🛡', 'SENTRY', AppColors.sentry);
-    _drawBadge(canvas, Offset(w * 0.82, h * 0.52), '🎤', 'SCRIBE', AppColors.scribe);
-    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), '💓', 'PULSE', AppColors.pulse);
+    // â”€â”€ Floating badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    _drawBadge(canvas, Offset(w * 0.82, h * 0.22), 'ðŸ›¡', 'SENTRY', AppColors.sentry);
+    _drawBadge(canvas, Offset(w * 0.82, h * 0.52), 'ðŸŽ¤', 'SCRIBE', AppColors.scribe);
+    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), 'ðŸ’“', 'PULSE', AppColors.pulse);
   }
 
   void _drawBadge(Canvas canvas, Offset center, String emoji, String label, Color color) {
-    final bgPaint = Paint()..color = color.withValues(alpha: 0.12);
+    final bgPaint = Paint()..color = color.withOpacity(0.12);
     final borderPaint = Paint()
-      ..color = color.withValues(alpha: 0.3)
+      ..color = color.withOpacity(0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     final rect = RRect.fromRectAndRadius(

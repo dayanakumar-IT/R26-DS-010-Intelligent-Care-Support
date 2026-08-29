@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
@@ -51,7 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // ── Top section with illustration ──────────────────────────
+                // â”€â”€ Top section with illustration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -90,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
 
-                // ── Form card ────────────────────────────────────────────────
+                // â”€â”€ Form card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   padding: const EdgeInsets.all(24),
@@ -99,7 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.08),
+                        color: AppColors.accent.withOpacity(0.08),
                         blurRadius: 24, offset: const Offset(0, 8),
                       ),
                     ],
@@ -107,7 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Welcome back 👋',
+                      const Text('Welcome back ðŸ‘‹',
                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
                           color: AppColors.textLight)),
                       const SizedBox(height: 4),
@@ -131,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 6),
                       _Field(
                         controller: _passCtrl,
-                        hint: '••••••••',
+                        hint: 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢',
                         icon: Icons.lock_outline_rounded,
                         obscure: _obscure,
                         suffix: GestureDetector(
@@ -163,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.accent.withValues(alpha: 0.3),
+                                color: AppColors.accent.withOpacity(0.3),
                                 blurRadius: 12, offset: const Offset(0, 4),
                               ),
                             ],

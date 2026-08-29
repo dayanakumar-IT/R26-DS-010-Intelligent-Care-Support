@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants/colors.dart';
 import '../store/module_store.dart';
@@ -12,7 +12,7 @@ class ModuleSwitcherPill extends ConsumerWidget {
     final module = ref.watch(moduleProvider);
     final isSentry = module == ActiveModule.sentry;
     final color = isSentry ? AppColors.sentry : AppColors.scribe;
-    final emoji = isSentry ? '🛡' : '🎤';
+    final emoji = isSentry ? 'ðŸ›¡' : 'ðŸŽ¤';
     final label = isSentry ? 'SENTRY' : 'SCRIBE';
 
     return GestureDetector(
@@ -25,8 +25,8 @@ class ModuleSwitcherPill extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          color: color.withOpacity(0.08),
+          border: Border.all(color: color.withOpacity(0.3)),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [

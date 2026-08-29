@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -6,7 +6,7 @@ import '../../core/constants/colors.dart';
 import '../../core/config/api_config.dart';
 import 'patient_detail_screen.dart';
 
-// ── Bone pairs — 14-joint MediaPipe subset (matches backend config/settings.py)
+// â”€â”€ Bone pairs â€” 14-joint MediaPipe subset (matches backend config/settings.py)
 const List<List<int>> kBones = [
   [0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7],
   [1, 8], [1, 9], [8, 10], [9, 11], [10, 12], [11, 13],
@@ -87,19 +87,19 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   Widget build(BuildContext context) {
     final level     = (_frame?['risk_level'] ?? 'NORMAL').toString();
     final score     = _frame?['risk_score'];
-    final posture   = _frame?['posture']    ?? '—';
-    final zone      = _frame?['zone']       ?? '—';
+    final posture   = _frame?['posture']    ?? 'â€”';
+    final zone      = _frame?['zone']       ?? 'â€”';
     final conf      = _frame?['confidence'];
     final color     = _levelColor(level);
-    final scoreText = score != null ? '${(score as num).toStringAsFixed(0)}/100' : '—';
-    final confText  = conf  != null ? '${((conf as num) * 100).toStringAsFixed(0)}%' : '—';
+    final scoreText = score != null ? '${(score as num).toStringAsFixed(0)}/100' : 'â€”';
+    final confText  = conf  != null ? '${((conf as num) * 100).toStringAsFixed(0)}%' : 'â€”';
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(children: [
-            // ── Header ──────────────────────────────────────────────────
+            // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(children: [
@@ -108,7 +108,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   child: Row(children: [
                     const Icon(Icons.arrow_back_ios_rounded, size: 16, color: AppColors.accentBlue),
                     const SizedBox(width: 2),
-                    Text('${widget.roomId} · ${widget.patientCode}',
+                    Text('${widget.roomId} Â· ${widget.patientCode}',
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
                             color: AppColors.accentBlue)),
                   ]),
@@ -118,9 +118,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
+                    color: color.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(7),
-                    border: Border.all(color: color.withValues(alpha: 0.5)),
+                    border: Border.all(color: color.withOpacity(0.5)),
                   ),
                   child: Text(level == 'MODERATE' ? 'MODERATE RISK'
                              : level == 'HIGH' ? 'HIGH RISK' : 'NORMAL',
@@ -129,7 +129,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
               ]),
             ),
 
-            // ── Live indicator ───────────────────────────────────────────
+            // â”€â”€ Live indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(children: [
@@ -138,14 +138,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                         color: _connected ? AppColors.low : AppColors.high,
                         shape: BoxShape.circle)),
                 const SizedBox(width: 5),
-                Text(_connected ? 'LIVE · ${DateTime.now().hour.toString().padLeft(2,'0')}:${DateTime.now().minute.toString().padLeft(2,'0')}'
-                               : 'Reconnecting…',
+                Text(_connected ? 'LIVE Â· ${DateTime.now().hour.toString().padLeft(2,'0')}:${DateTime.now().minute.toString().padLeft(2,'0')}'
+                               : 'Reconnectingâ€¦',
                     style: TextStyle(fontSize: 11, color: _muted, fontWeight: FontWeight.w600)),
               ]),
             ),
             const SizedBox(height: 10),
 
-            // ── Skeleton canvas ──────────────────────────────────────────
+            // â”€â”€ Skeleton canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -165,7 +165,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             ),
             const SizedBox(height: 14),
 
-            // ── Metrics row ──────────────────────────────────────────────
+            // â”€â”€ Metrics row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(children: [
@@ -178,7 +178,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             ),
             const SizedBox(height: 10),
 
-            // ── Info cards ───────────────────────────────────────────────
+            // â”€â”€ Info cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(children: [
@@ -189,7 +189,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             ),
             const SizedBox(height: 10),
 
-            // ── Key observations ──────────────────────────────────────────
+            // â”€â”€ Key observations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (_frame?['key_factors'] != null) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -211,8 +211,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            border: Border.all(color: color.withValues(alpha: 0.3)),
+                            color: color.withOpacity(0.1),
+                            border: Border.all(color: color.withOpacity(0.3)),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(f.toString(),
@@ -226,7 +226,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
               const SizedBox(height: 12),
             ],
 
-            // ── View Room/Bed Details button ───────────────────────────────
+            // â”€â”€ View Room/Bed Details button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
@@ -260,7 +260,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   }
 }
 
-// ── Skeleton CustomPainter ────────────────────────────────────────────────────
+// â”€â”€ Skeleton CustomPainter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _SkeletonPainter extends CustomPainter {
   final Map<String, dynamic>? frame;
   final String level;
@@ -287,7 +287,7 @@ class _SkeletonPainter extends CustomPainter {
 
     // Subtle grid
     final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.035)
+      ..color = Colors.white.withOpacity(0.035)
       ..strokeWidth = 1;
     for (double x = 0; x <= W; x += 44) {
       canvas.drawLine(Offset(x, 0), Offset(x, H), gridPaint);
@@ -297,11 +297,11 @@ class _SkeletonPainter extends CustomPainter {
     }
 
     // LIVE badge
-    final livePaint = Paint()..color = const Color(0xFF22C55E).withValues(alpha: 0.15);
+    final livePaint = Paint()..color = const Color(0xFF22C55E).withOpacity(0.15);
     canvas.drawRRect(RRect.fromRectAndRadius(
         const Rect.fromLTWH(12, 12, 42, 18), const Radius.circular(4)), livePaint);
     final liveTp = TextPainter(
-      text: const TextSpan(text: '● LIVE',
+      text: const TextSpan(text: 'â— LIVE',
           style: TextStyle(color: Color(0xFF22C55E), fontSize: 9, fontWeight: FontWeight.w700)),
       textDirection: TextDirection.ltr,
     )..layout();
@@ -311,7 +311,7 @@ class _SkeletonPainter extends CustomPainter {
     if (rawSkel == null || (rawSkel as List).isEmpty) {
       final tp = TextPainter(
         text: const TextSpan(
-          text: 'Waiting for skeleton data…',
+          text: 'Waiting for skeleton dataâ€¦',
           style: TextStyle(color: Color(0x8094A3B8), fontSize: 13),
         ),
         textDirection: TextDirection.ltr,
@@ -337,7 +337,7 @@ class _SkeletonPainter extends CustomPainter {
 
     // Draw bones
     final bonePaint = Paint()
-      ..color = _boneColor.withValues(alpha: 0.85)
+      ..color = _boneColor.withOpacity(0.85)
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -355,7 +355,7 @@ class _SkeletonPainter extends CustomPainter {
           Paint()..color = (i == 0 ? _headColor : _jointColor));
       canvas.drawCircle(Offset(px(i), py(i)), r,
           Paint()
-            ..color = Colors.white.withValues(alpha: 0.25)
+            ..color = Colors.white.withOpacity(0.25)
             ..strokeWidth = 1.5
             ..style = PaintingStyle.stroke);
     }
@@ -393,7 +393,7 @@ class _SkeletonPainter extends CustomPainter {
       old.frame != frame || old.level != level;
 }
 
-// ── Helper widgets ─────────────────────────────────────────────────────────────
+// â”€â”€ Helper widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _MetricBox extends StatelessWidget {
   final String label, value;
   final Color color;
@@ -404,8 +404,8 @@ class _MetricBox extends StatelessWidget {
     return Expanded(child: Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withOpacity(0.08),
+        border: Border.all(color: color.withOpacity(0.3)),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(children: [

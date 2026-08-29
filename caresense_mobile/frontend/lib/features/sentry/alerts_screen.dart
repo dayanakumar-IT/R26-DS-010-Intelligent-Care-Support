@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import '../../core/services/sound_service.dart';
@@ -66,7 +66,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
-          // ── Header ────────────────────────────────────────────────────
+          // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -91,7 +91,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ]),
           ),
 
-          // ── Filter tabs ───────────────────────────────────────────────
+          // â”€â”€ Filter tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -107,8 +107,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                   decoration: BoxDecoration(
-                    color: active ? color : color.withValues(alpha: 0.08),
-                    border: Border.all(color: active ? color : color.withValues(alpha: 0.25)),
+                    color: active ? color : color.withOpacity(0.08),
+                    border: Border.all(color: active ? color : color.withOpacity(0.25)),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(f, style: TextStyle(
@@ -121,7 +121,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // ── Alert list ────────────────────────────────────────────────
+          // â”€â”€ Alert list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             child: _localAlerts == null
                 ? const Center(child: CircularProgressIndicator(color: AppColors.high, strokeWidth: 2))
@@ -143,9 +143,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
     if (alerts.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('✅', style: TextStyle(fontSize: 40)),
+        const Text('âœ…', style: TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
-        Text(_filter == 'All' ? 'No active alerts — all clear!'
+        Text(_filter == 'All' ? 'No active alerts â€” all clear!'
                               : 'No ${_filter.toLowerCase()} alerts',
             style: TextStyle(color: _muted, fontSize: 13)),
       ]));
@@ -157,7 +157,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       itemBuilder: (_, i) {
         if (i == 0) return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text('Active · ${alerts.length} alert${alerts.length == 1 ? '' : 's'}',
+          child: Text('Active Â· ${alerts.length} alert${alerts.length == 1 ? '' : 's'}',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _muted)),
         );
         return _AlertCard(
@@ -171,7 +171,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 }
 
-// ── Alert card ───────────────────────────────────────────────────────────────
+// â”€â”€ Alert card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _AlertCard extends StatelessWidget {
   final Map<String, dynamic> a;
   final VoidCallback onAck;
@@ -184,11 +184,11 @@ class _AlertCard extends StatelessWidget {
     final color = level == 'HIGH' ? AppColors.high
                 : level == 'MODERATE' ? AppColors.moderate
                 : AppColors.low;
-    final icon  = level == 'HIGH' ? '🚨' : level == 'MODERATE' ? '⚠️' : '✅';
-    final label = level == 'HIGH' ? 'High risk · Immediate attention'
+    final icon  = level == 'HIGH' ? 'ðŸš¨' : level == 'MODERATE' ? 'âš ï¸' : 'âœ…';
+    final label = level == 'HIGH' ? 'High risk Â· Immediate attention'
                 : level == 'MODERATE' ? 'Unstable movement detected' : 'Stable';
     final time  = (a['created_at'] ?? '').toString();
-    final timeStr = time.length >= 16 ? time.substring(11, 16) : '—';
+    final timeStr = time.length >= 16 ? time.substring(11, 16) : 'â€”';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -196,7 +196,7 @@ class _AlertCard extends StatelessWidget {
         color: _surface,
         border: Border(
           left: BorderSide(color: color, width: 4),
-          top: BorderSide(color: color.withValues(alpha: 0.2)),
+          top: BorderSide(color: color.withOpacity(0.2)),
           right: BorderSide(color: _border),
           bottom: BorderSide(color: _border),
         ),
@@ -205,12 +205,12 @@ class _AlertCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Top row ────────────────────────────────────────────────
+          // â”€â”€ Top row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Row(children: [
             Text(icon, style: const TextStyle(fontSize: 20)),
             const SizedBox(width: 8),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Room ${a['room_id'] ?? '—'} · Patient ${a['patient_id'] ?? '—'}',
+              Text('Room ${a['room_id'] ?? 'â€”'} Â· Patient ${a['patient_id'] ?? 'â€”'}',
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w700, color: _text)),
               Text(label, style: TextStyle(fontSize: 11, color: _muted)),
@@ -228,7 +228,7 @@ class _AlertCard extends StatelessWidget {
           ]),
           const SizedBox(height: 10),
 
-          // ── Action buttons ──────────────────────────────────────────
+          // â”€â”€ Action buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Row(children: [
             // Replay button
             Expanded(
@@ -237,8 +237,8 @@ class _AlertCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.accentBlue.withValues(alpha: 0.12),
-                    border: Border.all(color: AppColors.accentBlue.withValues(alpha: 0.35)),
+                    color: AppColors.accentBlue.withOpacity(0.12),
+                    border: Border.all(color: AppColors.accentBlue.withOpacity(0.35)),
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -259,8 +259,8 @@ class _AlertCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    border: Border.all(color: color.withValues(alpha: 0.4)),
+                    color: color.withOpacity(0.15),
+                    border: Border.all(color: color.withOpacity(0.4)),
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
