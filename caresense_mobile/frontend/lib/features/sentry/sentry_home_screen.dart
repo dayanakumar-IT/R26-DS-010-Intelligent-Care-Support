@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
-import '../../widgets/risk_badge.dart';
+import '../../store/auth_store.dart';
 import '../../widgets/module_switcher_pill.dart';
 
-class SentryHomeScreen extends StatelessWidget {
+class SentryHomeScreen extends ConsumerWidget {
   const SentryHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final summary = SentryService.getMockDashboardSummary();
-    final patients = SentryService.getMockPatients();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
@@ -24,42 +24,65 @@ class SentryHomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Good Morning, Sarah', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textLight)),
-                    Text('SENTRY � Shift Active', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+                    Text('Hi, ${auth.caregiverName ?? 'Caregiver'}',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+                    Text('SENTRY · Shift Active',
+                        style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
                   ]),
                   const ModuleSwitcherPill(),
                 ],
               ),
             ),
-            // Stat cards
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [
-                _StatCard('High Risk', summary['highRisk'].toString(), AppColors.high),
-                const SizedBox(width: 8),
-                _StatCard('Moderate', summary['moderateRisk'].toString(), AppColors.moderate),
-                const SizedBox(width: 8),
-                _StatCard('Low Risk', summary['lowRisk'].toString(), AppColors.low),
-              ]),
+
+            // Dashboard summary
+            FutureBuilder<Map<String, dynamic>>(
+              future: SentryService.getDashboardSummary(),
+              builder: (context, snap) {
+                final summary = snap.data ?? {'highRisk': 0, 'moderateRisk': 0, 'lowRisk': 0};
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(children: [
+                    _StatCard('High Risk',   summary['highRisk'].toString(),    AppColors.high),
+                    const SizedBox(width: 8),
+                    _StatCard('Moderate',    summary['moderateRisk'].toString(), AppColors.moderate),
+                    const SizedBox(width: 8),
+                    _StatCard('Low Risk',    summary['lowRisk'].toString(),      AppColors.low),
+                  ]),
+                );
+              },
             ),
             const SizedBox(height: 16),
-            // Patient list
+
+            // Patient list header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Your Patients', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
-                Text(' assigned', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+                const Text('Your Patients',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+                Text('assigned rooms', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
               ]),
             ),
             const SizedBox(height: 8),
+
+            // Patient list
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: patients.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) {
-                  final p = patients[i];
-                  return _PatientRow(p);
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: SentryService.getPatients(caregiverId: auth.caregiverId),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  }
+                  final patients = snap.data ?? [];
+                  if (patients.isEmpty) {
+                    return Center(child: Text('No patients assigned.',
+                        style: TextStyle(color: AppColors.mutedLight, fontSize: 13)));
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: patients.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => _PatientRow(patients[i]),
+                  );
                 },
               ),
             ),
@@ -108,13 +131,21 @@ class _PatientRow extends StatelessWidget {
       ),
       child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(p['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+          Text(p['patient_code'] ?? '—',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
           const SizedBox(height: 2),
-          Text(' � ', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+          Text('Room ${p['room_id'] ?? '—'} · ${p['gender'] ?? '—'}',
+              style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
         ])),
-        RiskBadge(level: p['riskLevel'], score: p['riskScore']),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text('Monitoring', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+        ),
       ]),
     );
   }
 }
-
