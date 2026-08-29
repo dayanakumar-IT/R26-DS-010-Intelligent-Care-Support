@@ -2,9 +2,12 @@
 // Real API calls to the fall-detection backend.
 
 import 'package:dio/dio.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/api_config.dart';
 
 class SentryService {
+  static SupabaseClient get _supabase => Supabase.instance.client;
+
   static final Dio _dio = Dio(BaseOptions(
     baseUrl:        ApiConfig.baseUrl,
     connectTimeout: ApiConfig.timeout,
@@ -71,11 +74,20 @@ class SentryService {
   }
 
   static Future<bool> acknowledgeAlert(int alertId) async {
+    // Try backend REST first, fall back to direct Supabase update
     try {
       await _dio.patch(
         ApiConfig.alertAcknowledge(alertId.toString()),
         data: {'ack_by': 'caregiver'},
       );
+      return true;
+    } catch (_) {}
+    // Fallback: write acknowledged_at directly to Supabase
+    try {
+      await _supabase
+          .from('fall_alerts')
+          .update({'acknowledged_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', alertId);
       return true;
     } catch (_) {
       return false;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import '../../store/auth_store.dart';
@@ -11,6 +12,32 @@ const _border  = AppColors.borderLight;
 const _text    = AppColors.textLight;
 const _muted   = AppColors.mutedLight;
 const _dim     = AppColors.dimLight;
+
+/// Look up which room_codes are assigned to the logged-in caregiver.
+/// Matches profiles.name -> caregiver_profiles.display_name -> rooms.caregiver_id.
+/// Returns null if lookup fails (caller should show all rooms as fallback).
+Future<Set<String>?> _getMyRoomCodes() async {
+  try {
+    final db = Supabase.instance.client;
+    final authId = db.auth.currentUser?.id;
+    if (authId == null) return null;
+
+    final profile = await db.from('profiles').select('name').eq('id', authId).maybeSingle();
+    final name = profile?['name']?.toString();
+    if (name == null || name.isEmpty) return null;
+
+    final cgRes = await db.from('caregiver_profiles').select('id')
+        .ilike('display_name', '%$name%').limit(1).maybeSingle();
+    final cgId = cgRes?['id']?.toString();
+    if (cgId == null) return null;
+
+    final roomsRes = await db.from('rooms').select('room_code').eq('caregiver_id', cgId);
+    final codes = (roomsRes as List).map((r) => r['room_code'].toString()).toSet();
+    return codes.isEmpty ? null : codes;
+  } catch (_) {
+    return null;
+  }
+}
 
 class SentryHomeScreen extends ConsumerWidget {
   const SentryHomeScreen({super.key});
@@ -107,14 +134,23 @@ class SentryHomeScreen extends ConsumerWidget {
                       style: TextStyle(fontSize: 11, color: AppColors.accentBlue, fontWeight: FontWeight.w600)),
                 ]),
                 const SizedBox(height: 10),
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: SentryService.getAlerts(unackedOnly: false),
+                FutureBuilder<List<dynamic>>(
+                  future: Future.wait([
+                    SentryService.getAlerts(unackedOnly: false),
+                    _getMyRoomCodes(),
+                  ]),
                   builder: (context, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(
                           child: CircularProgressIndicator(color: AppColors.high, strokeWidth: 2));
                     }
-                    final alerts = (snap.data ?? [])
+                    final allAlerts = (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
+                    final myRooms  = snap.data?[1] as Set<String>?;
+                    // Filter by caregiver's rooms if known; otherwise show all
+                    final filtered = myRooms != null
+                        ? allAlerts.where((a) => myRooms.contains(a['room_id']?.toString())).toList()
+                        : allAlerts;
+                    final alerts = filtered
                         .where((a) => a['acknowledged_at'] == null)
                         .take(5)
                         .toList();
