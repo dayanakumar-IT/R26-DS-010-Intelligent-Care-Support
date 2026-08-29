@@ -9,8 +9,8 @@ frontend/
 supabase/
 PP1/
 
-# Local-only
-backend/
+# Local-only — /backend/ anchored to root (NOT caresense_mobile/backend/)
+/backend/
 Datasets/
 Research Paper - Writing/
 .claude/
