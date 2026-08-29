@@ -15,82 +15,102 @@ class SentryHomeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {},
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+                // ── Top bar ──────────────────────────────────────────────
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Hi, ${auth.caregiverName ?? 'Caregiver'}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textLight)),
-                    Text('SENTRY · Shift Active',
-                        style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
+                    Text('Good Morning,',
+                        style: TextStyle(fontSize: 12, color: AppColors.mutedLight)),
+                    Text(auth.caregiverName ?? 'Caregiver',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textLight)),
                   ]),
-                  const ModuleSwitcherPill(),
-                ],
-              ),
-            ),
-
-            // Dashboard summary
-            FutureBuilder<Map<String, dynamic>>(
-              future: SentryService.getDashboardSummary(),
-              builder: (context, snap) {
-                final summary = snap.data ?? {};
-                final byLevel = summary['patients_by_level'] as Map? ?? {};
-                final high = (byLevel['HIGH']     ?? 0).toString();
-                final mod  = (byLevel['MODERATE'] ?? 0).toString();
-                final low  = (byLevel['NORMAL']   ?? 0).toString();
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(children: [
-                    _StatCard('High Risk', high, AppColors.high),
-                    const SizedBox(width: 8),
-                    _StatCard('Moderate',  mod,  AppColors.moderate),
-                    const SizedBox(width: 8),
-                    _StatCard('Low Risk',  low,  AppColors.low),
+                  Row(children: [
+                    Stack(children: [
+                      const Icon(Icons.notifications_outlined, color: AppColors.mutedLight, size: 24),
+                      Positioned(top: 0, right: 0,
+                        child: Container(width: 8, height: 8,
+                            decoration: const BoxDecoration(color: AppColors.high, shape: BoxShape.circle))),
+                    ]),
+                    const SizedBox(width: 12),
+                    const ModuleSwitcherPill(),
                   ]),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
+                ]),
+                const SizedBox(height: 4),
+                Text('SENTRY · Shift Active',
+                    style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 16),
 
-            // Patient list header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Your Patients',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
-                Text('assigned rooms', style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
-              ]),
-            ),
-            const SizedBox(height: 8),
+                // ── Stat cards ───────────────────────────────────────────
+                FutureBuilder<Map<String, dynamic>>(
+                  future: SentryService.getDashboardSummary(),
+                  builder: (context, snap) {
+                    final byLevel = (snap.data?['patients_by_level'] as Map?) ?? {};
+                    final total   = snap.data?['total_patients'] ?? 0;
+                    return Column(children: [
+                      Row(children: [
+                        _StatCard('High Risk',  (byLevel['HIGH']     ?? 0).toString(), 'Rooms/Beds', AppColors.high),
+                        const SizedBox(width: 8),
+                        _StatCard('Moderate',   (byLevel['MODERATE'] ?? 0).toString(), 'Rooms/Beds', AppColors.moderate),
+                      ]),
+                      const SizedBox(height: 8),
+                      Row(children: [
+                        _StatCard('Low Risk',   (byLevel['NORMAL']   ?? 0).toString(), 'Rooms/Beds', AppColors.low),
+                        const SizedBox(width: 8),
+                        _StatCard('Monitored',  total.toString(),                      'Total',      AppColors.primary),
+                      ]),
+                    ]);
+                  },
+                ),
+                const SizedBox(height: 20),
 
-            // Patient list
-            Expanded(
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: SentryService.getPatients(caregiverId: auth.caregiverId),
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-                  }
-                  final patients = snap.data ?? [];
-                  if (patients.isEmpty) {
-                    return Center(child: Text('No patients assigned.',
-                        style: TextStyle(color: AppColors.mutedLight, fontSize: 13)));
-                  }
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: patients.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) => _PatientRow(patients[i]),
-                  );
-                },
-              ),
+                // ── Recent alerts ────────────────────────────────────────
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  const Text('Recent Alerts',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+                  Text('View All', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                ]),
+                const SizedBox(height: 10),
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: SentryService.getAlerts(unackedOnly: false),
+                  builder: (context, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                    }
+                    final alerts = (snap.data ?? []).take(5).toList();
+                    if (alerts.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Row(children: [
+                          const Text('✅', style: TextStyle(fontSize: 20)),
+                          const SizedBox(width: 12),
+                          Text('No recent alerts — all clear!',
+                              style: TextStyle(fontSize: 13, color: AppColors.mutedLight)),
+                        ]),
+                      );
+                    }
+                    return Column(
+                      children: alerts.map((a) => _AlertRow(a)).toList(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -98,57 +118,77 @@ class SentryHomeScreen extends ConsumerWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  final String label, value;
+  final String label, value, sub;
   final Color color;
-  const _StatCard(this.label, this.value, this.color);
+  const _StatCard(this.label, this.value, this.sub, this.color);
 
   @override
   Widget build(BuildContext context) {
     return Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(10),
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(children: [
-        Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mutedLight)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(width: 8, height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+        ]),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: color)),
+        Text(sub, style: TextStyle(fontSize: 10, color: AppColors.mutedLight)),
       ]),
     ));
   }
 }
 
-class _PatientRow extends StatelessWidget {
-  final Map<String, dynamic> p;
-  const _PatientRow(this.p);
+class _AlertRow extends StatelessWidget {
+  final Map<String, dynamic> a;
+  const _AlertRow(this.a);
 
   @override
   Widget build(BuildContext context) {
+    final level = (a['risk_level'] ?? 'NORMAL').toString();
+    final color = level == 'HIGH' ? AppColors.high
+                : level == 'MODERATE' ? AppColors.moderate
+                : AppColors.low;
+    final icon  = level == 'HIGH' ? Icons.warning_rounded
+                : level == 'MODERATE' ? Icons.warning_amber_rounded
+                : Icons.check_circle_outline;
+    final time  = (a['created_at'] ?? '').toString();
+    final timeStr = time.length >= 16 ? time.substring(11, 16) : '—';
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
-        border: Border.all(color: AppColors.borderLight),
-        borderRadius: BorderRadius.circular(10),
+        border: Border(left: BorderSide(color: color, width: 3)),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4)],
       ),
       child: Row(children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(p['patient_code'] ?? '—',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
-          const SizedBox(height: 2),
-          Text('Room ${p['room_id'] ?? '—'} · ${p['gender'] ?? '—'}',
+          Text('Room ${a['room_id'] ?? '—'} · Patient ${a['patient_id'] ?? '—'}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+          Text(level == 'HIGH' ? 'High risk · Immediate'
+             : level == 'MODERATE' ? 'Unstable movement' : 'Stable',
               style: TextStyle(fontSize: 11, color: AppColors.mutedLight)),
         ])),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text('Monitoring', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+          child: Text(level == 'MODERATE' ? 'MOD' : level,
+              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
         ),
+        const SizedBox(width: 8),
+        Text(timeStr, style: TextStyle(fontSize: 10, color: AppColors.dimLight)),
       ]),
     );
   }
