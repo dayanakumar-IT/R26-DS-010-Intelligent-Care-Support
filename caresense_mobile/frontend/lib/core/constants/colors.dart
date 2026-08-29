@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // ── Primary clinical palette ─────────────────────────────────────────────
-  static const Color primary      = Color(0xFF1A56DB); // bold medical blue
+  // ── Primary clinical palette — matches web dashboard exactly ─────────────
+  static const Color primary      = Color(0xFF1E3A8A); // web: #1e3a8a deep navy
   static const Color primaryLight = Color(0xFF3B82F6); // mid blue
   static const Color primaryDark  = Color(0xFF1E3A8A); // deep navy
 
-  static const Color secondary    = Color(0xFF7C3AED); // vibrant purple
+  static const Color secondary    = Color(0xFF7C3AED); // vibrant purple (login gradient only)
   static const Color secondaryLight = Color(0xFFA78BFA);
 
   static const Color teal         = Color(0xFF0891B2); // clinical teal
   static const Color tealLight    = Color(0xFF22D3EE);
 
-  // ── Backgrounds ──────────────────────────────────────────────────────────
-  static const Color bgLight      = Color(0xFFF0F7FF); // crisp blue-white
+  // ── Backgrounds — matches web dashboard ──────────────────────────────────
+  static const Color bgLight      = Color(0xFFF8FAFC); // web: #f8fafc
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color cardLight    = Color(0xFFFFFFFF);
-  static const Color borderLight  = Color(0xFFBFDBFE);
+  static const Color borderLight  = Color(0xFFE2E8F0); // web: #e2e8f0
 
-  // ── Text ─────────────────────────────────────────────────────────────────
-  static const Color textLight    = Color(0xFF0F172A); // near black — very clear
-  static const Color mutedLight   = Color(0xFF475569);
-  static const Color dimLight     = Color(0xFF94A3B8);
+  // ── Text — matches web dashboard ─────────────────────────────────────────
+  static const Color textLight    = Color(0xFF0F172A); // web: #0f172a
+  static const Color mutedLight   = Color(0xFF64748B); // web: #64748b
+  static const Color dimLight     = Color(0xFF94A3B8); // web: #94a3b8
 
   // ── Dark theme ───────────────────────────────────────────────────────────
   static const Color bgDark       = Color(0xFF060D1A);
@@ -31,15 +31,15 @@ class AppColors {
 
   // ── Module colours ───────────────────────────────────────────────────────
   static const Color pulse        = Color(0xFFDC2626); // vivid red
-  static const Color sentry       = Color(0xFF1A56DB); // medical blue
+  static const Color sentry       = Color(0xFF1E3A8A); // web primary navy
   static const Color scribe       = Color(0xFF059669); // vivid green
   static const Color gloss        = Color(0xFFD97706); // amber
 
-  // ── Risk levels ──────────────────────────────────────────────────────────
-  static const Color high         = Color(0xFFDC2626);
-  static const Color moderate     = Color(0xFFD97706);
-  static const Color low          = Color(0xFF16A34A);
-  static const Color normal       = Color(0xFF64748B);
+  // ── Risk levels — matches web dashboard exactly ───────────────────────────
+  static const Color high         = Color(0xFFEF4444); // web: #ef4444
+  static const Color moderate     = Color(0xFFF59E0B); // web: #f59e0b
+  static const Color low          = Color(0xFF22C55E); // web: #22c55e
+  static const Color normal       = Color(0xFF64748B); // web: #64748b
 
   // ── Gradients ────────────────────────────────────────────────────────────
   static const LinearGradient brandGradient = LinearGradient(
@@ -48,7 +48,7 @@ class AppColors {
     end: Alignment.bottomRight,
   );
   static const LinearGradient bgGradient = LinearGradient(
-    colors: [Color(0xFFEFF6FF), Color(0xFFF5F3FF)],
+    colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)], // web: f8fafc light bg
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
