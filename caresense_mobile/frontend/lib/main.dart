@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'navigation/app_router.dart';
 import 'core/constants/colors.dart';
+import 'core/services/alert_ws_service.dart';
+import 'core/config/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,10 +15,13 @@ void main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14eHBmdnhwYmt0bHR1cmxycmFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2Njk2NDQsImV4cCI6MjEwMzI0NTY0NH0.YKPjklZWR6bXh3AZsCbQrubfTSqDdhFk4hXssZrOdy0',
   );
 
+  // Start WebSocket listener for alert sounds
+  AlertWsService.start(ApiConfig.baseUrl);
+
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light, // light icons on dark status bar
   ));
   runApp(const ProviderScope(child: CareSenseApp()));
 }
@@ -32,7 +37,7 @@ class CareSenseApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.light,
+      themeMode: ThemeMode.dark, // ← DARK MODE by default
       routerConfig: router,
     );
   }
