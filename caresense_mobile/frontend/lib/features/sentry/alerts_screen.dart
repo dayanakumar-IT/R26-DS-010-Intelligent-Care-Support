@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import '../../core/services/sound_service.dart';
@@ -29,6 +30,9 @@ class _AlertsScreenState extends State<AlertsScreen>
   String _filter = 'all';
   List<Map<String, dynamic>>? _localAlerts;
 
+  // rooms this caregiver is assigned to (empty = show all as fallback)
+  Set<String> _assignedRooms = {};
+
   late final AnimationController _heroCtrl;
   late final Animation<double>    _heroFade;
 
@@ -45,11 +49,52 @@ class _AlertsScreenState extends State<AlertsScreen>
   @override
   void dispose() { _heroCtrl.dispose(); super.dispose(); }
 
-  void _load() {
+  Future<void> _load() async {
     setState(() => _localAlerts = null);
-    SentryService.getAlerts(unackedOnly: false).then((list) {
-      if (mounted) setState(() => _localAlerts = List.from(list));
-    });
+
+    // ── Resolve caregiver's assigned room codes (same logic as rooms_screen) ──
+    try {
+      final db     = Supabase.instance.client;
+      final authId = db.auth.currentUser?.id;
+      String? syntheticCgId;
+
+      if (authId != null) {
+        final profileRes = await db.from('profiles').select('name')
+            .eq('id', authId).maybeSingle();
+        final realName = profileRes?['name']?.toString();
+        if (realName != null && realName.isNotEmpty) {
+          final cgRes = await db.from('caregiver_profiles').select('id')
+              .ilike('display_name', '%$realName%').limit(1).maybeSingle();
+          syntheticCgId = cgRes?['id']?.toString();
+        }
+      }
+
+      if (syntheticCgId != null) {
+        final roomsRes = await db
+            .from('rooms')
+            .select('room_code')
+            .eq('caregiver_id', syntheticCgId);
+        final codes = (roomsRes as List)
+            .map((r) => r['room_code'].toString())
+            .toSet();
+        if (mounted) setState(() => _assignedRooms = codes);
+      }
+    } catch (_) {
+      // On error, fall back to showing all alerts
+    }
+
+    // ── Fetch all alerts, then filter client-side by assigned rooms ──────────
+    final list = await SentryService.getAlerts(unackedOnly: false);
+    if (!mounted) return;
+
+    final filtered = _assignedRooms.isEmpty
+        ? list // no room filter resolved → show all
+        : list.where((a) {
+            final rid = a['room_id']?.toString() ?? '';
+            return _assignedRooms.contains(rid);
+          }).toList();
+
+    setState(() => _localAlerts = filtered);
   }
 
   Future<void> _ack(Map<String, dynamic> alert) async {
