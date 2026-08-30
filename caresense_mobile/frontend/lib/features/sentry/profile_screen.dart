@@ -124,28 +124,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ── App Info ──────────────────────────────────────────────
-              _SectionLabel('About'),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _surface,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8, offset: const Offset(0, 2))],
-                ),
-                child: Column(children: [
-                  _AboutRow('Version', 'CareSense SENTRY v1.0'),
-                  const Divider(height: 1, color: _border),
-                  _AboutRow('Component', 'Component 2 — Fall Detection'),
-                  const Divider(height: 1, color: _border),
-                  _AboutRow('Developed by', 'Harishalinee Elangovan'),
-                ]),
-              ),
-              const SizedBox(height: 24),
-
               // ── Sign out ──────────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
@@ -368,19 +346,3 @@ class _ToggleTile extends StatelessWidget {
   }
 }
 
-// ── About row ────────────────────────────────────────────────────────────────
-class _AboutRow extends StatelessWidget {
-  final String label, value;
-  const _AboutRow(this.label, this.value);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-    child: Row(children: [
-      Text(label, style: TextStyle(fontSize: 12, color: _muted)),
-      const Spacer(),
-      Text(value,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-              color: _text)),
-    ]),
-  );
-}
