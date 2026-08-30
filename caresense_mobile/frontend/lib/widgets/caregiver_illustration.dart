@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 
-/// Inline SVG-style caregiver illustration drawn with Canvas
+/// Inline caregiver illustration drawn with Canvas
 class CaregiverIllustration extends StatelessWidget {
   final double height;
   const CaregiverIllustration({super.key, this.height = 200});
@@ -24,24 +24,22 @@ class _CaregiverPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // â"€â"€ Background circle â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+    // ── Background circle ────────────────────────────────────────────────────
     final bgPaint = Paint()
       ..shader = const RadialGradient(
         colors: [Color(0xFFEFF6FF), Color(0xFFF5F3FF)],
-      ).createShader(Rect.fromCircle(center: Offset(w * 0.5, h * 0.5), radius: h * 0.48));
+      ).createShader(Rect.fromCircle(
+          center: Offset(w * 0.5, h * 0.5), radius: h * 0.48));
     canvas.drawCircle(Offset(w * 0.5, h * 0.52), h * 0.46, bgPaint);
 
-    // â"€â"€ Caregiver body (scrubs â€" teal/blue) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-    final scrubPaint = Paint()
-      ..color = const Color(0xFF60A5FA)
-      ..style = PaintingStyle.fill;
+    // ── Caregiver body ───────────────────────────────────────────────────────
+    final scrubPaint = Paint()..color = const Color(0xFF60A5FA);
 
     // Head
-    final headPaint = Paint()..color = const Color(0xFFFBCFE8);
-    canvas.drawCircle(Offset(w * 0.45, h * 0.22), h * 0.1, headPaint);
+    canvas.drawCircle(Offset(w * 0.45, h * 0.22), h * 0.1,
+        Paint()..color = const Color(0xFFFBCFE8));
 
     // Hair
-    final hairPaint = Paint()..color = const Color(0xFF7C3AED);
     final hairPath = Path()
       ..moveTo(w * 0.35, h * 0.22)
       ..quadraticBezierTo(w * 0.38, h * 0.10, w * 0.45, h * 0.10)
@@ -49,7 +47,7 @@ class _CaregiverPainter extends CustomPainter {
       ..lineTo(w * 0.55, h * 0.15)
       ..quadraticBezierTo(w * 0.45, h * 0.08, w * 0.35, h * 0.18)
       ..close();
-    canvas.drawPath(hairPath, hairPaint);
+    canvas.drawPath(hairPath, Paint()..color = const Color(0xFF7C3AED));
 
     // Torso (scrub top)
     final torsoPath = Path()
@@ -61,36 +59,30 @@ class _CaregiverPainter extends CustomPainter {
       ..close();
     canvas.drawPath(torsoPath, scrubPaint);
 
-    // Scrub pocket
-    final pocketPaint = Paint()
-      ..color = const Color(0xFF3B82F6)
-      ..style = PaintingStyle.fill;
+    // Pocket
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.36, h * 0.44, w * 0.10, h * 0.08),
-        const Radius.circular(4),
-      ),
-      pocketPaint,
+          Rect.fromLTWH(w * 0.36, h * 0.44, w * 0.10, h * 0.08),
+          const Radius.circular(4)),
+      Paint()..color = const Color(0xFF3B82F6),
     );
 
     // Stethoscope
-    final stethPaint = Paint()
-      ..color = const Color(0xFF6D28D9)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
     final stethPath = Path()
       ..moveTo(w * 0.42, h * 0.31)
       ..quadraticBezierTo(w * 0.38, h * 0.40, w * 0.38, h * 0.48)
       ..quadraticBezierTo(w * 0.38, h * 0.58, w * 0.46, h * 0.58)
       ..quadraticBezierTo(w * 0.54, h * 0.58, w * 0.54, h * 0.48);
-    canvas.drawPath(stethPath, stethPaint);
+    canvas.drawPath(stethPath,
+        Paint()
+          ..color = const Color(0xFF6D28D9)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round);
     canvas.drawCircle(Offset(w * 0.54, h * 0.46), h * 0.03,
-      Paint()..color = const Color(0xFF7C3AED));
+        Paint()..color = const Color(0xFF7C3AED));
 
     // Arms
-    final armPaint = Paint()..color = const Color(0xFFFBCFE8);
-    // Left arm
     final leftArm = Path()
       ..moveTo(w * 0.33, h * 0.34)
       ..quadraticBezierTo(w * 0.22, h * 0.44, w * 0.24, h * 0.56)
@@ -98,32 +90,30 @@ class _CaregiverPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.27, h * 0.45, w * 0.36, h * 0.36)
       ..close();
     canvas.drawPath(leftArm, scrubPaint);
-    // Left hand
-    canvas.drawCircle(Offset(w * 0.245, h * 0.57), h * 0.032, armPaint);
+    canvas.drawCircle(Offset(w * 0.245, h * 0.57), h * 0.032,
+        Paint()..color = const Color(0xFFFBCFE8));
 
     // Tablet in hand
-    final tabletPaint = Paint()..color = const Color(0xFFE0F2FE);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.15, h * 0.50, w * 0.10, h * 0.14),
-        const Radius.circular(4),
-      ),
-      tabletPaint,
+          Rect.fromLTWH(w * 0.15, h * 0.50, w * 0.10, h * 0.14),
+          const Radius.circular(4)),
+      Paint()..color = const Color(0xFFE0F2FE),
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.15, h * 0.50, w * 0.10, h * 0.14),
-        const Radius.circular(4),
-      ),
-      Paint()..color = const Color(0xFF93C5FD)..style = PaintingStyle.stroke..strokeWidth = 1.5,
+          Rect.fromLTWH(w * 0.15, h * 0.50, w * 0.10, h * 0.14),
+          const Radius.circular(4)),
+      Paint()
+        ..color = const Color(0xFF93C5FD)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
     );
-    // Screen lines
     canvas.drawLine(Offset(w * 0.17, h * 0.54), Offset(w * 0.23, h * 0.54),
-      Paint()..color = AppColors.accent..strokeWidth = 1);
+        Paint()..color = AppColors.accent..strokeWidth = 1);
     canvas.drawLine(Offset(w * 0.17, h * 0.57), Offset(w * 0.21, h * 0.57),
-      Paint()..color = AppColors.accent..strokeWidth = 1);
+        Paint()..color = AppColors.accent..strokeWidth = 1);
 
-    // Right arm
     final rightArm = Path()
       ..moveTo(w * 0.57, h * 0.34)
       ..quadraticBezierTo(w * 0.68, h * 0.42, w * 0.66, h * 0.54)
@@ -131,69 +121,86 @@ class _CaregiverPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.63, h * 0.44, w * 0.55, h * 0.36)
       ..close();
     canvas.drawPath(rightArm, scrubPaint);
-    canvas.drawCircle(Offset(w * 0.665, h * 0.55), h * 0.032, armPaint);
+    canvas.drawCircle(Offset(w * 0.665, h * 0.55), h * 0.032,
+        Paint()..color = const Color(0xFFFBCFE8));
 
     // Legs
     final legPaint = Paint()..color = const Color(0xFF93C5FD);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.33, h * 0.62, w * 0.11, h * 0.22),
-        const Radius.circular(6),
-      ),
-      legPaint,
-    );
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(w * 0.33, h * 0.62, w * 0.11, h * 0.22),
+            const Radius.circular(6)),
+        legPaint);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.47, h * 0.62, w * 0.11, h * 0.22),
-        const Radius.circular(6),
-      ),
-      legPaint,
-    );
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(w * 0.47, h * 0.62, w * 0.11, h * 0.22),
+            const Radius.circular(6)),
+        legPaint);
 
     // Shoes
     final shoePaint = Paint()..color = const Color(0xFF1E40AF);
     canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(w * 0.31, h * 0.82, w * 0.15, h * 0.06),
+            const Radius.circular(4)),
+        shoePaint);
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(w * 0.45, h * 0.82, w * 0.15, h * 0.06),
+            const Radius.circular(4)),
+        shoePaint);
+
+    // ── Floating module badges — single-letter initials, no brackets ─────────
+    _drawBadge(canvas, Offset(w * 0.82, h * 0.22), 'S', 'SENTRY', AppColors.sentry);
+    _drawBadge(canvas, Offset(w * 0.82, h * 0.52), 'D', 'SCRIBE', AppColors.scribe);
+    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), 'P', 'PULSE', AppColors.pulse);
+  }
+
+  void _drawBadge(Canvas canvas, Offset center, String letter, String label,
+      Color color) {
+    // Pill background
+    canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.31, h * 0.82, w * 0.15, h * 0.06),
-        const Radius.circular(4),
-      ),
-      shoePaint,
+          Rect.fromCenter(center: center, width: 56, height: 28),
+          const Radius.circular(10)),
+      Paint()..color = color.withOpacity(0.14),
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.45, h * 0.82, w * 0.15, h * 0.06),
-        const Radius.circular(4),
-      ),
-      shoePaint,
+          Rect.fromCenter(center: center, width: 56, height: 28),
+          const Radius.circular(10)),
+      Paint()
+        ..color = color.withOpacity(0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
     );
 
-    // â"€â"€ Floating badges â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-    _drawBadge(canvas, Offset(w * 0.82, h * 0.22), '[S]', 'SENTRY', AppColors.sentry);
-    _drawBadge(canvas, Offset(w * 0.82, h * 0.52), '[D]', 'SCRIBE', AppColors.scribe);
-    _drawBadge(canvas, Offset(w * 0.10, h * 0.30), '[P]', 'PULSE', AppColors.pulse);
-  }
-
-  void _drawBadge(Canvas canvas, Offset center, String emoji, String label, Color color) {
-    final bgPaint = Paint()..color = color.withOpacity(0.12);
-    final borderPaint = Paint()
-      ..color = color.withOpacity(0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final rect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: center, width: 52, height: 32),
-      const Radius.circular(10),
+    // Initial circle on the left side of the badge
+    canvas.drawCircle(
+      Offset(center.dx - 18, center.dy),
+      9,
+      Paint()..color = color.withOpacity(0.25),
     );
-    canvas.drawRRect(rect, bgPaint);
-    canvas.drawRRect(rect, borderPaint);
-
-    final tp = TextPainter(
+    final initTp = TextPainter(
       text: TextSpan(
-        text: '$emoji $label',
-        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
-      ),
+          text: letter,
+          style: TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w900, color: color)),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
+    initTp.paint(canvas,
+        Offset(center.dx - 18 - initTp.width / 2, center.dy - initTp.height / 2));
+
+    // Label text
+    final labelTp = TextPainter(
+      text: TextSpan(
+          text: label,
+          style: TextStyle(
+              fontSize: 8, fontWeight: FontWeight.w700, color: color)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    labelTp.paint(canvas,
+        Offset(center.dx - 6, center.dy - labelTp.height / 2));
   }
 
   @override
