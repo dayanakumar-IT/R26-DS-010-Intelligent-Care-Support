@@ -133,7 +133,19 @@ export default function SigningAvatar3D({
         className="relative aspect-video w-full overflow-hidden rounded-[var(--radius-md)] bg-slate-100"
         style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
       >
-        <Canvas camera={{ position: [0, 0.05, 1.6], fov: 32 }} dpr={[1, 1.5]}>
+        {/* Camera framing (fixed here — root cause of "arms/hands not
+            rendering" after the shoulder-offset fix): the avatar's
+            vertical extent runs from the head top (~y=0.35) down through
+            shoulders (~y=0), elbows (~y=-0.42, BONE_LENGTHS.upperArm),
+            wrists (~y=-0.8), to fingertips (~y=-1.05 to -1.15,
+            BONE_LENGTHS.upperArm+forearm+hand+2*fingerSegment below the
+            shoulder). The previous camera (position.y=0.05, fov=32) only
+            covered roughly [-0.41, 0.51] — everything from the elbows
+            down was simply outside the frustum, regardless of correct
+            positioning. This framing centers lower (y=-0.3) with a wider
+            fov so the full reach (including raised-hand signs going
+            above shoulder height) stays in frame with margin. */}
+        <Canvas camera={{ position: [0, -0.3, 2.1], fov: 50 }} dpr={[1, 1.5]}>
           <ambientLight intensity={0.9} />
           <directionalLight position={[1, 2, 2]} intensity={0.6} />
           <group position={[0, -0.1, 0]}>

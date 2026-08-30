@@ -1,52 +1,44 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import ParkinsonsIntroCard from '../components/ParkinsonsIntroCard'
-import SymptomQuestionCard from '../components/SymptomQuestionCard'
-import AnswerFeedbackCard from '../components/AnswerFeedbackCard'
-import MasteryProgressCard from '../components/MasteryProgressCard'
-import { getNextPdeduQuestion, submitPdeduResponse } from '../services/pdeduApi'
-import type { PdeduNextQuestion, PdeduResponseResult } from '../types/pdedu'
+import type { PkQuizStart, PkQuizSummary } from '../types/parkinsons'
+import { startParkinsonsQuiz } from '../services/parkinsonsApi'
+import ParkinsonsTrainerHome from '../components/parkinsons/ParkinsonsTrainerHome'
+import ParkinsonsQuiz from '../components/parkinsons/ParkinsonsQuiz'
+import ParkinsonsQuizSummary from '../components/parkinsons/ParkinsonsQuizSummary'
+import ParkinsonsReviewMistakes from '../components/parkinsons/ParkinsonsReviewMistakes'
+import ParkinsonsSymptomExplorer from '../components/parkinsons/ParkinsonsSymptomExplorer'
+import ParkinsonsProgress from '../components/parkinsons/ParkinsonsProgress'
 
-type Stage = 'intro' | 'loading' | 'question' | 'submitting' | 'feedback' | 'error'
+type View = 'home' | 'quiz' | 'summary' | 'review' | 'explore' | 'progress'
 
+// Parkinson's Symptom Trainer — a gamified caregiver tutoring flow.
+// EDUCATION ONLY: symptom-recognition training, not a diagnostic tool.
+// This page is Parkinson's-specific and shares nothing with the GLOSS
+// sign-language feature beyond the sign-vitals API client and auth.
 export default function ParkinsonsEducation() {
-  const [stage, setStage] = useState<Stage>('intro')
-  const [question, setQuestion] = useState<PdeduNextQuestion | null>(null)
-  const [result, setResult] = useState<PdeduResponseResult | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [questionsAnswered, setQuestionsAnswered] = useState(0)
+  const [view, setView] = useState<View>('home')
+  const [quizStart, setQuizStart] = useState<PkQuizStart | null>(null)
+  const [summary, setSummary] = useState<PkQuizSummary | null>(null)
+  const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState<string | null>(null)
 
-  const loadNextQuestion = useCallback(async (questionIdHint?: string) => {
-    setStage('loading')
-    setErrorMessage(null)
+  const beginQuiz = async () => {
+    setStarting(true)
+    setStartError(null)
     try {
-      // The backend already told us the next question id after a response —
-      // fetching it fresh here keeps this one code path for both "first
-      // question" and "next question" without trusting stale local state.
-      void questionIdHint
-      const nextQuestion = await getNextPdeduQuestion()
-      setQuestion(nextQuestion)
-      setResult(null)
-      setStage('question')
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Could not load a question.')
-      setStage('error')
-    }
-  }, [])
-
-  const handleAnswer = async (selectedSymptomId: string) => {
-    if (!question) return
-    setStage('submitting')
-    setErrorMessage(null)
-    try {
-      const responseResult = await submitPdeduResponse(question.question_id, selectedSymptomId)
-      setResult(responseResult)
-      setQuestionsAnswered((count) => count + 1)
-      setStage('feedback')
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Could not submit your answer.')
-      setStage('error')
+      const start = await startParkinsonsQuiz()
+      if (!start.questions.length) {
+        setStartError('No quiz questions are available yet. Please try again later.')
+        return
+      }
+      setQuizStart(start)
+      setSummary(null)
+      setView('quiz')
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : 'Could not start the quiz.')
+    } finally {
+      setStarting(false)
     }
   }
 
@@ -54,50 +46,52 @@ export default function ParkinsonsEducation() {
     <div className="flex flex-col gap-6">
       <Link
         to="/sign-vitals"
-        className="flex w-fit items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
+        className="flex w-fit items-center gap-1 text-sm text-slate-500 transition hover:text-slate-700"
       >
         <ChevronLeft size={16} />
         Back to Sign & Vitals
       </Link>
 
-      {questionsAnswered > 0 && (
-        <p className="text-xs text-slate-400">Questions answered this session: {questionsAnswered}</p>
+      {view === 'home' && (
+        <ParkinsonsTrainerHome
+          starting={starting}
+          startError={startError}
+          onStartQuiz={() => void beginQuiz()}
+          onExplore={() => setView('explore')}
+          onOpenProgress={() => setView('progress')}
+        />
       )}
 
-      {stage === 'intro' && <ParkinsonsIntroCard onStart={() => loadNextQuestion()} />}
-
-      {(stage === 'loading' || stage === 'submitting') && (
-        <div className="rounded-[var(--radius-lg)] border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
-          {stage === 'loading' ? 'Loading your next question…' : 'Checking your answer…'}
-        </div>
+      {view === 'quiz' && quizStart && (
+        <ParkinsonsQuiz
+          start={quizStart}
+          onComplete={(result) => {
+            setSummary(result)
+            setView('summary')
+          }}
+          onExit={() => setView('home')}
+        />
       )}
 
-      {stage === 'error' && (
-        <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-          <p>{errorMessage}</p>
-          <button
-            type="button"
-            onClick={() => loadNextQuestion()}
-            className="self-start text-sm font-medium underline"
-          >
-            Try again
-          </button>
-        </div>
+      {view === 'summary' && summary && (
+        <ParkinsonsQuizSummary
+          summary={summary}
+          onReviewMistakes={() => setView('review')}
+          onRetry={() => void beginQuiz()}
+          onExplore={() => setView('explore')}
+        />
       )}
 
-      {stage === 'question' && question && (
-        <SymptomQuestionCard question={question} onAnswer={handleAnswer} disabled={false} />
+      {view === 'review' && summary && (
+        <ParkinsonsReviewMistakes review={summary.review} onBack={() => setView('summary')} />
       )}
 
-      {stage === 'feedback' && result && question && (
-        <div className="flex flex-col gap-4">
-          <AnswerFeedbackCard
-            result={result}
-            correctSymptomDisplayName={question.symptom_display_name}
-            onContinue={() => loadNextQuestion(result.next_question_id)}
-          />
-          <MasteryProgressCard mastery={result.mastery} symptomDisplayName={question.symptom_display_name} />
-        </div>
+      {view === 'explore' && (
+        <ParkinsonsSymptomExplorer onBack={() => setView(summary ? 'summary' : 'home')} />
+      )}
+
+      {view === 'progress' && (
+        <ParkinsonsProgress onBack={() => setView('home')} onStartQuiz={() => void beginQuiz()} />
       )}
     </div>
   )

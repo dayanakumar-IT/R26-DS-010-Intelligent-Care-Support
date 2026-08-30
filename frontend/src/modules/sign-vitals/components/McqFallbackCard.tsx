@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import SignDemoPanel from './SignDemoPanel'
 import type { GlossSign } from '../types/gloss'
 
 interface McqFallbackCardProps {
@@ -12,10 +13,12 @@ function shuffled<T>(items: T[]): T[] {
   return [...items].sort(() => Math.random() - 0.5)
 }
 
-// Camera-unavailable fallback: since no per-sign demonstration asset exists
-// to test recognition against, this checks sign-name vocabulary instead —
-// "confirm which sign you're about to practice" — rather than pretending to
-// assess execution without a camera.
+// Camera-unavailable fallback. This is a LEARNING mode: the caregiver
+// watches a teaching reference (validated reference video if one
+// exists, otherwise the 3D avatar — reused via SignDemoPanel) and then
+// confirms which sign it is. It deliberately does NOT claim to assess
+// movement or execution quality — there is no camera and no DTW here,
+// so no execution score is shown for a quiz answer.
 export default function McqFallbackCard({ targetSignId, allSigns, onSelect, disabled }: McqFallbackCardProps) {
   const targetSign = allSigns.find((sign) => sign.id === targetSignId)
 
@@ -29,9 +32,17 @@ export default function McqFallbackCard({ targetSignId, allSigns, onSelect, disa
 
   return (
     <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-slate-200 bg-white p-6 shadow-[var(--shadow-sm)]">
-      <p className="text-sm font-medium text-slate-700">
-        Which sign are you about to practice?
-      </p>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-medium text-slate-700">Watch the demonstration, then answer.</p>
+        <p className="text-xs text-slate-400">
+          Quiz mode checks that you can recognise the sign. It doesn&apos;t score how you move —
+          use camera practice for execution feedback.
+        </p>
+      </div>
+
+      <SignDemoPanel key={targetSignId} signId={targetSignId} signDisplayName={targetSign?.display_name} />
+
+      <p className="text-sm font-medium text-slate-700">Which sign was that?</p>
       <div className="flex flex-col gap-3">
         {options.map((option) => (
           <button

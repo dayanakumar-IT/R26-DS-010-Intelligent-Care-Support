@@ -1,5 +1,12 @@
 import { apiGet, apiPostFormData } from './apiClient'
-import type { GlossAttemptResult, GlossSign, GlossSignReference } from '../types/gloss'
+import type {
+  GlossAttemptResult,
+  GlossDemoVideo,
+  GlossHistoryEntry,
+  GlossProgressReport,
+  GlossSign,
+  GlossSignReference,
+} from '../types/gloss'
 
 export interface NextLessonResponse {
   next_recommended_sign_id: string
@@ -26,6 +33,42 @@ export async function getGlossSignReference(signId: string): Promise<GlossSignRe
   const reference = await apiGet<GlossSignReference>(`/gloss/signs/${encodeURIComponent(signId)}/reference`)
   referenceCache.set(signId, reference)
   return reference
+}
+
+// Validated human reference video metadata. The URL can be a
+// short-lived presigned Cloudflare R2 URL, so successful responses are
+// deliberately NOT cached — every call gets a fresh URL. Only the "no
+// video" (404) outcome is remembered, to avoid re-hitting the endpoint
+// each time the caregiver toggles reference modes. `null` return means
+// "fall back to the 2D Sign Guide", not an error.
+const noDemoVideoSigns = new Set<string>()
+
+export async function getGlossSignDemoVideo(signId: string): Promise<GlossDemoVideo | null> {
+  if (noDemoVideoSigns.has(signId)) return null
+
+  try {
+    return await apiGet<GlossDemoVideo>(`/gloss/signs/${encodeURIComponent(signId)}/demo-video`)
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /\(404\)|no usable reference|no reference video|not available/i.test(error.message)
+    ) {
+      noDemoVideoSigns.add(signId)
+      return null
+    }
+    throw error
+  }
+}
+
+export function getGlossProgress(): Promise<GlossProgressReport> {
+  return apiGet<GlossProgressReport>('/gloss/progress')
+}
+
+export async function getGlossHistory(limit = 30): Promise<GlossHistoryEntry[]> {
+  const result = await apiGet<{ attempts: GlossHistoryEntry[] }>(
+    `/gloss/history?limit=${encodeURIComponent(String(limit))}`,
+  )
+  return result.attempts
 }
 
 // Filename extension should match the blob's actual recorded format (see

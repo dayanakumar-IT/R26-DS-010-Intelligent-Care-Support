@@ -26,17 +26,23 @@ import { BONE_LENGTHS, FINGER_BIND_TILT, type FingerChains, type RefMap } from '
 const SKIN_COLOR = '#d8b491'
 const CLOTHING_COLOR = '#3b5fc4'
 const BONE_RADIUS = 0.02
-const FINGER_RADIUS = 0.007
+// Widened from the original 0.007: real-screenshot verification (see Task 2
+// report) showed all 5 fingers visually merging into a single blob at the
+// panel's actual on-screen size — geometrically distinct (verified via
+// per-finger quaternions) but not READABLE, which the spec explicitly
+// prioritizes. Thickness/spread bumped for visibility; still a rough
+// procedural POC, not aiming for anatomical realism.
+const FINGER_RADIUS = 0.014
 
 type FingerName = keyof FingerChains
 const FINGER_NAMES: FingerName[] = ['thumb', 'index', 'middle', 'ring', 'pinky']
 // Local X spread across the palm (bind pose), roughly knuckle order thumb->pinky.
 const FINGER_X_OFFSET: Record<FingerName, number> = {
-  thumb: -0.075,
-  index: -0.045,
-  middle: -0.015,
-  ring: 0.015,
-  pinky: 0.045,
+  thumb: -0.11,
+  index: -0.065,
+  middle: -0.022,
+  ring: 0.022,
+  pinky: 0.065,
 }
 
 function boneMesh(length: number, radius = BONE_RADIUS, color = SKIN_COLOR) {
@@ -94,7 +100,7 @@ function renderArm(side: 'left' | 'right', refs: RefObject<RefMap>) {
           <group position={[0, -BONE_LENGTHS.forearm, 0]} ref={(el) => refs.current.set(handKey, el)}>
             {/* Palm */}
             <mesh position={[0, -BONE_LENGTHS.hand * 0.4, 0]}>
-              <boxGeometry args={[0.09, BONE_LENGTHS.hand * 0.8, 0.025]} />
+              <boxGeometry args={[0.15, BONE_LENGTHS.hand * 0.8, 0.025]} />
               <meshStandardMaterial color={SKIN_COLOR} />
             </mesh>
             <group position={[0, -BONE_LENGTHS.hand * 0.8, 0]}>

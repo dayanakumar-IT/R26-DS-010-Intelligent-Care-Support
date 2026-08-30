@@ -19,6 +19,8 @@ accepts or trusts a client-supplied one.
 """
 
 import logging
+import time
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -29,6 +31,30 @@ from mastery_engine import compute_execution_score, update_mastery
 from preprocessing import preprocess_landmarks_for_inference
 
 logger = logging.getLogger("sign_vitals")
+
+
+class _Timings:
+    """Task 6 instrumentation — records wall-clock ms per pipeline stage
+    for one attempt. Additive only: exposed as an extra `timings` key on
+    the response, no existing field changes. `stage()` is a context
+    manager so stages can't be accidentally left unclosed."""
+
+    def __init__(self):
+        self._marks: dict[str, float] = {}
+        self._t0 = time.perf_counter()
+
+    @contextmanager
+    def stage(self, name: str):
+        start = time.perf_counter()
+        try:
+            yield
+        finally:
+            self._marks[name] = round((time.perf_counter() - start) * 1000, 1)
+
+    def as_dict(self) -> dict:
+        out = dict(self._marks)
+        out["total_ms"] = round((time.perf_counter() - self._t0) * 1000, 1)
+        return out
 
 
 class AttemptError(Exception):
@@ -104,6 +130,8 @@ def submit_attempt(
         caregiver_profile_id, target_sign_id, attempt_type,
     )
 
+    timings = _Timings()
+
     if attempt_type not in ("webcam", "multiple_choice"):
         raise AttemptError(400, f"attempt_type must be 'webcam' or 'multiple_choice', got {attempt_type!r}")
 
@@ -118,11 +146,12 @@ def submit_attempt(
         if video_path is not None:
             raise AttemptError(400, "video must not be provided for multiple_choice attempts")
 
-    sign_check = supabase_client.table("gloss_signs").select("id").eq("id", target_sign_id).limit(1).execute()
-    if not sign_check.data:
-        raise AttemptError(400, f"Unknown target_sign_id: {target_sign_id!r}")
+    with timings.stage("validate_sign_and_session"):
+        sign_check = supabase_client.table("gloss_signs").select("id").eq("id", target_sign_id).limit(1).execute()
+        if not sign_check.data:
+            raise AttemptError(400, f"Unknown target_sign_id: {target_sign_id!r}")
 
-    session_id = _resolve_session(supabase_client, caregiver_profile_id, session_id)
+        session_id = _resolve_session(supabase_client, caregiver_profile_id, session_id)
 
     recognized_sign_id = None
     recognition_confidence = None
@@ -131,36 +160,86 @@ def submit_attempt(
     deviating_landmarks = None
     corrective_feedback = None
 
+    # Diagnostic summary — additive, returned as `diagnostics` and logged.
+    # Lets us tell at a glance whether a wrong recognition is a model
+    # problem or a capture problem, without re-running anything.
+    # server_side_mirroring is hard-coded False: the backend never
+    # flips landmarks; the frontend "Mirror" control is display-only on
+    # the 2D guide and never touches the recorded video or this pipeline.
+    diagnostics: dict = {
+        "attempt_type": attempt_type,
+        "target_sign_id": target_sign_id,
+        "server_side_mirroring": False,
+    }
+
     if attempt_type == "webcam":
-        try:
-            raw = extract_landmarks_via_subprocess(video_path)
-        except NoLandmarksExtractedError:
-            raise AttemptError(400, "Could not extract usable landmarks from video")
+        # Landmarks are extracted ONCE and preprocessed ONCE here; the
+        # resulting `tensor` feeds the TCN and the `dtw_sequence` from the
+        # SAME preprocessing call feeds DTW evaluation. No second decode,
+        # no second extraction, no second preprocessing pass.
+        with timings.stage("landmark_extraction"):
+            try:
+                raw = extract_landmarks_via_subprocess(video_path)
+            except NoLandmarksExtractedError:
+                raise AttemptError(400, "Could not extract usable landmarks from video")
         logger.info("landmarks extracted: shape=%s", raw.shape)
 
-        tensor, _positional, dtw_sequence = preprocess_landmarks_for_inference(raw, scaler_mean, scaler_std)
+        with timings.stage("preprocessing"):
+            tensor, _positional, dtw_sequence = preprocess_landmarks_for_inference(raw, scaler_mean, scaler_std)
         if tensor is None:
             raise AttemptError(400, "Could not extract usable landmarks from video")
         logger.info("preprocessing done: tensor_shape=%s", tensor.shape)
 
-        prediction = model.predict(tensor, verbose=0)[0]  # (59,)
-        class_index = int(np.argmax(prediction))
-        recognized_sign_id = class_names[class_index]
-        recognition_confidence = float(prediction[class_index])
-        logger.info(
-            "recognition done: recognized_sign_id=%s confidence=%.4f",
-            recognized_sign_id, recognition_confidence,
+        with timings.stage("tcn_inference"):
+            prediction = model.predict(tensor, verbose=0)[0]  # (59,)
+            class_index = int(np.argmax(prediction))
+            recognized_sign_id = class_names[class_index]
+            recognition_confidence = float(prediction[class_index])
+
+        # Capture-quality + top-3 diagnostics (cheap; does not change the
+        # prediction). Raw landmark array is (T, 49, 3), NaN where a
+        # landmark was not detected by MediaPipe.
+        top3_idx = [int(i) for i in np.argsort(prediction)[::-1][:3]]
+        diagnostics["top3"] = [
+            {"sign_id": class_names[i], "confidence": float(prediction[i])} for i in top3_idx
+        ]
+        raw_frame_count = int(raw.shape[0])
+        fully_undetected_frames = int(np.isnan(raw).all(axis=(1, 2)).sum())
+        missing_landmark_fraction = float(np.isnan(raw).mean())
+        diagnostics["raw_frame_count"] = raw_frame_count
+        diagnostics["fully_undetected_frames"] = fully_undetected_frames
+        diagnostics["missing_landmark_fraction"] = round(missing_landmark_fraction, 4)
+        diagnostics["preprocessing"] = (
+            "notebook-parity: interpolate_missing -> normalize (translate/scale/rotate) "
+            "-> resample 60 frames -> kinematic 147->441 -> standardize (feature_scaler.npz)"
         )
+
+        logger.info(
+            "recognition done: target=%s recognized=%s confidence=%.4f top3=%s "
+            "raw_frames=%d undetected_frames=%d missing_landmark_fraction=%.3f",
+            target_sign_id, recognized_sign_id, recognition_confidence,
+            [(d["sign_id"], round(d["confidence"], 3)) for d in diagnostics["top3"]],
+            raw_frame_count, fully_undetected_frames, missing_landmark_fraction,
+        )
+        if missing_landmark_fraction > 0.6 or (
+            raw_frame_count and fully_undetected_frames / raw_frame_count > 0.25
+        ):
+            logger.warning(
+                "LOW LANDMARK QUALITY for target=%s: missing_fraction=%.3f undetected_frames=%d/%d "
+                "— recognition is unreliable for this clip (framing/lighting/hands-out-of-frame).",
+                target_sign_id, missing_landmark_fraction, fully_undetected_frames, raw_frame_count,
+            )
 
         is_correct_sign = recognized_sign_id == target_sign_id
 
         if is_correct_sign:
-            eval_result = evaluate_execution(dtw_sequence, target_sign_id, supabase_client, class_thresholds)
-            quality_tier = eval_result["quality_tier"]
-            deviating_landmarks = eval_result["deviating_landmarks"]
-            corrective_feedback = eval_result["corrective_feedback"]
-            moderate_max = class_thresholds[target_sign_id]["moderate_max"]
-            execution_score = compute_execution_score(eval_result["distance"], moderate_max)
+            with timings.stage("dtw_evaluation"):
+                eval_result = evaluate_execution(dtw_sequence, target_sign_id, supabase_client, class_thresholds)
+                quality_tier = eval_result["quality_tier"]
+                deviating_landmarks = eval_result["deviating_landmarks"]
+                corrective_feedback = eval_result["corrective_feedback"]
+                moderate_max = class_thresholds[target_sign_id]["moderate_max"]
+                execution_score = compute_execution_score(eval_result["distance"], moderate_max)
             logger.info(
                 "evaluation done: distance=%.2f quality_tier=%s execution_score=%.4f",
                 eval_result["distance"], quality_tier, execution_score,
@@ -185,10 +264,16 @@ def submit_attempt(
                 "summary": f"That wasn't the right sign — the correct answer was '{target_sign_id}'.",
                 "top_deviating_groups": [],
             }
+        diagnostics["selected_sign_id"] = selected_sign_id
+        diagnostics["note"] = "quiz answer — no landmark extraction, no model inference, no movement scoring"
         logger.info(
-            "multiple_choice recorded: selected=%s is_correct_sign=%s",
-            selected_sign_id, is_correct_sign,
+            "multiple_choice recorded: target=%s selected=%s is_correct_sign=%s",
+            target_sign_id, selected_sign_id, is_correct_sign,
         )
+
+    diagnostics["predicted_sign_id"] = recognized_sign_id
+    diagnostics["confidence"] = recognition_confidence
+    diagnostics["is_correct_sign"] = is_correct_sign
 
     attempt_row = {
         "caregiver_profile_id": caregiver_profile_id,
@@ -202,26 +287,32 @@ def submit_attempt(
         "corrective_feedback": corrective_feedback,
         "attempt_type": attempt_type,
     }
-    inserted = supabase_client.table("gloss_attempts").insert(attempt_row).execute()
-    attempt_id = inserted.data[0]["id"]
+    with timings.stage("persist_attempt"):
+        inserted = supabase_client.table("gloss_attempts").insert(attempt_row).execute()
+        attempt_id = inserted.data[0]["id"]
     logger.info("attempt persisted: attempt_id=%s", attempt_id)
 
-    mastery_row = update_mastery(
-        supabase_client,
-        caregiver_profile_id,
-        target_sign_id,
-        attempt_type=attempt_type,
-        is_correct_sign=is_correct_sign,
-        quality_tier=quality_tier,
-        execution_score=execution_score,
-    )
+    with timings.stage("mastery_update"):
+        mastery_row = update_mastery(
+            supabase_client,
+            caregiver_profile_id,
+            target_sign_id,
+            attempt_type=attempt_type,
+            is_correct_sign=is_correct_sign,
+            quality_tier=quality_tier,
+            execution_score=execution_score,
+        )
     logger.info(
         "mastery updated: sign_id=%s status=%s streak=%s",
         target_sign_id, mastery_row["mastery_status"], mastery_row["consecutive_strong_streak"],
     )
 
-    next_sign = select_next_lesson(supabase_client, caregiver_profile_id)
+    with timings.stage("next_lesson_selection"):
+        next_sign = select_next_lesson(supabase_client, caregiver_profile_id)
     logger.info("next lesson selected: sign_id=%s", next_sign)
+
+    stage_timings = timings.as_dict()
+    logger.info("attempt timings (ms): %s", stage_timings)
 
     return {
         "attempt_id": attempt_id,
@@ -234,4 +325,9 @@ def submit_attempt(
         "corrective_feedback": corrective_feedback,
         "mastery": mastery_row,
         "next_recommended_sign_id": next_sign,
+        # Task 6 instrumentation — additive; existing consumers ignore it.
+        "timings": stage_timings,
+        # Diagnostic summary — additive; predicted/expected/confidence/top-3,
+        # capture quality, preprocessing description, mirroring flag.
+        "diagnostics": diagnostics,
     }

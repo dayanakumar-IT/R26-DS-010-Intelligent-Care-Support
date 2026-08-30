@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { Brain, Hand } from 'lucide-react'
 import Button from '../../../shared/components/Button'
+import parkinsonsHero from '../assets/images/parkinsons-hero.jpg'
+import glossHero from '../assets/images/gloss-hero.jpg'
 
 interface FeatureCardProps {
   icon: React.ReactNode
@@ -9,6 +11,7 @@ interface FeatureCardProps {
   ctaLabel: string
   onStart: () => void
   accent: string
+  heroSrc: string
   /** Tailwind animation utility class — a lightweight decorative-only
    * looping animation. No licensed Lottie asset was sourced (this
    * environment can't download/verify external asset licensing), so
@@ -26,9 +29,15 @@ function FeatureCard({
   onStart,
   accent,
   animationClassName,
+  heroSrc,
 }: FeatureCardProps) {
   return (
     <div className="flex flex-1 flex-col gap-4 rounded-[var(--radius-lg)] border border-slate-200 bg-white p-6 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)]">
+      <img
+        src={heroSrc}
+        alt=""
+        className="aspect-[16/9] w-full rounded-[var(--radius-md)] object-cover"
+      />
       <div
         className={`flex h-12 w-12 items-center justify-center rounded-[var(--radius-md)] text-white ${animationClassName}`}
         style={{ background: accent }}
@@ -67,6 +76,7 @@ export default function Overview() {
           onStart={() => navigate('/sign-vitals/parkinsons')}
           accent="linear-gradient(135deg, #7c3aed, #a78bfa)"
           animationClassName="animate-pulse"
+          heroSrc={parkinsonsHero}
         />
         <FeatureCard
           icon={<Hand size={22} />}
@@ -76,6 +86,7 @@ export default function Overview() {
           onStart={() => navigate('/sign-vitals/sign-language')}
           accent="linear-gradient(135deg, #1e3a8a, #3b5fc4)"
           animationClassName="animate-bounce"
+          heroSrc={glossHero}
         />
       </div>
     </div>

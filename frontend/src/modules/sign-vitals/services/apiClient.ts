@@ -5,7 +5,7 @@ import { supabase } from '../../../services/supabaseClient'
 // default so nothing outside this module needs to change to get GLOSS/
 // Parkinson's education working today.
 const API_BASE_URL: string =
-  (import.meta.env.VITE_SIGNVITALS_API_URL as string | undefined) ?? 'http://localhost:8000'
+  (import.meta.env.VITE_SIGNVITALS_API_URL as string | undefined) ?? 'http://localhost:8003'
 
 async function getAccessToken(): Promise<string> {
   const { data, error } = await supabase.auth.getSession()

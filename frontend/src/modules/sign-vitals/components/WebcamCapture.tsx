@@ -73,10 +73,12 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
       if (event.data.size > 0) chunksRef.current.push(event.data)
     }
     recorder.onstop = () => {
-      // Use the mimeType actually recorded with (not a hardcoded webm) so the
-      // blob's declared type — and the filename/extension glossApi.ts derives
-      // from it — matches its real content.
-      const blob = new Blob(chunksRef.current, { type: mimeType })
+      // Use recorder.mimeType (the UA's ACTUAL negotiated type, e.g.
+      // "video/mp4;codecs=vp9") rather than the bare `mimeType` we
+      // requested — the browser can and does choose a specific codec
+      // even when asked for the bare container type, and the blob's
+      // declared type should reflect what was really recorded.
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType })
       onRecorded(blob)
       setHasRecording(true)
     }
@@ -94,7 +96,18 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
   return (
     <div className="flex flex-col gap-3">
       <div className="relative aspect-video w-full overflow-hidden rounded-[var(--radius-md)] bg-slate-900">
-        <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+        {/* Preview is mirrored for a natural selfie view only. The
+            recorded stream is the raw camera track and is NOT mirrored —
+            the backend receives the true (un-flipped) video, so
+            left/right handedness reaches recognition correctly. */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="h-full w-full object-cover"
+          style={{ transform: 'scaleX(-1)' }}
+        />
         {isRecording && (
           <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-1 text-xs font-medium text-white">
             <Circle size={8} className="fill-current" />
@@ -102,6 +115,10 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
           </span>
         )}
       </div>
+      <p className="text-center text-xs text-slate-400">
+        Keep your whole upper body and both hands in frame, with even lighting. Preview is mirrored;
+        your recording is not.
+      </p>
 
       <div className="flex justify-center gap-3">
         {!isRecording ? (
