@@ -152,24 +152,37 @@ class SentryHomeScreen extends ConsumerWidget {
 
                       if (alerts.isEmpty) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 28, horizontal: 20),
                           decoration: BoxDecoration(
                             color: _surface,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10, offset: const Offset(0, 3))],
+                              color: AppColors.low.withValues(alpha: 0.1),
+                              blurRadius: 12, offset: const Offset(0, 4))],
                           ),
-                          child: Column(children: [
-                            Icon(Icons.check_circle_outline_rounded,
-                                size: 44, color: AppColors.low.withValues(alpha: 0.6)),
-                            const SizedBox(height: 10),
-                            const Text('All clear!',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                            Container(
+                              width: 60, height: 60,
+                              decoration: BoxDecoration(
+                                color: AppColors.low.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.check_circle_rounded,
+                                  size: 32, color: AppColors.low),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text('All Clear!',
+                                style: TextStyle(fontSize: 17,
+                                    fontWeight: FontWeight.w900,
                                     color: AppColors.low)),
                             const SizedBox(height: 4),
-                            Text('No active alerts at this time',
-                                style: TextStyle(fontSize: 12, color: _muted)),
+                            Text('No active alerts — patients are stable',
+                                style: TextStyle(fontSize: 12, color: _muted),
+                                textAlign: TextAlign.center),
                           ]),
                         );
                       }
@@ -238,7 +251,7 @@ class _HeroBanner extends StatelessWidget {
               ]),
             ])),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              const ModuleSwitcherPill(),
+              const ModuleSwitcherPill(onDark: true),
               const SizedBox(height: 8),
               Stack(children: [
                 Container(
