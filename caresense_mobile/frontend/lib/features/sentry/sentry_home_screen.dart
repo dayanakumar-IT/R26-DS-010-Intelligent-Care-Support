@@ -411,6 +411,14 @@ class _ShimmerBox extends StatelessWidget {
   ));
 }
 
+// ── Room label helper — prefers room_code from backend join, falls back to raw id ──
+String _roomLabel(Map<String, dynamic> a) {
+  final code = a['room_code']?.toString() ?? '';
+  if (code.isNotEmpty) return code;
+  final rid = a['room_id']?.toString() ?? '';
+  return rid.isNotEmpty ? 'Room $rid' : '--';
+}
+
 // ── Alert row ────────────────────────────────────────────────────────────────
 class _AlertRow extends StatelessWidget {
   final Map<String, dynamic> a;
@@ -456,7 +464,7 @@ class _AlertRow extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text('Room ${a['room_id'] ?? '--'}  ·  Patient ${a['patient_id'] ?? '--'}',
+                  Text('${_roomLabel(a)}  ·  Patient ${a['patient_id'] ?? '--'}',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                           color: _text)),
                   const SizedBox(height: 2),
