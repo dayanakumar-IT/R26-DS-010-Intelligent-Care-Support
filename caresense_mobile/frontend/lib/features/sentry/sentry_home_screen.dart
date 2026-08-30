@@ -71,95 +71,93 @@ class SentryHomeScreen extends ConsumerWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const SizedBox(height: 20),
 
-                  // ── Stat cards ────────────────────────────────────────────
+                  // ── Stat cards + Recent alerts (single fetch, same room filter) ─
                   _SectionLabel('Overview'),
                   const SizedBox(height: 10),
                   FutureBuilder<List<dynamic>>(
                     future: Future.wait([
                       SentryService.getAlerts(unackedOnly: false),
+                      _getMyRoomCodes(),
                       SentryService.getDashboardSummary(),
                     ]),
                     builder: (ctx, snap) {
-                      final alerts  = (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
-                      final summary = (snap.data?[1] as Map<String, dynamic>?) ?? {};
-                      final total   = summary['total_patients'] ?? 0;
-                      final unacked = alerts.where((a) => a['acknowledged_at'] == null).toList();
-                      final high    = unacked.where((a) => a['risk_level'] == 'HIGH').length;
-                      final mod     = unacked.where((a) => a['risk_level'] == 'MODERATE').length;
-                      final low     = unacked.where((a) => a['risk_level'] == 'NORMAL').length;
                       if (snap.connectionState == ConnectionState.waiting) {
                         return const _StatsShimmer();
                       }
-                      return Column(children: [
-                        Row(children: [
-                          _StatCard(icon: Icons.warning_rounded, label: 'High Risk',
-                              value: '$high', sub: 'Unacknowledged', color: AppColors.high),
-                          const SizedBox(width: 10),
-                          _StatCard(icon: Icons.warning_amber_rounded, label: 'Moderate',
-                              value: '$mod', sub: 'Unacknowledged', color: AppColors.moderate),
-                        ]),
-                        const SizedBox(height: 10),
-                        Row(children: [
-                          _StatCard(icon: Icons.check_circle_rounded, label: 'Low Risk',
-                              value: '$low', sub: 'Active', color: AppColors.low),
-                          const SizedBox(width: 10),
-                          _StatCard(icon: Icons.people_rounded, label: 'Monitored',
-                              value: '$total', sub: 'Total patients', color: AppColors.accentBlue),
-                        ]),
-                      ]);
-                    },
-                  ),
-                  const SizedBox(height: 24),
 
-                  // ── Recent alerts ─────────────────────────────────────────
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                    _SectionLabel('Recent Alerts'),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentBlue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text('View All',
-                          style: TextStyle(fontSize: 11,
-                              color: AppColors.accentBlue,
-                              fontWeight: FontWeight.w700)),
-                    ),
-                  ]),
-                  const SizedBox(height: 10),
-                  FutureBuilder<List<dynamic>>(
-                    future: Future.wait([
-                      SentryService.getAlerts(unackedOnly: false),
-                      _getMyRoomCodes(),
-                    ]),
-                    builder: (ctx, snap) {
-                      if (snap.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 32),
-                          child: Center(child: CircularProgressIndicator(
-                              color: AppColors.high, strokeWidth: 2)),
-                        );
-                      }
                       final allAlerts =
                           (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
-                      final myRooms = snap.data?[1] as Set<String>?;
-                      final filtered = myRooms != null
+                      final myRooms  = snap.data?[1] as Set<String>?;
+                      final summary  = (snap.data?[2] as Map<String, dynamic>?) ?? {};
+
+                      // Apply room filter to alerts (same as alerts_screen)
+                      final roomAlerts = myRooms != null && myRooms.isNotEmpty
                           ? allAlerts.where((a) =>
                               myRooms.contains(a['room_id']?.toString()))
                               .toList()
                           : allAlerts;
-                      final alerts = filtered
-                          .where((a) => a['acknowledged_at'] == null)
-                          .take(5)
-                          .toList();
 
-                      if (alerts.isEmpty) {
-                        return _AllClearCard(total: allAlerts.length);
-                      }
-                      return Column(
-                          children: alerts.map((a) => _AlertRow(a)).toList());
+                      final unacked = roomAlerts
+                          .where((a) => a['acknowledged_at'] == null).toList();
+                      String lvl(Map a) =>
+                          (a['risk_level'] ?? '').toString().toUpperCase();
+                      final high = unacked.where((a) => lvl(a) == 'HIGH').length;
+                      final mod  = unacked.where((a) => lvl(a) == 'MODERATE').length;
+                      final low  = unacked.where((a) => lvl(a) == 'LOW').length;
+                      final total = summary['total_patients'] ?? 0;
+
+                      return Column(children: [
+                        Row(children: [
+                          _StatCard(icon: Icons.warning_rounded, label: 'High Risk',
+                              value: '$high', sub: 'Unacknowledged',
+                              color: AppColors.high),
+                          const SizedBox(width: 10),
+                          _StatCard(icon: Icons.warning_amber_rounded, label: 'Moderate',
+                              value: '$mod', sub: 'Unacknowledged',
+                              color: AppColors.moderate),
+                        ]),
+                        const SizedBox(height: 10),
+                        Row(children: [
+                          _StatCard(icon: Icons.check_circle_rounded, label: 'Low Risk',
+                              value: '$low', sub: 'Active',
+                              color: AppColors.low),
+                          const SizedBox(width: 10),
+                          _StatCard(icon: Icons.people_rounded, label: 'Monitored',
+                              value: '$total', sub: 'Total patients',
+                              color: AppColors.accentBlue),
+                        ]),
+                        const SizedBox(height: 24),
+
+                        // ── Recent alerts ──────────────────────────────────
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                          _SectionLabel('Recent Alerts'),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentBlue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text('View All',
+                                style: TextStyle(fontSize: 11,
+                                    color: AppColors.accentBlue,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ]),
+                        const SizedBox(height: 10),
+
+                        // Use same filtered + unacked list
+                        Builder(builder: (_) {
+                          final recent = unacked.take(5).toList();
+                          if (recent.isEmpty) {
+                            return _AllClearCard(total: roomAlerts.length);
+                          }
+                          return Column(
+                              children: recent.map((a) => _AlertRow(a)).toList());
+                        }),
+                      ]);
                     },
                   ),
                   const SizedBox(height: 28),
