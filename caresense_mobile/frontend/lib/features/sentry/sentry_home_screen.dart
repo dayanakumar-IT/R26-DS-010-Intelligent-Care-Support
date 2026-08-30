@@ -13,30 +13,35 @@ const _text    = AppColors.textLight;
 const _muted   = AppColors.mutedLight;
 const _dim     = AppColors.dimLight;
 
-/// Look up which room_codes are assigned to the logged-in caregiver.
-/// Matches profiles.name -> caregiver_profiles.display_name -> rooms.caregiver_id.
-/// Returns null if lookup fails (caller should show all rooms as fallback).
+/// Lookup which room_codes belong to the logged-in caregiver.
 Future<Set<String>?> _getMyRoomCodes() async {
   try {
-    final db = Supabase.instance.client;
+    final db     = Supabase.instance.client;
     final authId = db.auth.currentUser?.id;
     if (authId == null) return null;
 
     final profile = await db.from('profiles').select('name').eq('id', authId).maybeSingle();
-    final name = profile?['name']?.toString();
+    final name    = profile?['name']?.toString();
     if (name == null || name.isEmpty) return null;
 
     final cgRes = await db.from('caregiver_profiles').select('id')
         .ilike('display_name', '%$name%').limit(1).maybeSingle();
-    final cgId = cgRes?['id']?.toString();
+    final cgId  = cgRes?['id']?.toString();
     if (cgId == null) return null;
 
     final roomsRes = await db.from('rooms').select('room_code').eq('caregiver_id', cgId);
-    final codes = (roomsRes as List).map((r) => r['room_code'].toString()).toSet();
+    final codes    = (roomsRes as List).map((r) => r['room_code'].toString()).toSet();
     return codes.isEmpty ? null : codes;
   } catch (_) {
     return null;
   }
+}
+
+String _greeting() {
+  final h = DateTime.now().hour;
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
 }
 
 class SentryHomeScreen extends ConsumerWidget {
@@ -45,6 +50,7 @@ class SentryHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
+    final name = auth.caregiverName ?? 'Caregiver';
 
     return Scaffold(
       backgroundColor: _bg,
@@ -55,127 +61,125 @@ class SentryHomeScreen extends ConsumerWidget {
           onRefresh: () async {},
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-                // -"" Top bar -""""""""""""""""""""""""""""""""""""""""""""""
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Good Morning,',
-                        style: TextStyle(fontSize: 12, color: _muted)),
-                    Text(auth.caregiverName ?? 'Caregiver',
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w800, color: _text)),
-                  ]),
-                  Row(children: [
-                    Stack(children: [
-                      const Icon(Icons.notifications_outlined, color: _muted, size: 26),
-                      Positioned(top: 2, right: 2,
-                        child: Container(width: 8, height: 8,
-                            decoration: const BoxDecoration(
-                                color: AppColors.high, shape: BoxShape.circle))),
+              // ── Hero gradient header ─────────────────────────────────────
+              _HeroBanner(name: name),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const SizedBox(height: 20),
+
+                  // ── Stat cards ────────────────────────────────────────────
+                  _SectionLabel('Overview'),
+                  const SizedBox(height: 10),
+                  FutureBuilder<List<dynamic>>(
+                    future: Future.wait([
+                      SentryService.getAlerts(unackedOnly: false),
+                      SentryService.getDashboardSummary(),
                     ]),
-                    const SizedBox(width: 12),
-                    const ModuleSwitcherPill(),
-                  ]),
-                ]),
-                const SizedBox(height: 4),
-                Row(children: [
-                  Container(width: 6, height: 6,
-                      decoration: const BoxDecoration(color: AppColors.low, shape: BoxShape.circle)),
-                  const SizedBox(width: 5),
-                  Text('SENTRY -- Shift Active',
-                      style: TextStyle(fontSize: 11, color: AppColors.low, fontWeight: FontWeight.w600)),
-                ]),
-                const SizedBox(height: 18),
-
-                // -"" Stat cards -"""""""""""""""""""""""""""""""""""""""""""
-                Text('Your Assigned Patients',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _muted)),
-                const SizedBox(height: 10),
-                FutureBuilder<List<dynamic>>(
-                  future: Future.wait([
-                    SentryService.getAlerts(unackedOnly: false),
-                    SentryService.getDashboardSummary(),
-                  ]),
-                  builder: (context, snap) {
-                    final alerts = (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
-                    final summary = (snap.data?[1] as Map<String, dynamic>?) ?? {};
-                    final total  = summary['total_patients'] ?? 0;
-                    final unacked = alerts.where((a) => a['acknowledged_at'] == null).toList();
-                    final high = unacked.where((a) => a['risk_level'] == 'HIGH').length;
-                    final mod  = unacked.where((a) => a['risk_level'] == 'MODERATE').length;
-                    final low  = unacked.where((a) => a['risk_level'] == 'NORMAL').length;
-                    return Column(children: [
-                      Row(children: [
-                        _StatCard('High Risk',  high.toString(),  'Unacknowledged', AppColors.high),
-                        const SizedBox(width: 10),
-                        _StatCard('Moderate',   mod.toString(),   'Unacknowledged', AppColors.moderate),
-                      ]),
-                      const SizedBox(height: 10),
-                      Row(children: [
-                        _StatCard('Low Risk',   low.toString(),   'Active',         AppColors.low),
-                        const SizedBox(width: 10),
-                        _StatCard('Monitored',  total.toString(), 'Total patients', AppColors.accentBlue),
-                      ]),
-                    ]);
-                  },
-                ),
-                const SizedBox(height: 22),
-
-                // -"" Recent alerts -""""""""""""""""""""""""""""""""""""""""
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  const Text('Recent Alerts',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _text)),
-                  Text('View All ->',
-                      style: TextStyle(fontSize: 11, color: AppColors.accentBlue, fontWeight: FontWeight.w600)),
-                ]),
-                const SizedBox(height: 10),
-                FutureBuilder<List<dynamic>>(
-                  future: Future.wait([
-                    SentryService.getAlerts(unackedOnly: false),
-                    _getMyRoomCodes(),
-                  ]),
-                  builder: (context, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                          child: CircularProgressIndicator(color: AppColors.high, strokeWidth: 2));
-                    }
-                    final allAlerts = (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
-                    final myRooms  = snap.data?[1] as Set<String>?;
-                    // Filter by caregiver's rooms if known; otherwise show all
-                    final filtered = myRooms != null
-                        ? allAlerts.where((a) => myRooms.contains(a['room_id']?.toString())).toList()
-                        : allAlerts;
-                    final alerts = filtered
-                        .where((a) => a['acknowledged_at'] == null)
-                        .take(5)
-                        .toList();
-                    if (alerts.isEmpty) {
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: _surface,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: _border),
-                        ),
-                        child: Row(children: [
-                          const Text('-...', style: TextStyle(fontSize: 20)),
-                          const SizedBox(width: 12),
-                          Text('No active alerts -- all clear!',
-                              style: TextStyle(fontSize: 13, color: _muted)),
+                    builder: (ctx, snap) {
+                      final alerts  = (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
+                      final summary = (snap.data?[1] as Map<String, dynamic>?) ?? {};
+                      final total   = summary['total_patients'] ?? 0;
+                      final unacked = alerts.where((a) => a['acknowledged_at'] == null).toList();
+                      final high    = unacked.where((a) => a['risk_level'] == 'HIGH').length;
+                      final mod     = unacked.where((a) => a['risk_level'] == 'MODERATE').length;
+                      final low     = unacked.where((a) => a['risk_level'] == 'NORMAL').length;
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const _StatsShimmer();
+                      }
+                      return Column(children: [
+                        Row(children: [
+                          _StatCard(icon: Icons.warning_rounded, label: 'High Risk',
+                              value: '$high', sub: 'Unacknowledged', color: AppColors.high),
+                          const SizedBox(width: 10),
+                          _StatCard(icon: Icons.warning_amber_rounded, label: 'Moderate',
+                              value: '$mod', sub: 'Unacknowledged', color: AppColors.moderate),
                         ]),
-                      );
-                    }
-                    return Column(children: alerts.map((a) => _AlertRow(a)).toList());
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+                        const SizedBox(height: 10),
+                        Row(children: [
+                          _StatCard(icon: Icons.check_circle_rounded, label: 'Low Risk',
+                              value: '$low', sub: 'Active', color: AppColors.low),
+                          const SizedBox(width: 10),
+                          _StatCard(icon: Icons.people_rounded, label: 'Monitored',
+                              value: '$total', sub: 'Total patients', color: AppColors.accentBlue),
+                        ]),
+                      ]);
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Recent alerts ─────────────────────────────────────────
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    _SectionLabel('Recent Alerts'),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBlue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('View All',
+                          style: TextStyle(fontSize: 11, color: AppColors.accentBlue,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                  ]),
+                  const SizedBox(height: 10),
+                  FutureBuilder<List<dynamic>>(
+                    future: Future.wait([
+                      SentryService.getAlerts(unackedOnly: false),
+                      _getMyRoomCodes(),
+                    ]),
+                    builder: (ctx, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 32),
+                              child: CircularProgressIndicator(
+                                  color: AppColors.high, strokeWidth: 2),
+                            ));
+                      }
+                      final allAlerts = (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
+                      final myRooms   = snap.data?[1] as Set<String>?;
+                      final filtered  = myRooms != null
+                          ? allAlerts.where((a) => myRooms.contains(a['room_id']?.toString())).toList()
+                          : allAlerts;
+                      final alerts = filtered
+                          .where((a) => a['acknowledged_at'] == null)
+                          .take(5)
+                          .toList();
+
+                      if (alerts.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          decoration: BoxDecoration(
+                            color: _surface,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10, offset: const Offset(0, 3))],
+                          ),
+                          child: Column(children: [
+                            Icon(Icons.check_circle_outline_rounded,
+                                size: 44, color: AppColors.low.withValues(alpha: 0.6)),
+                            const SizedBox(height: 10),
+                            const Text('All clear!',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                                    color: AppColors.low)),
+                            const SizedBox(height: 4),
+                            Text('No active alerts at this time',
+                                style: TextStyle(fontSize: 12, color: _muted)),
+                          ]),
+                        );
+                      }
+                      return Column(children: alerts.map((a) => _AlertRow(a)).toList());
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                ]),
+              ),
+            ]),
           ),
         ),
       ),
@@ -183,89 +187,224 @@ class SentryHomeScreen extends ConsumerWidget {
   }
 }
 
-// -"" Stat card -""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+// ── Hero banner ─────────────────────────────────────────────────────────────
+class _HeroBanner extends StatelessWidget {
+  final String name;
+  const _HeroBanner({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1A56DB), Color(0xFF4338CA)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Stack(children: [
+        // Decorative circles
+        Positioned(right: -30, top: -20,
+          child: Container(width: 130, height: 130,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.05)))),
+        Positioned(right: 40, bottom: -30,
+          child: Container(width: 90, height: 90,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.06)))),
+        // Content
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_greeting(),
+                  style: const TextStyle(fontSize: 13, color: Colors.white70)),
+              const SizedBox(height: 2),
+              Text(name,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900,
+                      color: Colors.white)),
+              const SizedBox(height: 8),
+              Row(children: [
+                Container(width: 7, height: 7,
+                    decoration: const BoxDecoration(
+                        color: Color(0xFF4ADE80), shape: BoxShape.circle)),
+                const SizedBox(width: 6),
+                const Text('SENTRY — Shift Active',
+                    style: TextStyle(fontSize: 11, color: Colors.white70,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            ])),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              const ModuleSwitcherPill(),
+              const SizedBox(height: 8),
+              Stack(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                ),
+                Positioned(top: 6, right: 6,
+                  child: Container(width: 8, height: 8,
+                      decoration: const BoxDecoration(
+                          color: Color(0xFFFCA5A5), shape: BoxShape.circle))),
+              ]),
+            ]),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── Section label ────────────────────────────────────────────────────────────
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+  @override
+  Widget build(BuildContext context) => Text(text,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+          color: AppColors.mutedLight, letterSpacing: 0.8));
+}
+
+// ── Stat card ────────────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
+  final IconData icon;
   final String label, value, sub;
   final Color color;
-  const _StatCard(this.label, this.value, this.sub, this.color);
+  const _StatCard({required this.icon, required this.label, required this.value,
+      required this.sub, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: _surface,
         borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(
+          color: color.withValues(alpha: 0.12),
+          blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Container(width: 7, height: 7,
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const Spacer(),
+          Container(width: 6, height: 6,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),
         ]),
-        const SizedBox(height: 6),
-        Text(value,
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: color)),
+        const SizedBox(height: 10),
+        Text(value, style: TextStyle(
+            fontSize: 30, fontWeight: FontWeight.w900, color: color,
+            height: 1.0)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w700, color: _text)),
         Text(sub, style: TextStyle(fontSize: 10, color: _muted)),
       ]),
     ));
   }
 }
 
-// -"" Alert row -""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+// ── Stats shimmer placeholder ─────────────────────────────────────────────────
+class _StatsShimmer extends StatelessWidget {
+  const _StatsShimmer();
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Row(children: [_ShimmerBox(), const SizedBox(width: 10), _ShimmerBox()]),
+    const SizedBox(height: 10),
+    Row(children: [_ShimmerBox(), const SizedBox(width: 10), _ShimmerBox()]),
+  ]);
+}
+
+class _ShimmerBox extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Expanded(child: Container(
+    height: 90,
+    decoration: BoxDecoration(
+      color: _border,
+      borderRadius: BorderRadius.circular(14),
+    ),
+  ));
+}
+
+// ── Alert row ────────────────────────────────────────────────────────────────
 class _AlertRow extends StatelessWidget {
   final Map<String, dynamic> a;
   const _AlertRow(this.a);
 
   @override
   Widget build(BuildContext context) {
-    final level = (a['risk_level'] ?? 'NORMAL').toString();
-    final color = level == 'HIGH' ? AppColors.high
-                : level == 'MODERATE' ? AppColors.moderate
-                : AppColors.low;
-    final icon  = level == 'HIGH' ? Icons.warning_rounded
-                : level == 'MODERATE' ? Icons.warning_amber_rounded
-                : Icons.check_circle_outline;
-    final time  = (a['created_at'] ?? '').toString();
-    final timeStr = time.length >= 16 ? time.substring(11, 16) : '-"';
+    final level  = (a['risk_level'] ?? 'NORMAL').toString();
+    final color  = level == 'HIGH'     ? AppColors.high
+                 : level == 'MODERATE' ? AppColors.moderate
+                 : AppColors.low;
+    final icon   = level == 'HIGH'     ? Icons.warning_rounded
+                 : level == 'MODERATE' ? Icons.warning_amber_rounded
+                 : Icons.check_circle_outline;
+    final time   = (a['created_at'] ?? '').toString();
+    final timeStr = time.length >= 16 ? time.substring(11, 16) : '--';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: _surface,
-        border: Border.all(color: _border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 8, offset: const Offset(0, 2))],
       ),
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
         child: Row(children: [
-          // Left accent stripe
           Container(width: 4, color: color),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               child: Row(children: [
-                Icon(icon, color: color, size: 18),
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
                 const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Room ${a['room_id'] ?? '--'} - Patient ${a['patient_id'] ?? '--'}',
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700, color: _text)),
-                  Text(level == 'HIGH' ? 'High risk - Immediate'
-                     : level == 'MODERATE' ? 'Unstable movement' : 'Stable',
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text('Room ${a['room_id'] ?? '--'}  ·  Patient ${a['patient_id'] ?? '--'}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                          color: _text)),
+                  const SizedBox(height: 2),
+                  Text(level == 'HIGH' ? 'Immediate attention required'
+                     : level == 'MODERATE' ? 'Unstable movement detected' : 'Stable',
                       style: TextStyle(fontSize: 11, color: _muted)),
                 ])),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
-                  child: Text(level == 'MODERATE' ? 'MOD' : level,
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
-                ),
-                const SizedBox(width: 8),
-                Text(timeStr, style: TextStyle(fontSize: 10, color: _dim)),
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                        color: color, borderRadius: BorderRadius.circular(6)),
+                    child: Text(level == 'MODERATE' ? 'MOD' : level,
+                        style: const TextStyle(color: Colors.white, fontSize: 9,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(timeStr, style: TextStyle(fontSize: 10, color: _dim)),
+                ]),
               ]),
             ),
           ),

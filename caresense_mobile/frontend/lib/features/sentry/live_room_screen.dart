@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -6,7 +6,7 @@ import '../../core/constants/colors.dart';
 import '../../core/config/api_config.dart';
 import 'patient_detail_screen.dart';
 
-// -- Bone pairs -- 14-joint MediaPipe subset (matches backend config/settings.py)
+// Bone pairs — 14-joint MediaPipe subset (matches backend config/settings.py)
 const List<List<int>> kBones = [
   [0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7],
   [1, 8], [1, 9], [8, 10], [9, 11], [10, 12], [11, 13],
@@ -73,7 +73,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
   @override
   void dispose() {
-    _disposed = true;          // must be first — guards _scheduleReconnect
+    _disposed = true;
     _reconnectTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
@@ -89,240 +89,264 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   Widget build(BuildContext context) {
     final level     = (_frame?['risk_level'] ?? 'NORMAL').toString();
     final score     = _frame?['risk_score'];
-    final posture   = _frame?['posture']    ?? '--';
-    final zone      = _frame?['zone']       ?? '--';
+    final posture   = _frame?['posture'] ?? '--';
+    final zone      = _frame?['zone']    ?? '--';
     final conf      = _frame?['confidence'];
     final color     = _levelColor(level);
-    final scoreText = score != null ? '${(score as num).toStringAsFixed(0)}/100' : '--';
+    final scoreText = score != null ? '${(score as num).toStringAsFixed(0)}' : '--';
     final confText  = conf  != null ? '${((conf as num) * 100).toStringAsFixed(0)}%' : '--';
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(children: [
-            // -- Header --------------------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Row(children: [
-                    const Icon(Icons.arrow_back_ios_rounded, size: 16, color: AppColors.accentBlue),
-                    const SizedBox(width: 2),
-                    Text('${widget.roomId} - ${widget.patientCode}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
-                            color: AppColors.accentBlue)),
-                  ]),
-                ),
-                const Spacer(),
-                // Risk level badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(7),
-                    border: Border.all(color: color.withOpacity(0.5)),
-                  ),
-                  child: Text(level == 'MODERATE' ? 'MODERATE RISK'
-                             : level == 'HIGH' ? 'HIGH RISK' : 'NORMAL',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color)),
-                ),
-              ]),
-            ),
+        child: Column(children: [
 
-            // -- Live indicator -------------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [
-                Container(width: 6, height: 6,
-                    decoration: BoxDecoration(
-                        color: _connected ? AppColors.low : AppColors.high,
-                        shape: BoxShape.circle)),
-                const SizedBox(width: 5),
-                Text(_connected ? 'LIVE - ${DateTime.now().hour.toString().padLeft(2,'0')}:${DateTime.now().minute.toString().padLeft(2,'0')}'
-                               : 'Reconnecting...',
-                    style: TextStyle(fontSize: 11, color: _muted, fontWeight: FontWeight.w600)),
-              ]),
+          // ── App bar ──────────────────────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: _surface,
+              boxShadow: [BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8, offset: const Offset(0, 2))],
             ),
-            const SizedBox(height: 10),
-
-            // -- Skeleton canvas ------------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                width: double.infinity,
-                height: MediaQuery.of(context).size.height * 0.40,
-                decoration: BoxDecoration(
-                  color: AppColors.bgLight,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: CustomPaint(
-                  painter: _SkeletonPainter(_frame, level),
-                  child: const SizedBox.expand(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // -- Metrics row ----------------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [
-                _MetricBox('Risk Score', scoreText, color),
-                const SizedBox(width: 8),
-                _MetricBox('Confidence', confText, AppColors.accentBlue),
-                const SizedBox(width: 8),
-                _MetricBox('Level', level == 'MODERATE' ? 'MOD' : level, color),
-              ]),
-            ),
-            const SizedBox(height: 10),
-
-            // -- Info cards -----------------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [
-                _InfoCard(Icons.accessibility_new_rounded, 'Posture', posture, AppColors.accentBlue),
-                const SizedBox(width: 8),
-                _InfoCard(Icons.location_on_outlined, 'Zone', zone, AppColors.teal),
-              ]),
-            ),
-            const SizedBox(height: 10),
-
-            // -- Key observations ------------------------------------------
-            if (_frame?['key_factors'] != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
                 child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _surface,
-                    border: Border.all(color: _border),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.accentBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Key Observations',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _text)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6, runSpacing: 5,
-                      children: ((_frame!['key_factors'] as List?) ?? []).map<Widget>((f) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            border: Border.all(color: color.withOpacity(0.3)),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(f.toString(),
-                              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
-                        );
-                      }).toList(),
-                    ),
+                  child: const Icon(Icons.arrow_back_ios_rounded,
+                      size: 16, color: AppColors.accentBlue),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text('${widget.roomId}  ·  ${widget.patientCode}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                          color: _text)),
+                  Row(children: [
+                    Container(width: 6, height: 6,
+                        decoration: BoxDecoration(
+                          color: _connected ? AppColors.low : AppColors.high,
+                          shape: BoxShape.circle)),
+                    const SizedBox(width: 4),
+                    Text(_connected ? 'LIVE' : 'Reconnecting...',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: _connected ? AppColors.low : AppColors.high,
+                        )),
                   ]),
+                ]),
+              ),
+              // Risk badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  level == 'MODERATE' ? 'MOD RISK'
+                      : level == 'HIGH' ? 'HIGH RISK' : 'NORMAL',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
                 ),
               ),
-              const SizedBox(height: 12),
-            ],
+            ]),
+          ),
 
-            // -- View Room/Bed Details button -------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => PatientDetailScreen(
-                        patient: {
-                          'room_id': widget.roomId,
-                          'patient_code': widget.patientCode,
-                        },
-                      ))),
-                  icon: const Icon(Icons.bed_outlined, size: 16),
-                  label: const Text('View Room / Bed Details',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          // ── Body ─────────────────────────────────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(children: [
+
+                // Skeleton canvas (dark)
+                Container(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height * 0.38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF060D1A),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(
+                      color: color.withValues(alpha: 0.2),
+                      blurRadius: 16, offset: const Offset(0, 4))],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: CustomPaint(
+                    painter: _SkeletonPainter(_frame, level),
+                    child: const SizedBox.expand(),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+
+                // Metric cards row
+                Row(children: [
+                  _MetricCard(
+                    icon: Icons.speed_rounded,
+                    label: 'Risk Score',
+                    value: score != null ? '$scoreText/100' : '--',
+                    color: color,
+                  ),
+                  const SizedBox(width: 10),
+                  _MetricCard(
+                    icon: Icons.track_changes_rounded,
+                    label: 'Confidence',
+                    value: confText,
+                    color: AppColors.accentBlue,
+                  ),
+                  const SizedBox(width: 10),
+                  _MetricCard(
+                    icon: Icons.analytics_rounded,
+                    label: 'Level',
+                    value: level == 'MODERATE' ? 'MOD' : level,
+                    color: color,
+                  ),
+                ]),
+                const SizedBox(height: 12),
+
+                // Posture + Zone
+                Row(children: [
+                  _InfoCard(Icons.accessibility_new_rounded, 'Posture', posture,
+                      AppColors.accentBlue),
+                  const SizedBox(width: 10),
+                  _InfoCard(Icons.location_on_outlined, 'Zone', zone, AppColors.teal),
+                ]),
+
+                // Key factors
+                if (_frame?['key_factors'] != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: _surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Icon(Icons.info_outline_rounded,
+                            size: 14, color: AppColors.accentBlue),
+                        const SizedBox(width: 6),
+                        const Text('Key Observations',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                                color: _text)),
+                      ]),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6, runSpacing: 6,
+                        children: ((_frame!['key_factors'] as List?) ?? [])
+                            .map<Widget>((f) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.1),
+                                border: Border.all(color: color.withValues(alpha: 0.3)),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(f.toString(),
+                                  style: TextStyle(fontSize: 10, color: color,
+                                      fontWeight: FontWeight.w600)),
+                            )).toList(),
+                      ),
+                    ]),
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+
+                // View Details button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => PatientDetailScreen(
+                          patient: {
+                            'room_id': widget.roomId,
+                            'patient_code': widget.patientCode,
+                          },
+                        ))),
+                    icon: const Icon(Icons.bed_outlined, size: 16),
+                    label: const Text('View Room / Bed Details',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ]),
             ),
-            const SizedBox(height: 20),
-          ]),
-        ),
+          ),
+        ]),
       ),
     );
   }
 }
 
-// -- Skeleton CustomPainter ----------------------------------------------------
+// ── Skeleton painter ─────────────────────────────────────────────────────────
 class _SkeletonPainter extends CustomPainter {
   final Map<String, dynamic>? frame;
   final String level;
   const _SkeletonPainter(this.frame, this.level);
 
-  Color get _boneColor  => level == 'HIGH' ? const Color(0xFFEF4444)
+  Color get _boneColor  => level == 'HIGH'     ? const Color(0xFFEF4444)
                          : level == 'MODERATE' ? const Color(0xFFF59E0B)
                          : const Color(0xFF22C55E);
-  Color get _jointColor => level == 'HIGH' ? const Color(0xFFDC2626)
+  Color get _jointColor => level == 'HIGH'     ? const Color(0xFFDC2626)
                          : level == 'MODERATE' ? const Color(0xFFD97706)
                          : const Color(0xFF16A34A);
-  Color get _headColor  => level == 'HIGH' ? const Color(0xFFB91C1C)
-                         : level == 'MODERATE' ? const Color(0xFFB45309)
-                         : const Color(0xFF15803D);
 
   @override
   void paint(Canvas canvas, Size size) {
     final W = size.width;
     final H = size.height;
 
-    // Background
     canvas.drawRect(Rect.fromLTWH(0, 0, W, H),
-        Paint()..color = AppColors.bgLight);
+        Paint()..color = const Color(0xFF060D1A));
 
-    // Subtle grid
-    final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(0.035)
-      ..strokeWidth = 1;
-    for (double x = 0; x <= W; x += 44) {
-      canvas.drawLine(Offset(x, 0), Offset(x, H), gridPaint);
-    }
-    for (double y = 0; y <= H; y += 44) {
-      canvas.drawLine(Offset(0, y), Offset(W, y), gridPaint);
-    }
+    // Grid
+    final gridP = Paint()..color = Colors.white.withValues(alpha: 0.04)..strokeWidth = 1;
+    for (double x = 0; x <= W; x += 44) canvas.drawLine(Offset(x, 0), Offset(x, H), gridP);
+    for (double y = 0; y <= H; y += 44) canvas.drawLine(Offset(0, y), Offset(W, y), gridP);
 
     // LIVE badge
-    final livePaint = Paint()..color = const Color(0xFF22C55E).withOpacity(0.15);
+    final liveP = Paint()..color = const Color(0xFF22C55E).withValues(alpha: 0.18);
     canvas.drawRRect(RRect.fromRectAndRadius(
-        const Rect.fromLTWH(12, 12, 42, 18), const Radius.circular(4)), livePaint);
-    final liveTp = TextPainter(
-      text: const TextSpan(text: '- LIVE',
-          style: TextStyle(color: Color(0xFF22C55E), fontSize: 9, fontWeight: FontWeight.w700)),
+        Rect.fromLTWH(12, 12, 48, 20), const Radius.circular(5)), liveP);
+    (TextPainter(
+      text: const TextSpan(text: '● LIVE',
+          style: TextStyle(color: Color(0xFF4ADE80), fontSize: 9,
+              fontWeight: FontWeight.w700)),
       textDirection: TextDirection.ltr,
-    )..layout();
-    liveTp.paint(canvas, const Offset(16, 14));
+    )..layout()).paint(canvas, const Offset(16, 16));
 
     final rawSkel = frame?['skeleton'];
     if (rawSkel == null || (rawSkel as List).isEmpty) {
-      final tp = TextPainter(
-        text: const TextSpan(
-          text: 'Waiting for skeleton data...',
-          style: TextStyle(color: Color(0x8094A3B8), fontSize: 13),
-        ),
+      final waitTp = TextPainter(
+        text: const TextSpan(text: 'Waiting for skeleton data...',
+            style: TextStyle(color: Color(0x6094A3B8), fontSize: 13)),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset((W - tp.width) / 2, (H - tp.height) / 2));
+      waitTp.paint(canvas, Offset((W - waitTp.width) / 2, (H - waitTp.height) / 2));
       return;
     }
 
-    // Parse joints: [[x,y,z,v], ...]
     final joints = (rawSkel as List).map<List<double>>((j) {
       final jl = j as List;
       return [
@@ -337,53 +361,49 @@ class _SkeletonPainter extends CustomPainter {
     double px(int i) => joints[i][0] * W;
     double py(int i) => joints[i][1] * H;
 
-    // Draw bones
-    final bonePaint = Paint()
-      ..color = _boneColor.withOpacity(0.85)
+    // Bones
+    final boneP = Paint()
+      ..color = _boneColor.withValues(alpha: 0.85)
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
     for (final bone in kBones) {
-      final a = bone[0], b = bone[1];
-      if (!vis(a) || !vis(b)) continue;
-      canvas.drawLine(Offset(px(a), py(a)), Offset(px(b), py(b)), bonePaint);
+      if (!vis(bone[0]) || !vis(bone[1])) continue;
+      canvas.drawLine(Offset(px(bone[0]), py(bone[0])),
+          Offset(px(bone[1]), py(bone[1])), boneP);
     }
 
-    // Draw joints
+    // Joints
     for (int i = 0; i < joints.length; i++) {
       if (!vis(i)) continue;
       final r = i == 0 ? 9.0 : 5.5;
       canvas.drawCircle(Offset(px(i), py(i)), r,
-          Paint()..color = (i == 0 ? _headColor : _jointColor));
+          Paint()..color = i == 0 ? const Color(0xFFFCD34D) : _jointColor);
       canvas.drawCircle(Offset(px(i), py(i)), r,
-          Paint()
-            ..color = Colors.white.withOpacity(0.25)
-            ..strokeWidth = 1.5
-            ..style = PaintingStyle.stroke);
+          Paint()..color = Colors.white.withValues(alpha: 0.2)
+              ..strokeWidth = 1.5..style = PaintingStyle.stroke);
     }
 
-    // Risk score overlay
+    // Score overlay
     final score = frame?['risk_score'];
     if (score != null) {
+      final scoreStr = '${(score as num).toStringAsFixed(0)}/100';
       final tp = TextPainter(
-        text: TextSpan(
-          text: '${(score as num).toStringAsFixed(0)}/100',
-          style: TextStyle(color: _boneColor, fontSize: 15, fontWeight: FontWeight.w900),
-        ),
+        text: TextSpan(text: scoreStr,
+            style: TextStyle(color: _boneColor, fontSize: 16,
+                fontWeight: FontWeight.w900)),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(W - tp.width - 12, 12));
+      tp.paint(canvas, Offset(W - tp.width - 12, 14));
     }
 
-    // Posture label bottom-left
+    // Posture
     final posture = frame?['posture'];
     if (posture != null) {
       final tp = TextPainter(
-        text: TextSpan(
-          text: posture.toString().toUpperCase(),
-          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10,
-              fontWeight: FontWeight.w600),
-        ),
+        text: TextSpan(text: posture.toString().toUpperCase(),
+            style: const TextStyle(color: Color(0x8094A3B8), fontSize: 10,
+                fontWeight: FontWeight.w600)),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(12, H - tp.height - 12));
@@ -395,30 +415,39 @@ class _SkeletonPainter extends CustomPainter {
       old.frame != frame || old.level != level;
 }
 
-// -- Helper widgets -------------------------------------------------------------
-class _MetricBox extends StatelessWidget {
+// ── Metric card ──────────────────────────────────────────────────────────────
+class _MetricCard extends StatelessWidget {
+  final IconData icon;
   final String label, value;
   final Color color;
-  const _MetricBox(this.label, this.value, this.color);
+  const _MetricCard({required this.icon, required this.label,
+      required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        border: Border.all(color: color.withOpacity(0.3)),
-        borderRadius: BorderRadius.circular(10),
+        color: _surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(
+          color: color.withValues(alpha: 0.1),
+          blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Column(children: [
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900,
+            color: color)),
         const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 9, color: _muted)),
+        Text(label, style: TextStyle(fontSize: 9, color: _muted),
+            textAlign: TextAlign.center),
       ]),
     ));
   }
 }
 
+// ── Info card ────────────────────────────────────────────────────────────────
 class _InfoCard extends StatelessWidget {
   final IconData icon;
   final String label, value;
@@ -428,19 +457,30 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(child: Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _surface,
-        border: Border.all(color: _border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Text(label, style: TextStyle(fontSize: 9, color: _muted)),
           Text(value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _text),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                  color: _text),
               overflow: TextOverflow.ellipsis),
         ])),
       ]),

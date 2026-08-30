@@ -30,49 +30,31 @@ class _RoomsScreenState extends State<RoomsScreen> {
   Future<void> _load() async {
     setState(() { _patients = null; _error = null; });
     try {
-      final db = Supabase.instance.client;
+      final db     = Supabase.instance.client;
       final authId = db.auth.currentUser?.id;
 
-      // rooms.caregiver_id references caregiver_profiles.id (synthetic PULSE table),
-      // NOT the real auth UUID. So we look up the logged-in user's name from
-      // profiles, then find the matching caregiver_profiles entry by display_name,
-      // and use that synthetic id to filter rooms.
       String? syntheticCgId;
       if (authId != null) {
-        // Step 1: get real user's name from profiles
-        final profileRes = await db
-            .from('profiles')
-            .select('name')
-            .eq('id', authId)
-            .maybeSingle();
+        final profileRes = await db.from('profiles').select('name')
+            .eq('id', authId).maybeSingle();
         final realName = profileRes?['name']?.toString();
-
         if (realName != null && realName.isNotEmpty) {
-          // Step 2: find matching caregiver_profiles by display_name (case-insensitive)
-          final cgRes = await db
-              .from('caregiver_profiles')
-              .select('id')
-              .ilike('display_name', '%$realName%')
-              .limit(1)
-              .maybeSingle();
+          final cgRes = await db.from('caregiver_profiles').select('id')
+              .ilike('display_name', '%$realName%').limit(1).maybeSingle();
           syntheticCgId = cgRes?['id']?.toString();
         }
       }
 
-      // Step 3: filter rooms by synthetic caregiver id if found,
-      // otherwise fall back to showing all rooms (for demo when names don't match).
       List<dynamic> roomsRes = syntheticCgId != null
-          ? await db.from('rooms').select('room_code, ward, caregiver_id').eq('caregiver_id', syntheticCgId)
+          ? await db.from('rooms').select('room_code, ward, caregiver_id')
+              .eq('caregiver_id', syntheticCgId)
           : [];
 
       if (roomsRes.isEmpty) {
         roomsRes = await db.from('rooms').select('room_code, ward, caregiver_id');
       }
 
-      final roomCodes = roomsRes
-          .map((r) => r['room_code'].toString())
-          .toList();
-
+      final roomCodes = roomsRes.map((r) => r['room_code'].toString()).toList();
       if (roomCodes.isEmpty) {
         if (mounted) setState(() => _patients = []);
         return;
@@ -96,38 +78,78 @@ class _RoomsScreenState extends State<RoomsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final count = _patients?.length ?? 0;
+
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(children: [
 
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          // ── Header ──────────────────────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: _surface,
+              boxShadow: [BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8, offset: const Offset(0, 2))],
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Live Rooms',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _text)),
-                Text('Your assigned patients', style: TextStyle(fontSize: 11, color: _muted)),
+                Row(children: [
+                  const Text('Live Rooms',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
+                          color: _text)),
+                  if (_patients != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text('$count',
+                          style: const TextStyle(fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.accentBlue)),
+                    ),
+                  ],
+                ]),
+                Text('Your assigned patients',
+                    style: TextStyle(fontSize: 11, color: _muted)),
               ]),
               Row(children: [
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.mutedLight),
-                  onPressed: _load,
-                ),
+                // Live badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: AppColors.low.withOpacity(0.12),
+                    color: AppColors.low.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.low.withOpacity(0.35)),
+                    border: Border.all(color: AppColors.low.withValues(alpha: 0.35)),
                   ),
                   child: Row(children: [
                     Container(width: 6, height: 6,
-                        decoration: const BoxDecoration(color: AppColors.low, shape: BoxShape.circle)),
+                        decoration: const BoxDecoration(
+                            color: AppColors.low, shape: BoxShape.circle)),
                     const SizedBox(width: 5),
-                    Text('LIVE', style: TextStyle(fontSize: 10, color: AppColors.low, fontWeight: FontWeight.w800)),
+                    const Text('LIVE',
+                        style: TextStyle(fontSize: 10, color: AppColors.low,
+                            fontWeight: FontWeight.w800)),
                   ]),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _load,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _bg,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _border),
+                    ),
+                    child: Icon(Icons.refresh_rounded, size: 18, color: _muted),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 const ModuleSwitcherPill(),
@@ -135,32 +157,17 @@ class _RoomsScreenState extends State<RoomsScreen> {
             ]),
           ),
 
-          // Patient/Room list
+          // ── List ────────────────────────────────────────────────────────
           Expanded(
             child: _patients == null
-                ? const Center(child: CircularProgressIndicator(color: AppColors.accentBlue, strokeWidth: 2))
+                ? const Center(child: CircularProgressIndicator(
+                    color: AppColors.accentBlue, strokeWidth: 2))
                 : _patients!.isEmpty
-                    ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.meeting_room_outlined, size: 48, color: AppColors.dimLight),
-                        const SizedBox(height: 12),
-                        Text(_error != null ? 'Connection error' : 'No rooms assigned.',
-                            style: TextStyle(color: _muted, fontSize: 13)),
-                        if (_error != null) ...[
-                          const SizedBox(height: 4),
-                          Text(_error!, style: TextStyle(color: _dim, fontSize: 10),
-                              textAlign: TextAlign.center),
-                        ],
-                        const SizedBox(height: 16),
-                        TextButton.icon(
-                          onPressed: _load,
-                          icon: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.accentBlue),
-                          label: const Text('Retry', style: TextStyle(color: AppColors.accentBlue)),
-                        ),
-                      ]))
+                    ? _EmptyState(error: _error, onRetry: _load)
                     : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                         itemCount: _patients!.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
                         itemBuilder: (_, i) => _RoomCard(_patients![i]),
                       ),
           ),
@@ -170,74 +177,130 @@ class _RoomsScreenState extends State<RoomsScreen> {
   }
 }
 
-// ── Room/Patient card ──────────────────────────────────────────────────────
+// ── Empty state ──────────────────────────────────────────────────────────────
+class _EmptyState extends StatelessWidget {
+  final String? error;
+  final VoidCallback onRetry;
+  const _EmptyState({this.error, required this.onRetry});
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 80, height: 80,
+          decoration: BoxDecoration(
+            color: AppColors.accentBlue.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.meeting_room_outlined,
+              size: 40, color: AppColors.accentBlue),
+        ),
+        const SizedBox(height: 16),
+        Text(error != null ? 'Connection error' : 'No rooms assigned',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                color: _text)),
+        const SizedBox(height: 6),
+        Text(error != null ? error! : 'No patients are currently assigned to you.',
+            style: TextStyle(fontSize: 12, color: _muted),
+            textAlign: TextAlign.center),
+        const SizedBox(height: 20),
+        ElevatedButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded, size: 16),
+          label: const Text('Retry'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accentBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+      ]),
+    ),
+  );
+}
+
+// ── Room card ────────────────────────────────────────────────────────────────
 class _RoomCard extends StatelessWidget {
   final Map<String, dynamic> patient;
   const _RoomCard(this.patient);
 
   void _goLive(BuildContext context) {
-    Navigator.push(context,
-        MaterialPageRoute(builder: (_) => LiveRoomScreen(
-          roomId: patient['room_id']?.toString() ?? '',
-          patientCode: patient['patient_code']?.toString() ?? '',
-        )));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => LiveRoomScreen(
+      roomId: patient['room_id']?.toString() ?? '',
+      patientCode: patient['patient_code']?.toString() ?? '',
+    )));
   }
 
   @override
   Widget build(BuildContext context) {
+    final roomId = patient['room_id']?.toString() ?? '--';
+    final code   = patient['patient_code']?.toString() ?? '--';
+    final gender = patient['gender']?.toString();
+
     return GestureDetector(
       onTap: () => _goLive(context),
       child: Container(
         decoration: BoxDecoration(
           color: _surface,
-          border: Border.all(color: _border),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(
+            color: AppColors.accentBlue.withValues(alpha: 0.08),
+            blurRadius: 14, offset: const Offset(0, 5))],
         ),
         child: Column(children: [
 
-          // Card header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-            child: Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: Text('${patient['room_id'] ?? '--'} / ${patient['patient_code'] ?? '--'}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: AppColors.accentBlue)),
+          // Gradient top strip header
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1A56DB), Color(0xFF0891B2)],
               ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Icon(Icons.bed_rounded, color: Colors.white70, size: 14),
+                  const SizedBox(width: 4),
+                  Text('Room $roomId',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                          color: Colors.white)),
+                ]),
+                const SizedBox(height: 2),
+                Text('Patient: $code',
+                    style: const TextStyle(fontSize: 11, color: Colors.white70)),
+              ]),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.low.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.low.withOpacity(0.4)),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(children: [
                   Container(width: 5, height: 5,
-                      decoration: const BoxDecoration(color: AppColors.low, shape: BoxShape.circle)),
+                      decoration: const BoxDecoration(
+                          color: Color(0xFF4ADE80), shape: BoxShape.circle)),
                   const SizedBox(width: 4),
-                  Text('MONITORING',
-                      style: TextStyle(color: AppColors.low, fontSize: 9, fontWeight: FontWeight.w800)),
+                  const Text('MONITORING',
+                      style: TextStyle(fontSize: 9, color: Colors.white,
+                          fontWeight: FontWeight.w800)),
                 ]),
               ),
             ]),
           ),
-          const SizedBox(height: 10),
 
-          // Skeleton preview canvas
+          // Skeleton preview
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
             child: Container(
-              width: double.infinity, height: 90,
+              width: double.infinity, height: 80,
               decoration: BoxDecoration(
-                color: AppColors.bgLight,
+                color: const Color(0xFF060D1A),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _border),
               ),
               child: CustomPaint(
                 painter: _StickFigurePainter(),
@@ -245,50 +308,64 @@ class _RoomCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 10),
 
           // Info row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
             child: Row(children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Risk Score', style: TextStyle(fontSize: 10, color: _muted)),
+                Text('Risk Score',
+                    style: TextStyle(fontSize: 9, color: _muted,
+                        fontWeight: FontWeight.w600)),
                 Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('--', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.low)),
-                  Text('/100', style: TextStyle(fontSize: 10, color: _dim)),
+                  const Text('--',
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900,
+                          color: AppColors.low, height: 1.0)),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text('/100',
+                        style: TextStyle(fontSize: 10, color: _dim)),
+                  ),
                 ]),
-                Text('Tap to view live',
-                    style: TextStyle(fontSize: 10, color: AppColors.accentBlue, fontWeight: FontWeight.w600)),
               ]),
               const Spacer(),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                if (patient['gender'] != null)
-                  Text(patient['gender'] ?? '', style: TextStyle(fontSize: 11, color: _muted)),
-                if (patient['age'] != null) ...[
-                  const SizedBox(height: 2),
-                  Text('Age: ${patient['age']}', style: TextStyle(fontSize: 11, color: _dim)),
-                ],
-              ]),
+              if (gender != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentBlue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(children: [
+                    Icon(gender == 'Male' ? Icons.male : Icons.female,
+                        size: 14, color: AppColors.accentBlue),
+                    const SizedBox(width: 3),
+                    Text(gender,
+                        style: const TextStyle(fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentBlue)),
+                  ]),
+                ),
             ]),
           ),
-          const SizedBox(height: 10),
 
-          // View details button
+          // Button
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => _goLive(context),
-                icon: const Icon(Icons.monitor_heart_outlined, size: 15),
-                label: const Text('View Room / Bed Details',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                icon: const Icon(Icons.monitor_heart_rounded, size: 16),
+                label: const Text('View Live Room',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accentBlue,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ),
@@ -299,21 +376,29 @@ class _RoomCard extends StatelessWidget {
   }
 }
 
-// ── Stick figure painter ────────────────────────────────────────────────────
+// ── Static stick figure on dark bg ──────────────────────────────────────────
 class _StickFigurePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final p = Paint()..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
-    p.color = const Color(0xFFFFD700);
-    canvas.drawCircle(Offset(cx, 16), 10, p);
-    p.color = Colors.white;
-    canvas.drawLine(Offset(cx, 26), Offset(cx, 55), p);
+    final scale = size.height / 100;
+    final p = Paint()..strokeWidth = 2.5 * scale
+        ..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+
+    // Head
+    canvas.drawCircle(Offset(cx, 18 * scale), 10 * scale,
+        Paint()..color = const Color(0xFFFCD34D)..style = PaintingStyle.stroke..strokeWidth = 2.5);
+    // Body
     p.color = const Color(0xFF60A5FA);
-    canvas.drawLine(Offset(cx - 22, 36), Offset(cx + 22, 36), p);
-    p.color = const Color(0xFF22C55E);
-    canvas.drawLine(Offset(cx, 55), Offset(cx - 16, 80), p);
-    canvas.drawLine(Offset(cx, 55), Offset(cx + 16, 80), p);
+    canvas.drawLine(Offset(cx, 28 * scale), Offset(cx, 60 * scale), p);
+    // Arms
+    p.color = const Color(0xFF34D399);
+    canvas.drawLine(Offset(cx - 22 * scale, 40 * scale),
+        Offset(cx + 22 * scale, 40 * scale), p);
+    // Legs
+    p.color = const Color(0xFF818CF8);
+    canvas.drawLine(Offset(cx, 60 * scale), Offset(cx - 18 * scale, 88 * scale), p);
+    canvas.drawLine(Offset(cx, 60 * scale), Offset(cx + 18 * scale, 88 * scale), p);
   }
   @override
   bool shouldRepaint(_) => false;
