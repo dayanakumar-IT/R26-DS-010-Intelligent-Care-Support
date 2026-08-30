@@ -254,15 +254,15 @@ class _Page1 extends StatelessWidget {
               style: TextStyle(fontSize: 14, color: AppColors.mutedLight, height: 1.65)),
             const SizedBox(height: 22),
             Row(children: [
-              _ModuleTile('[P]', 'PULSE', 'Stress Risk', AppColors.pulse),
+              _ModuleTile('P', 'PULSE', 'Stress Risk', AppColors.pulse),
               const SizedBox(width: 10),
-              _ModuleTile('[S]', 'SENTRY', 'Fall Risk', AppColors.sentry),
+              _ModuleTile('S', 'SENTRY', 'Fall Risk', AppColors.sentry),
             ]),
             const SizedBox(height: 10),
             Row(children: [
-              _ModuleTile('[D]', 'SCRIBE', 'ADL Docs', AppColors.scribe),
+              _ModuleTile('D', 'SCRIBE', 'ADL Docs', AppColors.scribe),
               const SizedBox(width: 10),
-              _ModuleTile('[gloss]', 'GLOSS', 'Sign Lang', AppColors.gloss),
+              _ModuleTile('G', 'GLOSS', 'Sign Language', AppColors.gloss),
             ]),
           ],
         ),
@@ -425,7 +425,8 @@ class _ModuleTile extends StatelessWidget {
       child: Row(children: [
         Container(width: 36, height: 36,
           decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-          child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18)))),
+          child: Center(child: Text(emoji,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)))),
         const SizedBox(width: 8),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
@@ -519,10 +520,10 @@ class _CarePainter extends CustomPainter {
       Paint()..color = const Color(0xFF7C3AED));
 
     // Module badges
-    _badge(canvas, Offset(w*0.15, h*0.25), '[S]', AppColors.sentry);
-    _badge(canvas, Offset(w*0.85, h*0.25), '[D]', AppColors.scribe);
-    _badge(canvas, Offset(w*0.15, h*0.65), '[P]', AppColors.pulse);
-    _badge(canvas, Offset(w*0.85, h*0.65), '[gloss]', AppColors.gloss);
+    _badge(canvas, Offset(w*0.15, h*0.25), 'S', AppColors.sentry);
+    _badge(canvas, Offset(w*0.85, h*0.25), 'D', AppColors.scribe);
+    _badge(canvas, Offset(w*0.15, h*0.65), 'P', AppColors.pulse);
+    _badge(canvas, Offset(w*0.85, h*0.65), 'G', AppColors.gloss);
   }
 
   void _badge(Canvas canvas, Offset c, String emoji, Color color) {
@@ -533,7 +534,8 @@ class _CarePainter extends CustomPainter {
       Rect.fromCenter(center: c, width: 38, height: 26), const Radius.circular(8)),
       Paint()..color = color.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 1);
     final tp = TextPainter(
-      text: TextSpan(text: emoji, style: const TextStyle(fontSize: 14)),
+      text: TextSpan(text: emoji,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: color)),
       textDirection: TextDirection.ltr)..layout();
     tp.paint(canvas, c - Offset(tp.width/2, tp.height/2));
   }
@@ -613,9 +615,11 @@ class _PulsePainter extends CustomPainter {
     }
     canvas.drawCircle(Offset(w*0.5, h*0.5), 36,
       Paint()..color = AppColors.pulse.withOpacity(0.15));
-    // Heart
+    // PULSE initial
     final tp = TextPainter(
-      text: const TextSpan(text: '[P]', style: TextStyle(fontSize: 40)),
+      text: const TextSpan(text: 'P',
+          style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900,
+              color: AppColors.pulse)),
       textDirection: TextDirection.ltr)..layout();
     tp.paint(canvas, Offset(w*0.5 - tp.width/2, h*0.5 - tp.height/2));
     // ECG line
