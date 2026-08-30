@@ -105,7 +105,7 @@ class _EventReplayScreenState extends State<EventReplayScreen>
         : '--';
     final color    = _riskColor(level);
     final factors  = (a['key_factors'] as List?)?.cast<String>()
-        ?? <String>['Body tilt', 'High sway'];
+        ?? <String>[];
 
     final frame      = (_frames.isNotEmpty && _idx < _frames.length)
         ? _frames[_idx] : null;

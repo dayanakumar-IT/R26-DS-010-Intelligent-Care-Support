@@ -72,17 +72,18 @@ class _AlertsScreenState extends State<AlertsScreen>
 
   List<Map<String, dynamic>> get _shown {
     final list = _localAlerts ?? [];
+    String lvl(Map a) => (a['risk_level'] ?? '').toString().toUpperCase();
     if (_filter == 'unacked')  return list.where((a) => a['acknowledged_at'] == null).toList();
-    if (_filter == 'high')     return list.where((a) => (a['risk_level'] ?? '') == 'HIGH').toList();
-    if (_filter == 'moderate') return list.where((a) => (a['risk_level'] ?? '') == 'MODERATE').toList();
+    if (_filter == 'high')     return list.where((a) => lvl(a) == 'HIGH').toList();
+    if (_filter == 'moderate') return list.where((a) => lvl(a) == 'MODERATE').toList();
     return list;
   }
 
   @override
   Widget build(BuildContext context) {
     final all   = _localAlerts ?? [];
-    final high  = all.where((a) => (a['risk_level'] ?? '') == 'HIGH').length;
-    final mod   = all.where((a) => (a['risk_level'] ?? '') == 'MODERATE').length;
+    final high  = all.where((a) => (a['risk_level'] ?? '').toString().toUpperCase() == 'HIGH').length;
+    final mod   = all.where((a) => (a['risk_level'] ?? '').toString().toUpperCase() == 'MODERATE').length;
     final unack = all.where((a) => a['acknowledged_at'] == null).length;
     final acked = all.length - unack;
 
@@ -486,7 +487,7 @@ class _AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final level   = (a['risk_level'] ?? 'NORMAL').toString();
+    final level   = (a['risk_level'] ?? 'NORMAL').toString().toUpperCase();
     final acked   = a['acknowledged_at'] != null;
     final color   = level == 'HIGH'     ? AppColors.high
                   : level == 'MODERATE' ? AppColors.moderate
