@@ -325,11 +325,27 @@ def acknowledge_alert(alert_id: int, ack_by: str = "caregiver") -> bool:
 
 def get_alerts(unacked_only: bool = False, limit: int = 100) -> List[dict]:
     try:
-        query = _get_client().table("fall_alerts").select("*").order("timestamp", desc=True).limit(limit)
+        # Join rooms so each alert includes room_code (e.g. "ROOM_04") —
+        # mobile and web display this instead of the raw numeric room_id.
+        query = (
+            _get_client()
+            .table("fall_alerts")
+            .select("*, rooms(room_code)")
+            .order("timestamp", desc=True)
+            .limit(limit)
+        )
         if unacked_only:
             query = query.eq("acknowledged", False)
         res = query.execute()
-        return res.data or []
+        # Flatten nested rooms object → top-level room_code for convenience
+        rows = []
+        for row in (res.data or []):
+            room_code = None
+            if isinstance(row.get("rooms"), dict):
+                room_code = row["rooms"].get("room_code")
+            row["room_code"] = room_code
+            rows.append(row)
+        return rows
     except Exception as e:
         print(f"[db] get_alerts timeout/error: {e.__class__.__name__} — returning []")
         return []
