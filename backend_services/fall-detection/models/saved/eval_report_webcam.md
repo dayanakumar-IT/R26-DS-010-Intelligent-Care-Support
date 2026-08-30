@@ -1,35 +1,66 @@
-# Test Evaluation Report
+# Webcam Held-Out Test Evaluation Report (Model C)
 
-## ST-GCN only
+**Dataset**: In-house webcam clips — Hikvision DS-U02, 30 FPS, 1280×720
+**Split**: Subject-disjoint — subject2 held out (58 clips: 15 fall, 43 normal)
+**Models**: Fine-tuned on subject1 webcam clips (Model C)
+**Inference latency**: 4.51 ms per 90-frame window (CPU: cpu)
+
+## ST-GCN only (webcam fine-tuned)
 ```
-              precision    recall  f1-score   support
+precision    recall  f1-score   support
 
-      NORMAL     0.9444    0.1183    0.2103       431
-        FALL     0.2748    0.9796    0.4292       147
+      NORMAL     0.8000    0.3721    0.5079        43
+        FALL     0.2895    0.7333    0.4151        15
 
-    accuracy                         0.3374       578
-   macro avg     0.6096    0.5490    0.3198       578
-weighted avg     0.7741    0.3374    0.2660       578
+    accuracy                         0.4655        58
+   macro avg     0.5447    0.5527    0.4615        58
+weighted avg     0.6680    0.4655    0.4839        58
 
 confusion matrix [rows=true, cols=pred]:
-[[ 51 380]
- [  3 144]]
-ROC-AUC: 0.9581   PR-AUC: 0.9517
+[[16 27]
+ [ 4 11]]
+ROC-AUC: 0.6016   PR-AUC: 0.3954
 ```
 
-## Fusion (ST-GCN + features)
+## Feature-only classifier
 ```
-              precision    recall  f1-score   support
+precision    recall  f1-score   support
 
-      NORMAL     0.8000    0.0093    0.0183       431
-        FALL     0.2548    0.9932    0.4056       147
+      NORMAL     0.7391    0.3953    0.5152        43
+        FALL     0.2571    0.6000    0.3600        15
 
-    accuracy                         0.2595       578
-   macro avg     0.5274    0.5012    0.2120       578
-weighted avg     0.6613    0.2595    0.1168       578
+    accuracy                         0.4483        58
+   macro avg     0.4981    0.4977    0.4376        58
+weighted avg     0.6145    0.4483    0.4750        58
 
 confusion matrix [rows=true, cols=pred]:
-[[  4 427]
- [  1 146]]
-ROC-AUC: 0.6967   PR-AUC: 0.5222
+[[17 26]
+ [ 6  9]]
+ROC-AUC: 0.4605   PR-AUC: 0.2571
 ```
+
+## Fusion — ST-GCN + Features (webcam fine-tuned)
+```
+precision    recall  f1-score   support
+
+      NORMAL     0.9318    0.9535    0.9425        43
+        FALL     0.8571    0.8000    0.8276        15
+
+    accuracy                         0.9138        58
+   macro avg     0.8945    0.8767    0.8851        58
+weighted avg     0.9125    0.9138    0.9128        58
+
+confusion matrix [rows=true, cols=pred]:
+[[41  2]
+ [ 3 12]]
+ROC-AUC: 0.8527   PR-AUC: 0.8614
+Decision threshold (val-optimal): 0.320
+```
+
+## Summary
+
+| Model | Accuracy | Macro-F1 | Fall Recall | Fall Precision | Normal FP Rate | ROC-AUC |
+|---|---|---|---|---|---|---|
+| ST-GCN (fine-tuned) | 0.4655 | 0.4615 | 0.7333 | 0.2895 | 0.6279 | 0.6016 |
+| Feature-only        | 0.4483 | 0.4376 | 0.6000 | 0.2571 | 0.6047 | 0.4605 |
+| Fusion (fine-tuned) | 0.9138 | 0.8851 | 0.8000 | 0.8571 | 0.0465 | 0.8527 |
