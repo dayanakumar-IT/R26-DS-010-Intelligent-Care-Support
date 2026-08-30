@@ -6,22 +6,17 @@ import '../../core/constants/colors.dart';
 import '../../core/config/api_config.dart';
 import 'patient_detail_screen.dart';
 
-// Bone pairs — 14-joint MediaPipe subset (matches backend config/settings.py)
+// Bone pairs — 14-joint MediaPipe subset
 const List<List<int>> kBones = [
   [0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7],
   [1, 8], [1, 9], [8, 10], [9, 11], [10, 12], [11, 13],
 ];
 
-const _bg      = AppColors.bgLight;
-const _surface = AppColors.surfaceLight;
-const _border  = AppColors.borderLight;
-const _text    = AppColors.textLight;
-const _muted   = AppColors.mutedLight;
-
 class LiveRoomScreen extends StatefulWidget {
   final String roomId;
   final String patientCode;
-  const LiveRoomScreen({super.key, required this.roomId, required this.patientCode});
+  const LiveRoomScreen(
+      {super.key, required this.roomId, required this.patientCode});
   @override
   State<LiveRoomScreen> createState() => _LiveRoomScreenState();
 }
@@ -66,9 +61,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     if (_disposed || !mounted) return;
     setState(() => _connected = false);
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) _connect();
-    });
+    _reconnectTimer =
+        Timer(const Duration(seconds: 3), () { if (mounted) _connect(); });
   }
 
   @override
@@ -79,227 +73,258 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     super.dispose();
   }
 
-  Color _levelColor(String? level) {
-    if (level == 'HIGH')     return AppColors.high;
-    if (level == 'MODERATE') return AppColors.moderate;
-    return AppColors.low;
-  }
+  Color _levelColor(String? l) => l == 'HIGH'     ? AppColors.high
+                                : l == 'MODERATE' ? AppColors.moderate
+                                : AppColors.low;
 
   @override
   Widget build(BuildContext context) {
     final level     = (_frame?['risk_level'] ?? 'NORMAL').toString();
     final score     = _frame?['risk_score'];
-    final posture   = _frame?['posture'] ?? '--';
-    final zone      = _frame?['zone']    ?? '--';
+    final posture   = (_frame?['posture']  ?? '--').toString();
+    final zone      = (_frame?['zone']     ?? '--').toString();
     final conf      = _frame?['confidence'];
     final color     = _levelColor(level);
-    final scoreText = score != null ? '${(score as num).toStringAsFixed(0)}' : '--';
-    final confText  = conf  != null ? '${((conf as num) * 100).toStringAsFixed(0)}%' : '--';
+    final scoreStr  = score != null
+        ? '${(score as num).toStringAsFixed(0)}/100' : '--';
+    final confStr   = conf != null
+        ? '${((conf as num) * 100).toStringAsFixed(0)}%' : '--';
+    final factors   = (_frame?['key_factors'] as List?)
+        ?.map((e) => e.toString()).toList() ?? [];
 
     return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(children: [
+      backgroundColor: const Color(0xFF060D1A),
+      body: Stack(children: [
 
-          // ── App bar ──────────────────────────────────────────────────────
-          Container(
-            decoration: BoxDecoration(
-              color: _surface,
-              boxShadow: [BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8, offset: const Offset(0, 2))],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.arrow_back_ios_rounded,
-                      size: 16, color: AppColors.accentBlue),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text('${widget.roomId}  ·  ${widget.patientCode}',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
-                          color: _text)),
-                  Row(children: [
-                    Container(width: 6, height: 6,
-                        decoration: BoxDecoration(
-                          color: _connected ? AppColors.low : AppColors.high,
-                          shape: BoxShape.circle)),
-                    const SizedBox(width: 4),
-                    Text(_connected ? 'LIVE' : 'Reconnecting...',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: _connected ? AppColors.low : AppColors.high,
-                        )),
-                  ]),
-                ]),
-              ),
-              // Risk badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: color.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  level == 'MODERATE' ? 'MOD RISK'
-                      : level == 'HIGH' ? 'HIGH RISK' : 'NORMAL',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
-                ),
-              ),
-            ]),
+        // ── Full-screen skeleton canvas ──────────────────────────────────
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _SkeletonPainter(_frame, level),
           ),
+        ),
 
-          // ── Body ─────────────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(children: [
-
-                // Skeleton canvas (dark)
-                Container(
-                  width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF060D1A),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(
-                      color: color.withValues(alpha: 0.2),
-                      blurRadius: 16, offset: const Offset(0, 4))],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: CustomPaint(
-                    painter: _SkeletonPainter(_frame, level),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Metric cards row
-                Row(children: [
-                  _MetricCard(
-                    icon: Icons.speed_rounded,
-                    label: 'Risk Score',
-                    value: score != null ? '$scoreText/100' : '--',
-                    color: color,
-                  ),
-                  const SizedBox(width: 10),
-                  _MetricCard(
-                    icon: Icons.track_changes_rounded,
-                    label: 'Confidence',
-                    value: confText,
-                    color: AppColors.accentBlue,
-                  ),
-                  const SizedBox(width: 10),
-                  _MetricCard(
-                    icon: Icons.analytics_rounded,
-                    label: 'Level',
-                    value: level == 'MODERATE' ? 'MOD' : level,
-                    color: color,
-                  ),
-                ]),
-                const SizedBox(height: 12),
-
-                // Posture + Zone
-                Row(children: [
-                  _InfoCard(Icons.accessibility_new_rounded, 'Posture', posture,
-                      AppColors.accentBlue),
-                  const SizedBox(width: 10),
-                  _InfoCard(Icons.location_on_outlined, 'Zone', zone, AppColors.teal),
-                ]),
-
-                // Key factors
-                if (_frame?['key_factors'] != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+        // ── Top overlay bar (back + title + risk badge) ──────────────────
+        Positioned(
+          top: 0, left: 0, right: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(children: [
+                // Back button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 36, height: 36,
                     decoration: BoxDecoration(
-                      color: _surface,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 8, offset: const Offset(0, 2))],
+                      color: Colors.black.withValues(alpha: 0.45),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2)),
                     ),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Icon(Icons.info_outline_rounded,
-                            size: 14, color: AppColors.accentBlue),
-                        const SizedBox(width: 6),
-                        const Text('Key Observations',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                                color: _text)),
-                      ]),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 6, runSpacing: 6,
-                        children: ((_frame!['key_factors'] as List?) ?? [])
-                            .map<Widget>((f) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.1),
-                                border: Border.all(color: color.withValues(alpha: 0.3)),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(f.toString(),
-                                  style: TextStyle(fontSize: 10, color: color,
-                                      fontWeight: FontWeight.w600)),
-                            )).toList(),
-                      ),
-                    ]),
-                  ),
-                ],
-
-                const SizedBox(height: 16),
-
-                // View Details button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => PatientDetailScreen(
-                          patient: {
-                            'room_id': widget.roomId,
-                            'patient_code': widget.patientCode,
-                          },
-                        ))),
-                    icon: const Icon(Icons.bed_outlined, size: 16),
-                    label: const Text('View Room / Bed Details',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
+                    child: const Icon(Icons.arrow_back_ios_rounded,
+                        size: 15, color: Colors.white),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(width: 10),
+                // Title
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${widget.roomId}  ·  ${widget.patientCode}',
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w800,
+                            color: Colors.white)),
+                    Row(children: [
+                      Container(width: 6, height: 6,
+                          decoration: BoxDecoration(
+                            color: _connected
+                                ? const Color(0xFF4ADE80) : AppColors.high,
+                            shape: BoxShape.circle)),
+                      const SizedBox(width: 5),
+                      Text(_connected ? 'LIVE' : 'Reconnecting...',
+                          style: TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w700,
+                            color: _connected
+                                ? const Color(0xFF4ADE80) : AppColors.high,
+                          )),
+                    ]),
+                  ],
+                )),
+                // Risk badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: color.withValues(alpha: 0.6)),
+                  ),
+                  child: Text(
+                    level == 'MODERATE' ? 'MOD RISK'
+                        : level == 'HIGH' ? 'HIGH RISK' : 'NORMAL',
+                    style: TextStyle(fontSize: 11,
+                        fontWeight: FontWeight.w800, color: color),
+                  ),
+                ),
               ]),
             ),
           ),
-        ]),
-      ),
+        ),
+
+        // ── Bottom floating info panel ───────────────────────────────────
+        Positioned(
+          bottom: 0, left: 0, right: 0,
+          child: SafeArea(
+            top: false,
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1B2E).withValues(alpha: 0.96),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(color: color.withValues(alpha: 0.3)),
+                ),
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+
+                // Drag handle
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 6),
+                  child: Container(
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+
+                // Metric row
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: Row(children: [
+                    _MetricChip(
+                        icon: Icons.speed_rounded,
+                        label: 'Score',
+                        value: scoreStr,
+                        color: color),
+                    const SizedBox(width: 8),
+                    _MetricChip(
+                        icon: Icons.track_changes_rounded,
+                        label: 'Confidence',
+                        value: confStr,
+                        color: AppColors.accentBlue),
+                    const SizedBox(width: 8),
+                    _MetricChip(
+                        icon: Icons.accessibility_new_rounded,
+                        label: 'Posture',
+                        value: posture,
+                        color: AppColors.teal),
+                    const SizedBox(width: 8),
+                    _MetricChip(
+                        icon: Icons.location_on_rounded,
+                        label: 'Zone',
+                        value: zone,
+                        color: const Color(0xFF8B5CF6)),
+                  ]),
+                ),
+
+                // Key factors (if any)
+                if (factors.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    child: Row(children: [
+                      Icon(Icons.info_outline_rounded,
+                          size: 13,
+                          color: Colors.white.withValues(alpha: 0.5)),
+                      const SizedBox(width: 6),
+                      Expanded(child: Wrap(spacing: 5, runSpacing: 4,
+                        children: factors.take(3).map((f) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.15),
+                            border: Border.all(
+                                color: color.withValues(alpha: 0.3)),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(f, style: TextStyle(
+                              fontSize: 9, color: color,
+                              fontWeight: FontWeight.w600)),
+                        )).toList(),
+                      )),
+                    ]),
+                  ),
+
+                // View Details button
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => PatientDetailScreen(
+                                patient: {
+                                  'room_id': widget.roomId,
+                                  'patient_code': widget.patientCode,
+                                },
+                              ))),
+                      icon: const Icon(Icons.bed_outlined, size: 16),
+                      label: const Text('View Room / Bed Details',
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+
+        // ── No camera warning (when waiting) ────────────────────────────
+        if (_frame == null && _connected)
+          Positioned(
+            bottom: 260,
+            left: 0, right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.videocam_off_rounded,
+                      size: 14,
+                      color: Colors.white.withValues(alpha: 0.6)),
+                  const SizedBox(width: 6),
+                  Text('Plug in camera to start monitoring',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500)),
+                ]),
+              ),
+            ),
+          ),
+      ]),
     );
   }
 }
 
-// ── Skeleton painter ─────────────────────────────────────────────────────────
+// ── Skeleton painter (full-screen, dark bg) ───────────────────────────────────
 class _SkeletonPainter extends CustomPainter {
   final Map<String, dynamic>? frame;
   final String level;
@@ -317,33 +342,28 @@ class _SkeletonPainter extends CustomPainter {
     final W = size.width;
     final H = size.height;
 
+    // Full dark background
     canvas.drawRect(Rect.fromLTWH(0, 0, W, H),
         Paint()..color = const Color(0xFF060D1A));
 
-    // Grid
-    final gridP = Paint()..color = Colors.white.withValues(alpha: 0.04)..strokeWidth = 1;
-    for (double x = 0; x <= W; x += 44) canvas.drawLine(Offset(x, 0), Offset(x, H), gridP);
-    for (double y = 0; y <= H; y += 44) canvas.drawLine(Offset(0, y), Offset(W, y), gridP);
-
-    // LIVE badge
-    final liveP = Paint()..color = const Color(0xFF22C55E).withValues(alpha: 0.18);
-    canvas.drawRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(12, 12, 48, 20), const Radius.circular(5)), liveP);
-    (TextPainter(
-      text: const TextSpan(text: '● LIVE',
-          style: TextStyle(color: Color(0xFF4ADE80), fontSize: 9,
-              fontWeight: FontWeight.w700)),
-      textDirection: TextDirection.ltr,
-    )..layout()).paint(canvas, const Offset(16, 16));
+    // Subtle grid
+    final gridP = Paint()
+      ..color = Colors.white.withValues(alpha: 0.03)
+      ..strokeWidth = 1;
+    for (double x = 0; x <= W; x += 50)
+      canvas.drawLine(Offset(x, 0), Offset(x, H), gridP);
+    for (double y = 0; y <= H; y += 50)
+      canvas.drawLine(Offset(0, y), Offset(W, y), gridP);
 
     final rawSkel = frame?['skeleton'];
     if (rawSkel == null || (rawSkel as List).isEmpty) {
-      final waitTp = TextPainter(
+      // Waiting text
+      final tp = TextPainter(
         text: const TextSpan(text: 'Waiting for skeleton data...',
-            style: TextStyle(color: Color(0x6094A3B8), fontSize: 13)),
+            style: TextStyle(color: Color(0x4094A3B8), fontSize: 14)),
         textDirection: TextDirection.ltr,
       )..layout();
-      waitTp.paint(canvas, Offset((W - waitTp.width) / 2, (H - waitTp.height) / 2));
+      tp.paint(canvas, Offset((W - tp.width) / 2, H * 0.42));
       return;
     }
 
@@ -361,9 +381,21 @@ class _SkeletonPainter extends CustomPainter {
     double px(int i) => joints[i][0] * W;
     double py(int i) => joints[i][1] * H;
 
+    // Glow effect for bones
+    final glowP = Paint()
+      ..color = _boneColor.withValues(alpha: 0.15)
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    for (final bone in kBones) {
+      if (!vis(bone[0]) || !vis(bone[1])) continue;
+      canvas.drawLine(Offset(px(bone[0]), py(bone[0])),
+          Offset(px(bone[1]), py(bone[1])), glowP);
+    }
+
     // Bones
     final boneP = Paint()
-      ..color = _boneColor.withValues(alpha: 0.85)
+      ..color = _boneColor.withValues(alpha: 0.9)
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -376,37 +408,36 @@ class _SkeletonPainter extends CustomPainter {
     // Joints
     for (int i = 0; i < joints.length; i++) {
       if (!vis(i)) continue;
-      final r = i == 0 ? 9.0 : 5.5;
+      final r = i == 0 ? 11.0 : 6.0;
+      final jColor = i == 0 ? const Color(0xFFFCD34D) : _jointColor;
+      // Glow
+      canvas.drawCircle(Offset(px(i), py(i)), r + 4,
+          Paint()..color = jColor.withValues(alpha: 0.12));
+      // Fill
       canvas.drawCircle(Offset(px(i), py(i)), r,
-          Paint()..color = i == 0 ? const Color(0xFFFCD34D) : _jointColor);
+          Paint()..color = jColor);
+      // Ring
       canvas.drawCircle(Offset(px(i), py(i)), r,
-          Paint()..color = Colors.white.withValues(alpha: 0.2)
-              ..strokeWidth = 1.5..style = PaintingStyle.stroke);
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.25)
+            ..strokeWidth = 1.5
+            ..style = PaintingStyle.stroke);
     }
 
-    // Score overlay
+    // Risk score top-right overlay
     final score = frame?['risk_score'];
     if (score != null) {
       final scoreStr = '${(score as num).toStringAsFixed(0)}/100';
       final tp = TextPainter(
         text: TextSpan(text: scoreStr,
-            style: TextStyle(color: _boneColor, fontSize: 16,
-                fontWeight: FontWeight.w900)),
+            style: TextStyle(
+                color: _boneColor, fontSize: 18,
+                fontWeight: FontWeight.w900,
+                shadows: [Shadow(color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 4)])),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(W - tp.width - 12, 14));
-    }
-
-    // Posture
-    final posture = frame?['posture'];
-    if (posture != null) {
-      final tp = TextPainter(
-        text: TextSpan(text: posture.toString().toUpperCase(),
-            style: const TextStyle(color: Color(0x8094A3B8), fontSize: 10,
-                fontWeight: FontWeight.w600)),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(12, H - tp.height - 12));
+      tp.paint(canvas, Offset(W - tp.width - 16, H * 0.12));
     }
   }
 
@@ -415,74 +446,37 @@ class _SkeletonPainter extends CustomPainter {
       old.frame != frame || old.level != level;
 }
 
-// ── Metric card ──────────────────────────────────────────────────────────────
-class _MetricCard extends StatelessWidget {
+// ── Metric chip ───────────────────────────────────────────────────────────────
+class _MetricChip extends StatelessWidget {
   final IconData icon;
   final String label, value;
   final Color color;
-  const _MetricCard({required this.icon, required this.label,
-      required this.value, required this.color});
+  const _MetricChip(
+      {required this.icon, required this.label,
+       required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       decoration: BoxDecoration(
-        color: _surface,
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(
-          color: color.withValues(alpha: 0.1),
-          blurRadius: 10, offset: const Offset(0, 3))],
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Column(children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(height: 6),
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900,
-            color: color)),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 9, color: _muted),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(height: 4),
+        Text(value,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900,
+                color: color),
+            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center),
-      ]),
-    ));
-  }
-}
-
-// ── Info card ────────────────────────────────────────────────────────────────
-class _InfoCard extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  final Color color;
-  const _InfoCard(this.icon, this.label, this.value, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Row(children: [
-        Container(
-          width: 32, height: 32,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(width: 8),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-          Text(label, style: TextStyle(fontSize: 9, color: _muted)),
-          Text(value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                  color: _text),
-              overflow: TextOverflow.ellipsis),
-        ])),
+        const SizedBox(height: 1),
+        Text(label,
+            style: TextStyle(fontSize: 8,
+                color: Colors.white.withValues(alpha: 0.5)),
+            textAlign: TextAlign.center),
       ]),
     ));
   }
