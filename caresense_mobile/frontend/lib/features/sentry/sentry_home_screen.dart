@@ -13,7 +13,9 @@ const _text    = AppColors.textLight;
 const _muted   = AppColors.mutedLight;
 const _dim     = AppColors.dimLight;
 
-/// Lookup which room_codes belong to the logged-in caregiver.
+/// Lookup which room IDs (bigint, as strings) belong to the logged-in caregiver.
+/// fall_alerts.room_id stores rooms.id (bigint), NOT room_code, so we return
+/// the numeric id as a string for comparison.
 Future<Set<String>?> _getMyRoomCodes() async {
   try {
     final db     = Supabase.instance.client;
@@ -29,9 +31,10 @@ Future<Set<String>?> _getMyRoomCodes() async {
     final cgId  = cgRes?['id']?.toString();
     if (cgId == null) return null;
 
-    final roomsRes = await db.from('rooms').select('room_code').eq('caregiver_id', cgId);
-    final codes    = (roomsRes as List).map((r) => r['room_code'].toString()).toSet();
-    return codes.isEmpty ? null : codes;
+    // Select rooms.id (bigint PK) — fall_alerts.room_id is a bigint FK to rooms.id
+    final roomsRes = await db.from('rooms').select('id').eq('caregiver_id', cgId);
+    final ids      = (roomsRes as List).map((r) => r['id'].toString()).toSet();
+    return ids.isEmpty ? null : ids;
   } catch (_) {
     return null;
   }

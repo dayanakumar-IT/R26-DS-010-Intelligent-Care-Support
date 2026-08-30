@@ -70,12 +70,14 @@ class _AlertsScreenState extends State<AlertsScreen>
       }
 
       if (syntheticCgId != null) {
+        // Select rooms.id (bigint) — fall_alerts.room_id stores the numeric PK,
+        // NOT room_code, so we compare bigint IDs as strings.
         final roomsRes = await db
             .from('rooms')
-            .select('room_code')
+            .select('id')
             .eq('caregiver_id', syntheticCgId);
         final codes = (roomsRes as List)
-            .map((r) => r['room_code'].toString())
+            .map((r) => r['id'].toString())
             .toSet();
         if (mounted) setState(() => _assignedRooms = codes);
       }
