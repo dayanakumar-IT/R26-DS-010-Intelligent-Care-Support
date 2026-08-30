@@ -36,6 +36,9 @@ class _AlertsScreenState extends State<AlertsScreen>
   late final AnimationController _heroCtrl;
   late final Animation<double>    _heroFade;
 
+  // Supabase Realtime — new alerts from web appear on mobile instantly
+  RealtimeChannel? _realtimeChannel;
+
   @override
   void initState() {
     super.initState();
@@ -44,10 +47,35 @@ class _AlertsScreenState extends State<AlertsScreen>
     _heroFade = CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOut);
     _heroCtrl.forward();
     _load();
+    _subscribeRealtime();
+  }
+
+  void _subscribeRealtime() {
+    _realtimeChannel = Supabase.instance.client
+        .channel('fall_alerts_live')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'fall_alerts',
+          callback: (_) { if (mounted) _load(); },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'fall_alerts',
+          callback: (_) { if (mounted) _load(); },
+        )
+        .subscribe();
   }
 
   @override
-  void dispose() { _heroCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _heroCtrl.dispose();
+    if (_realtimeChannel != null) {
+      Supabase.instance.client.removeChannel(_realtimeChannel!);
+    }
+    super.dispose();
+  }
 
   Future<void> _load() async {
     setState(() => _localAlerts = null);
@@ -554,7 +582,11 @@ class _AlertCard extends StatelessWidget {
         : '--';
     final posture = (a['posture'] ?? '--').toString();
     final factors = (a['key_factors'] as List?)?.take(2).join(', ') ?? '--';
-    final roomId  = a['room_id']?.toString() ?? '--';
+    // room_code (e.g. "ROOM_04") is now included by the backend join.
+    // Fall back to numeric room_id if not present.
+    final roomId  = a['room_code']?.toString().isNotEmpty == true
+        ? a['room_code'].toString()
+        : (a['room_id'] != null ? 'Room ${a['room_id']}' : '--');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
