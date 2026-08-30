@@ -94,10 +94,13 @@ class SentryHomeScreen extends ConsumerWidget {
                       final summary  = (snap.data?[2] as Map<String, dynamic>?) ?? {};
 
                       // Apply room filter to alerts (same as alerts_screen)
+                      // Include NULL room_id alerts — they are valid alerts
+                      // where the backend couldn't resolve the room at insert.
                       final roomAlerts = myRooms != null && myRooms.isNotEmpty
-                          ? allAlerts.where((a) =>
-                              myRooms.contains(a['room_id']?.toString()))
-                              .toList()
+                          ? allAlerts.where((a) {
+                              final rid = a['room_id']?.toString() ?? '';
+                              return rid.isEmpty || myRooms.contains(rid);
+                            }).toList()
                           : allAlerts;
 
                       final unacked = roomAlerts

@@ -82,12 +82,18 @@ class SentryService {
       );
       return true;
     } catch (_) {}
-    // Fallback: write acknowledged_at directly to Supabase
+    // Fallback: write directly to Supabase using correct schema field names.
+    // fall_alerts schema: acknowledged (bool), ack_by (text), ack_at (timestamptz)
     try {
       await _supabase
           .from('fall_alerts')
-          .update({'acknowledged_at': DateTime.now().toUtc().toIso8601String()})
-          .eq('id', alertId);
+          .update({
+            'acknowledged': true,
+            'ack_by':       'caregiver',
+            'ack_at':       DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', alertId)
+          .eq('acknowledged', false);
       return true;
     } catch (_) {
       return false;

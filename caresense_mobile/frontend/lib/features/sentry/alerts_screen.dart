@@ -93,7 +93,10 @@ class _AlertsScreenState extends State<AlertsScreen>
         ? list // no room filter resolved → show all
         : list.where((a) {
             final rid = a['room_id']?.toString() ?? '';
-            return _assignedRooms.contains(rid);
+            // Include alerts that match an assigned room OR have no room_id
+            // (NULL room_id = backend couldn't resolve room at insert time —
+            //  still valid alerts that belong to this caregiver's session)
+            return rid.isEmpty || _assignedRooms.contains(rid);
           }).toList();
 
     setState(() => _localAlerts = filtered);
