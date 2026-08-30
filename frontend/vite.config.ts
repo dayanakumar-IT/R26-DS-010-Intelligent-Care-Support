@@ -10,5 +10,14 @@ export default defineConfig({
     // Without this, refreshing on /fall-detection or any sub-route
     // returns a 404 from the Vite dev server.
     historyApiFallback: true,
+    // Proxy SCRIBE API in dev so the browser uses same-origin requests (avoids CORS /
+    // "Failed to fetch" when the backend returns errors without CORS headers).
+    proxy: {
+      '/api/scribe': {
+        target: 'http://127.0.0.1:8004',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/scribe/, ''),
+      },
+    },
   },
 })

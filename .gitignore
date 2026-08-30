@@ -1,12 +1,10 @@
-# ============================================================
+﻿# ============================================================
 # SENTRY-03 — tracks: backend_services/, frontend/, supabase/
 # ============================================================
-
 # Other branches' folders
 Component2_v2/
 caresense_mobile/
 PP1/
-
 # Local-only
 backend/
 Datasets/
@@ -15,12 +13,10 @@ Research Paper - Writing/
 "Component Completion.xlsx"
 *.xlsx
 *.xls
-
 # Node
 node_modules/
 dist/
 .vite/
-
 # Python
 __pycache__/
 *.pyc
@@ -28,23 +24,19 @@ __pycache__/
 venv/
 .venv/
 env/
-
 # Env / secrets
 .env
 .env.*
 !.env.example
-
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
-
 # Logs / temp
 *.log
 logs/
 tmp/
 temp/
-
 # Large files
 *.lock
 **/ntu_data.npy
@@ -56,15 +48,12 @@ temp/
 **/*.7z
 **/*.rar
 **/*.db
-
 # IDE
 .idea/
 *.swp
 *~
-
 Instructions.docx
 SUPERBASE Project - caresense-pp2-d.txt
-
 # Backup / temp editor files
 *.bak
 Phase 02.zip
