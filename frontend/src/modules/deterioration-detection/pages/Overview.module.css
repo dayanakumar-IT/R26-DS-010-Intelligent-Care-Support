@@ -40,8 +40,30 @@
   box-shadow: var(--shadow-sm);
 }
 
-.placeholder {
+.status {
   margin: 0;
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.errorBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
 }

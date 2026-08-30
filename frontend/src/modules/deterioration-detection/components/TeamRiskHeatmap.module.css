@@ -1,0 +1,242 @@
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0 4px;
+}
+
+.sectionLabel {
+  composes: dd-section-heading from global;
+  margin: 0;
+}
+
+/* Date range toggle (Last 7 / 14 / 30 days) */
+
+.rangeToggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.rangeButton {
+  padding: 5px 10px;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 160ms ease), color var(--transition-fast, 160ms ease);
+}
+
+.rangeButton:hover {
+  color: #111827;
+}
+
+.rangeButtonActive,
+.rangeButtonActive:hover {
+  background: var(--surface);
+  color: var(--brand-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.captionText {
+  margin: -8px 0 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.riskUnavailable {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* Most Improved / Most Worsened callout */
+
+.calloutGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.calloutCard {
+  composes: dd-card from global;
+  padding: 16px;
+  transition: box-shadow var(--transition-fast, 160ms ease), transform var(--transition-fast, 160ms ease);
+}
+
+.calloutCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.calloutImproved {
+  border-left: 3px solid var(--risk-low);
+}
+
+.calloutIncrease {
+  border-left: 3px solid var(--risk-high);
+}
+
+.calloutLabel {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.calloutBody {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calloutAvatar {
+  flex-shrink: 0;
+}
+
+.calloutAvatarFallback {
+  width: 56px;
+  height: 56px;
+}
+
+.calloutInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calloutName {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.calloutValues {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.calloutDeltaDown {
+  font-weight: 700;
+  color: var(--risk-low);
+}
+
+.calloutDeltaUp {
+  font-weight: 700;
+  color: var(--risk-high);
+}
+
+.calloutButton {
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 160ms ease), background-color var(--transition-fast, 160ms ease);
+}
+
+.calloutButton:hover {
+  border-color: var(--brand-blue);
+  background: rgba(30, 58, 138, 0.06);
+}
+
+/* Heatmap grid */
+
+.heatmapWrapper {
+  overflow-x: auto;
+  /* overflow-x: auto with overflow-y left unset computes overflow-y to
+     auto too (per spec, not visible) — the vertical padding below gives
+     a hovered/scaled cell room so that computed auto scrolling never
+     actually clips it. */
+  padding: 6px 0;
+}
+
+.heatmapGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 560px;
+}
+
+.heatmapRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heatmapRowLabel {
+  flex: 0 0 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.heatmapName {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heatmapCells {
+  display: flex;
+  gap: 3px;
+}
+
+.cell {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast, 160ms ease), box-shadow var(--transition-fast, 160ms ease);
+}
+
+.cell:hover {
+  transform: scale(1.18);
+  box-shadow: var(--shadow-sm);
+  cursor: default;
+}
+
+.cellLow {
+  background: var(--risk-low);
+}
+
+.cellModerate {
+  background: var(--risk-moderate);
+}
+
+.cellHigh {
+  background: var(--risk-high);
+}
+
+.cellEmpty {
+  background: rgba(15, 23, 42, 0.08);
+}

@@ -1,0 +1,226 @@
+.cardLabel {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.cardValue {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--brand-blue);
+}
+
+.cardSubtext {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cardMeta {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sectionLabel {
+  composes: dd-section-heading from global;
+}
+
+.status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.riskUnavailable {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.captionText {
+  margin: -8px 0 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chartContainer {
+  composes: dd-card from global;
+  padding: 16px;
+}
+
+/* KPI row (Change 3) — caregiver-count + the 4 risk-level cards, combined
+   into one compact clickable row instead of two separate grids. */
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.kpiCard {
+  composes: dd-card from global;
+  /* Slightly tighter vertical padding than the standard 16px — five cards
+     in one compact row benefits from a bit less height than a full-size
+     content card. */
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: box-shadow var(--transition-fast, 160ms ease), transform var(--transition-fast, 160ms ease);
+}
+
+.kpiCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.kpiCardHigh {
+  border-left: 3px solid var(--risk-high);
+  background: var(--risk-high-bg);
+  border-top-color: var(--risk-high-border);
+  border-right-color: var(--risk-high-border);
+  border-bottom-color: var(--risk-high-border);
+}
+
+.kpiCardHigh .cardValue {
+  color: var(--risk-high);
+}
+
+.kpiCardModerate {
+  border-left: 3px solid var(--risk-moderate);
+  background: var(--risk-moderate-bg);
+  border-top-color: var(--risk-moderate-border);
+  border-right-color: var(--risk-moderate-border);
+  border-bottom-color: var(--risk-moderate-border);
+}
+
+.kpiCardModerate .cardValue {
+  color: var(--risk-moderate);
+}
+
+.kpiCardLow {
+  border-left: 3px solid var(--risk-low);
+  background: var(--risk-low-bg);
+  border-top-color: var(--risk-low-border);
+  border-right-color: var(--risk-low-border);
+  border-bottom-color: var(--risk-low-border);
+}
+
+.kpiCardLow .cardValue {
+  color: var(--risk-low);
+}
+
+.modelCard {
+  composes: dd-card from global;
+  margin-top: 12px;
+  padding: 14px 16px;
+  max-width: 260px;
+}
+
+/* Requires Attention (Change 4) */
+
+.attentionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.attentionCard {
+  composes: dd-card from global;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  transition: box-shadow var(--transition-fast, 160ms ease), transform var(--transition-fast, 160ms ease);
+}
+
+.attentionCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.attentionAvatar {
+  flex-shrink: 0;
+}
+
+.attentionAvatarFallback {
+  width: 48px;
+  height: 48px;
+}
+
+.attentionInfo {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.attentionNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.attentionName {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.attentionScore {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--risk-high);
+}
+
+.attentionChangeUp {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--risk-high);
+}
+
+.attentionChangeDown {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--risk-low);
+}
+
+.attentionChangeNeutral {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.attentionFactor {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.attentionButton {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 160ms ease), background-color var(--transition-fast, 160ms ease);
+}
+
+.attentionButton:hover {
+  border-color: var(--brand-blue);
+  background: rgba(30, 58, 138, 0.06);
+}

@@ -1,0 +1,299 @@
+.status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.errorBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
+}
+
+/* Heading + explanation, above and visually separate from the Generate
+   button (rather than sharing one competing header row). */
+
+.title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.intro {
+  margin: 0;
+  max-width: 620px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.generateButton {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--brand-blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition-fast, 160ms ease);
+}
+
+.generateButton:hover {
+  opacity: 0.92;
+}
+
+.generateButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.summaryText {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Card list — compact, minimal gaps so it reads as one scannable list. */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.card {
+  composes: dd-card from global;
+  padding: 12px 14px;
+}
+
+/* Shared identity block (avatar + name + unit badge + risk badge), reused
+   for both the flagged caregiver and the suggested candidate. */
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.identityText {
+  min-width: 0;
+}
+
+.identityName {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.avatarFallback {
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.unitBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--risk-neutral-bg);
+  border: 1px solid var(--risk-neutral-border);
+  color: var(--risk-neutral);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.riskBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.riskBadgeHigh {
+  background: var(--risk-high-bg);
+  border: 1px solid var(--risk-high-border);
+  color: var(--risk-high);
+}
+
+.riskBadgeModerate {
+  background: var(--risk-moderate-bg);
+  border: 1px solid var(--risk-moderate-border);
+  color: var(--risk-moderate);
+}
+
+.riskBadgeLow {
+  background: var(--risk-low-bg);
+  border: 1px solid var(--risk-low-border);
+  color: var(--risk-low);
+}
+
+.riskBadgeNeutral {
+  background: var(--risk-neutral-bg);
+  border: 1px solid var(--risk-neutral-border);
+  color: var(--risk-neutral);
+}
+
+/* Top row: flagged caregiver identity (left) + status badge, pinned to
+   the top-right via flex space-between rather than absolute positioning. */
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.statusPending {
+  background: var(--risk-moderate-bg);
+  border: 1px solid var(--risk-moderate-border);
+  color: var(--risk-moderate);
+}
+
+.statusReviewed {
+  background: var(--risk-low-bg);
+  border: 1px solid var(--risk-low-border);
+  color: var(--risk-low);
+}
+
+.statusDismissed {
+  background: var(--risk-neutral-bg);
+  border: 1px solid var(--risk-neutral-border);
+  color: var(--risk-neutral);
+}
+
+.reasoning {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #374151;
+}
+
+/* Suggested-replacement sub-block — visually distinct (tinted, bordered,
+   indented) so it's never confused with the flagged caregiver above. */
+
+.suggestedBlock {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--risk-low-bg);
+  border: 1px solid var(--risk-low-border);
+}
+
+.suggestedLabel {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--risk-low);
+}
+
+.noMatch {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Mark Reviewed + caption — grouped together, visually secondary
+   (smaller/lighter) compared to the risk information above. */
+
+.reviewFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.reviewButton {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 160ms ease), color var(--transition-fast, 160ms ease);
+}
+
+.reviewButton:hover {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
+.reviewButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.reviewCaption {
+  margin: 0;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.reviewedMeta {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}

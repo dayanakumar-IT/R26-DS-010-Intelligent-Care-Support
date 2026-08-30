@@ -1,0 +1,12 @@
+.canvasHost {
+  /* Actual width/height set inline from the width/height props — this
+     class only handles what's constant across sizes. */
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.canvasHost canvas {
+  display: block;
+}

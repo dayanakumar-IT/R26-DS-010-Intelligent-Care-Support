@@ -1,0 +1,77 @@
+/* Module-scoped design tokens for deterioration-detection.
+ *
+ * A plain (non-module) stylesheet, imported once as a side effect from
+ * Overview.tsx — the module's single always-mounted page component — so
+ * these custom properties are defined globally by the time any tab renders,
+ * regardless of which one mounts first. CSS custom properties aren't
+ * scoped/hashed by CSS Modules, so it's safe for the three .module.css
+ * files that use them (OverviewSummary, TeamRiskHeatmap, RiskAnalysis) to
+ * just reference var(--risk-*) without importing this file themselves.
+ *
+ * These extend the app-wide token system (--brand-blue, --radius-md, etc.
+ * from src/index.css) rather than replacing it — same pattern, richer
+ * values, refined for contrast per the Part 1 visual-polish pass.
+ */
+
+:root {
+  --risk-high: #d92d20;
+  --risk-high-bg: #fef2f2;
+  --risk-high-border: #fecdca;
+
+  --risk-moderate: #b45309;
+  --risk-moderate-bg: #fffbeb;
+  --risk-moderate-border: #fde68a;
+
+  --risk-low: #15803d;
+  --risk-low-bg: #f0fdf4;
+  --risk-low-border: #bbf7d0;
+
+  --risk-neutral: #6b7280;
+  --risk-neutral-bg: #f3f4f6;
+  --risk-neutral-border: #e5e7eb;
+
+  --transition-fast: 160ms ease;
+}
+
+/* Formalized shared section-styling pattern (dashboard redesign, Change 7):
+ * the card padding/radius/border/shadow and section-heading treatment that
+ * every tab (Overview, Risk Analysis, Caregiver Profiles, Trends) already
+ * used identically, just re-declared independently in each .module.css
+ * file. Pulled into one real definition here, built from the existing
+ * --radius-md/--shadow-sm/--surface/--text-secondary tokens — no new CSS
+ * variables introduced. Each tab's own .module.css composes these classes
+ * (`composes: dd-card from global;`) onto its own card/heading class names
+ * rather than switching every element to these class names directly, so
+ * each file keeps its own semantic names (.card, .assessmentCard,
+ * .chartContainer, ...) and any per-card overrides (risk-tinted borders,
+ * hover lift, etc.) layer on top in the normal cascade.
+ */
+/* Deliberately no padding here, even though the request that prompted
+ * this named "card padding" as part of the pattern to formalize: tested
+ * composing a padding value from here and letting each file locally
+ * override it for cards that need tighter padding (the 5-card KPI row,
+ * compact attention/chart cards) — that override silently lost, because
+ * Vite's compiled output places this global file's rules after each
+ * component's own .module.css rules, so the "local" declaration doesn't
+ * actually win the cascade despite appearing to override it in source.
+ * Rather than force every card in this module to the same padding (which
+ * would make the compact KPI row noticeably less compact) or reach for
+ * !important, padding stays an explicit per-file declaration — already
+ * consistent in practice (12-16px range, documented at each use) without
+ * fighting the cascade to make it byte-identical.
+ */
+.dd-card {
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.dd-section-heading {
+  margin: 24px 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
