@@ -112,16 +112,19 @@ class SentryHomeScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
 
                   // ── Recent alerts ─────────────────────────────────────────
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                     _SectionLabel('Recent Alerts'),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.accentBlue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text('View All',
-                          style: TextStyle(fontSize: 11, color: AppColors.accentBlue,
+                          style: TextStyle(fontSize: 11,
+                              color: AppColors.accentBlue,
                               fontWeight: FontWeight.w700)),
                     ),
                   ]),
@@ -133,17 +136,19 @@ class SentryHomeScreen extends ConsumerWidget {
                     ]),
                     builder: (ctx, snap) {
                       if (snap.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 32),
-                              child: CircularProgressIndicator(
-                                  color: AppColors.high, strokeWidth: 2),
-                            ));
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Center(child: CircularProgressIndicator(
+                              color: AppColors.high, strokeWidth: 2)),
+                        );
                       }
-                      final allAlerts = (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
-                      final myRooms   = snap.data?[1] as Set<String>?;
-                      final filtered  = myRooms != null
-                          ? allAlerts.where((a) => myRooms.contains(a['room_id']?.toString())).toList()
+                      final allAlerts =
+                          (snap.data?[0] as List<Map<String, dynamic>>?) ?? [];
+                      final myRooms = snap.data?[1] as Set<String>?;
+                      final filtered = myRooms != null
+                          ? allAlerts.where((a) =>
+                              myRooms.contains(a['room_id']?.toString()))
+                              .toList()
                           : allAlerts;
                       final alerts = filtered
                           .where((a) => a['acknowledged_at'] == null)
@@ -151,42 +156,10 @@ class SentryHomeScreen extends ConsumerWidget {
                           .toList();
 
                       if (alerts.isEmpty) {
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 28, horizontal: 20),
-                          decoration: BoxDecoration(
-                            color: _surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [BoxShadow(
-                              color: AppColors.low.withValues(alpha: 0.1),
-                              blurRadius: 12, offset: const Offset(0, 4))],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                            Container(
-                              width: 60, height: 60,
-                              decoration: BoxDecoration(
-                                color: AppColors.low.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.check_circle_rounded,
-                                  size: 32, color: AppColors.low),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text('All Clear!',
-                                style: TextStyle(fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.low)),
-                            const SizedBox(height: 4),
-                            Text('No active alerts — patients are stable',
-                                style: TextStyle(fontSize: 12, color: _muted),
-                                textAlign: TextAlign.center),
-                          ]),
-                        );
+                        return _AllClearCard(total: allAlerts.length);
                       }
-                      return Column(children: alerts.map((a) => _AlertRow(a)).toList());
+                      return Column(
+                          children: alerts.map((a) => _AlertRow(a)).toList());
                     },
                   ),
                   const SizedBox(height: 28),
@@ -268,6 +241,87 @@ class _HeroBanner extends StatelessWidget {
                           color: Color(0xFFFCA5A5), shape: BoxShape.circle))),
               ]),
             ]),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── All clear card ───────────────────────────────────────────────────────────
+class _AllClearCard extends StatelessWidget {
+  final int total;
+  const _AllClearCard({required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.low.withValues(alpha: 0.08),
+            AppColors.accentBlue.withValues(alpha: 0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: AppColors.low.withValues(alpha: 0.25)),
+        boxShadow: [BoxShadow(
+          color: AppColors.low.withValues(alpha: 0.08),
+          blurRadius: 14, offset: const Offset(0, 4))],
+      ),
+      child: Stack(children: [
+        // Decorative circle
+        Positioned(right: -20, top: -20,
+          child: Container(width: 90, height: 90,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.low.withValues(alpha: 0.06)))),
+
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(children: [
+            // Left: icon
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.low.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_rounded,
+                  size: 36, color: AppColors.low),
+            ),
+            const SizedBox(width: 16),
+
+            // Right: text
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('All Clear!',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900,
+                        color: AppColors.low)),
+                const SizedBox(height: 3),
+                Text('No active alerts right now',
+                    style: TextStyle(fontSize: 12, color: _muted)),
+                if (total > 0) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text('$total total alerts today — all acked',
+                        style: const TextStyle(fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accentBlue)),
+                  ),
+                ],
+              ],
+            )),
           ]),
         ),
       ]),
