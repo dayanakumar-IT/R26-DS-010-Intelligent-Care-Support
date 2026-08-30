@@ -84,11 +84,16 @@
   transform: translateY(-1px);
 }
 
-.calloutImproved {
+/* Compound selectors (not plain .calloutImproved/.calloutIncrease) —
+ * dd-card's border shorthand (tokens.css) compiles after this file's
+ * rules and, at equal specificity, silently resets border-left back to
+ * plain gray. See the matching note on the KPI cards in
+ * OverviewSummary.module.css for the full explanation; same fix here. */
+.calloutCard.calloutImproved {
   border-left: 3px solid var(--risk-low);
 }
 
-.calloutIncrease {
+.calloutCard.calloutIncrease {
   border-left: 3px solid var(--risk-high);
 }
 

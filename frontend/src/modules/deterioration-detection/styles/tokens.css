@@ -62,9 +62,17 @@
  */
 .dd-card {
   border-radius: var(--radius-md);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.1);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
+  /* Consistent hover-ready transition for every composing card across the
+   * module (Overview, Risk Analysis, Caregiver Profiles, Trends,
+   * Redistribution, Demo Control) — most already declare their own
+   * box-shadow transition per-file for a hover lift; declaring it here too
+   * means any card that composes dd-card gets the same easing even if its
+   * own file never mentions transition.
+   */
+  transition: box-shadow var(--transition-fast, 160ms ease), border-color var(--transition-fast, 160ms ease);
 }
 
 .dd-section-heading {

@@ -9,9 +9,11 @@
 
 .cardValue {
   margin: 0;
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
   color: var(--brand-blue);
+  font-variant-numeric: tabular-nums;
 }
 
 .cardSubtext {
@@ -80,8 +82,31 @@
   transform: translateY(-1px);
 }
 
-.kpiCardHigh {
-  border-left: 3px solid var(--risk-high);
+/* Colored left accent per variant — matches the fall-detection StatCard's
+ * left-border weight/pattern.
+ *
+ * IMPORTANT: these MUST be written as `.kpiCard.kpiCardX` compound
+ * selectors, not plain `.kpiCardX`. dd-card's `border: 1px solid
+ * rgba(...)` shorthand (tokens.css) always compiles into the bundle
+ * *after* this file's rules (see the cascade-order note on .dd-card in
+ * tokens.css), so at equal specificity it silently wins and resets
+ * border-left back to the plain 1px gray — exactly the bug this fixes.
+ * A same-specificity longhand override written here loses regardless of
+ * source order in this file; only a higher-specificity selector reliably
+ * beats it. Combining both classes that are always present together on
+ * these elements (.kpiCard plus one variant class) bumps specificity from
+ * dd-card's (0,1,0) to (0,2,0), which wins independent of bundle order.
+ */
+.kpiCard.kpiCardTotal {
+  border-left: 4px solid var(--brand-blue);
+}
+
+.kpiCardTotal .cardValue {
+  color: var(--brand-blue);
+}
+
+.kpiCard.kpiCardHigh {
+  border-left: 4px solid var(--risk-high);
   background: var(--risk-high-bg);
   border-top-color: var(--risk-high-border);
   border-right-color: var(--risk-high-border);
@@ -92,8 +117,8 @@
   color: var(--risk-high);
 }
 
-.kpiCardModerate {
-  border-left: 3px solid var(--risk-moderate);
+.kpiCard.kpiCardModerate {
+  border-left: 4px solid var(--risk-moderate);
   background: var(--risk-moderate-bg);
   border-top-color: var(--risk-moderate-border);
   border-right-color: var(--risk-moderate-border);
@@ -104,8 +129,8 @@
   color: var(--risk-moderate);
 }
 
-.kpiCardLow {
-  border-left: 3px solid var(--risk-low);
+.kpiCard.kpiCardLow {
+  border-left: 4px solid var(--risk-low);
   background: var(--risk-low-bg);
   border-top-color: var(--risk-low-border);
   border-right-color: var(--risk-low-border);
@@ -116,11 +141,32 @@
   color: var(--risk-low);
 }
 
+.kpiCard.kpiCardNeutral {
+  border-left: 4px solid var(--risk-neutral);
+  background: var(--risk-neutral-bg);
+  border-top-color: var(--risk-neutral-border);
+  border-right-color: var(--risk-neutral-border);
+  border-bottom-color: var(--risk-neutral-border);
+}
+
+.kpiCardNeutral .cardValue {
+  color: var(--risk-neutral);
+}
+
 .modelCard {
   composes: dd-card from global;
   margin-top: 12px;
   padding: 14px 16px;
   max-width: 260px;
+  /* Distinct accent (teal, vs. the KPI row's risk colors) marks this as
+     a meta/model-health card rather than another risk-level card. */
+}
+
+/* Same fix as above, doubled onto itself since .modelCard has no separate
+ * variant class to compound with — repeating one class in a selector is
+ * valid CSS and still raises specificity to (0,2,0). */
+.modelCard.modelCard {
+  border-left: 3px solid var(--brand-accent);
 }
 
 /* Requires Attention (Change 4) */
