@@ -68,6 +68,13 @@ export default function Overview() {
 
   return (
     <div>
+      <div className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>PULSE · Caregiver Deterioration Detection</h1>
+        <p className={styles.pageSub}>
+          Personalized, causally-ordered stress-risk detection using wearable and behavioral data
+        </p>
+      </div>
+
       <div className={styles.tabRow} role="tablist" aria-label="Deterioration Detection views">
         {visibleTabs.map((tab) => (
           <button

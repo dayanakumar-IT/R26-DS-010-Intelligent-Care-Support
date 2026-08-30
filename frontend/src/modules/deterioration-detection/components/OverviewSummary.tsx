@@ -226,6 +226,7 @@ export default function OverviewSummary({
           label={caregiverLabel}
           value={caregivers.length}
           filterValue="all"
+          variantClass={styles.kpiCardTotal}
           onNavigate={goToCaregiverProfiles}
         />
         {riskSummary && (
@@ -255,6 +256,7 @@ export default function OverviewSummary({
               label="Not yet monitored"
               value={notYetMonitored ?? 0}
               filterValue="neutral"
+              variantClass={styles.kpiCardNeutral}
               onNavigate={goToCaregiverProfiles}
             />
           </>
