@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, ClipboardCheck, RotateCcw, X } from 'lucide-react'
-import { getGlossHistory } from '../services/glossApi'
+import { cachedGlossHistory, peekGlossHistory } from '../services/glossCache'
 import type { GlossHistoryEntry } from '../types/gloss'
 
 // Task 4 — visual polish only. GET /gloss/history and its data are
@@ -113,16 +113,19 @@ function HistoryRow({ entry }: { entry: GlossHistoryEntry }) {
 }
 
 export default function HistoryList() {
-  const [status, setStatus] = useState<Status>('loading')
-  const [entries, setEntries] = useState<GlossHistoryEntry[]>([])
+  // Seed from the session cache so returning to this tab is instant.
+  const cachedEntries = peekGlossHistory(REQUESTED_LIMIT)
+  const [status, setStatus] = useState<Status>(cachedEntries !== undefined ? 'ready' : 'loading')
+  const [entries, setEntries] = useState<GlossHistoryEntry[]>(cachedEntries ?? [])
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     let isMounted = true
-    // Justified on-mount / reload fetch, mirroring SignLanguage.tsx.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStatus('loading')
-    getGlossHistory(REQUESTED_LIMIT)
+    if (peekGlossHistory(REQUESTED_LIMIT) === undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus('loading')
+    }
+    cachedGlossHistory(REQUESTED_LIMIT)
       .then((data) => {
         if (!isMounted) return
         setEntries(data)
