@@ -1,3 +1,0 @@
-dataset,n_samples,accuracy,macro_f1,high_risk_recall
-UR,7,0.7143,0.4333,0.8
-NTU,792,0.9205,0.9086,0.8272

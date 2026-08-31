@@ -1,3 +1,0 @@
-model,direction,n_train,n_test,accuracy,macro_f1,high_risk_recall
-Posture RandomForest,NTU -> UR,4752,30,0.2333,0.0946,
-Fusion MLP,NTU -> UR,4752,45,0.0,0.0,0.0

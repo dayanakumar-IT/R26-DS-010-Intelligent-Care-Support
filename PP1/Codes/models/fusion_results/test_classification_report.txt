@@ -1,9 +1,0 @@
-               precision    recall  f1-score   support
-
-     low_risk     0.9753    0.9693    0.9723       326
-moderate_risk     0.9151    0.9510    0.9327       306
-    high_risk     0.9299    0.8743    0.9012       167
-
-     accuracy                         0.9424       799
-    macro avg     0.9401    0.9315    0.9354       799
- weighted avg     0.9428    0.9424    0.9423       799
