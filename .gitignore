@@ -30,6 +30,11 @@ env/
 !.env.example
 # OS
 .DS_Store
+
+. v e n v 3 9 /
+ b a c k e n d _ e x p o r t - * /
+ b a c k e n d _ e x p o r t - * . z i p
+
 Thumbs.db
 desktop.ini
 # Logs / temp
