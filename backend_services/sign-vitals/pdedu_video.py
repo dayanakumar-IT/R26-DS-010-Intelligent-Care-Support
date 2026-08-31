@@ -52,6 +52,7 @@ def resolve_symptom_demo_video(supabase_client, symptom_id: str, expires_in: int
     duration = row.get("duration_seconds")
 
     if row.get("is_active") and stored_url.startswith(("http://", "https://")):
+        logger.info("[PDEDU][VIDEO] clip resolved | symptom=%s | source=public_url", symptom_id)
         return {"video_url": stored_url, "duration_seconds": duration, "url_expires_in": None}
 
     object_key = row.get("video_object_key") or f"{R2_PREFIX}{symptom_id}.mp4"
@@ -59,6 +60,10 @@ def resolve_symptom_demo_video(supabase_client, symptom_id: str, expires_in: int
     if not presigned:
         raise DemoVideoUnavailable(f"No usable demo video for symptom_id: {symptom_id!r}")
 
+    logger.info(
+        "[PDEDU][VIDEO] clip resolved | symptom=%s | source=presigned | expires_in=%ss",
+        symptom_id, expires_in,
+    )
     return {"video_url": presigned, "duration_seconds": duration, "url_expires_in": expires_in}
 
 

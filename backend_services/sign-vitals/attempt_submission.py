@@ -51,6 +51,11 @@ class _Timings:
         finally:
             self._marks[name] = round((time.perf_counter() - start) * 1000, 1)
 
+    def last(self, name: str) -> float:
+        """ms recorded for the most recently completed `stage(name)` block
+        (0.0 if that stage hasn't run) — read-only, for logging."""
+        return self._marks.get(name, 0.0)
+
     def as_dict(self) -> dict:
         out = dict(self._marks)
         out["total_ms"] = round((time.perf_counter() - self._t0) * 1000, 1)
@@ -80,7 +85,7 @@ def _resolve_session(supabase_client, caregiver_profile_id: str, session_id: str
             raise AttemptError(403, f"session_id {session_id!r} not found")
         if result.data[0]["caregiver_profile_id"] != caregiver_profile_id:
             raise AttemptError(403, "session_id does not belong to this caregiver")
-        logger.info("session verified: session_id=%s", session_id)
+        logger.info("[GLOSS][DB] session verified | session=%s", str(session_id)[:8])
         return session_id
 
     created = (
@@ -89,7 +94,7 @@ def _resolve_session(supabase_client, caregiver_profile_id: str, session_id: str
         .execute()
     )
     new_session_id = created.data[0]["id"]
-    logger.info("new session created: session_id=%s", new_session_id)
+    logger.info("[GLOSS][DB] session created | session=%s", str(new_session_id)[:8])
     return new_session_id
 
 
@@ -126,8 +131,8 @@ def submit_attempt(
     Raises: AttemptError for any 400/403 business-logic failure.
     """
     logger.info(
-        "attempt received: caregiver_profile_id=%s target_sign_id=%s attempt_type=%s",
-        caregiver_profile_id, target_sign_id, attempt_type,
+        "[GLOSS][ATTEMPT] processing | caregiver=%s | target=%s | type=%s",
+        str(caregiver_profile_id)[:8], target_sign_id, attempt_type,
     )
 
     timings = _Timings()
@@ -182,14 +187,21 @@ def submit_attempt(
                 raw = extract_landmarks_via_subprocess(video_path)
             except NoLandmarksExtractedError:
                 raise AttemptError(400, "Could not extract usable landmarks from video")
-        logger.info("landmarks extracted: shape=%s", raw.shape)
+        logger.info(
+            "[GLOSS][INFERENCE] landmark extraction completed | frames=%d | extract_ms=%s",
+            int(raw.shape[0]), timings.last("landmark_extraction"),
+        )
 
         with timings.stage("preprocessing"):
             tensor, _positional, dtw_sequence = preprocess_landmarks_for_inference(raw, scaler_mean, scaler_std)
         if tensor is None:
             raise AttemptError(400, "Could not extract usable landmarks from video")
-        logger.info("preprocessing done: tensor_shape=%s", tensor.shape)
+        logger.info(
+            "[GLOSS][INFERENCE] preprocessing completed | tensor=%s | preprocessing_ms=%s",
+            tuple(tensor.shape), timings.last("preprocessing"),
+        )
 
+        logger.info("[GLOSS][INFERENCE] TCN inference started")
         with timings.stage("tcn_inference"):
             prediction = model.predict(tensor, verbose=0)[0]  # (59,)
             class_index = int(np.argmax(prediction))
@@ -215,18 +227,22 @@ def submit_attempt(
         )
 
         logger.info(
-            "recognition done: target=%s recognized=%s confidence=%.4f top3=%s "
-            "raw_frames=%d undetected_frames=%d missing_landmark_fraction=%.3f",
+            "[GLOSS][INFERENCE] TCN inference completed | target=%s | predicted=%s | confidence=%.4f "
+            "| top3=%s | inference_ms=%s",
             target_sign_id, recognized_sign_id, recognition_confidence,
             [(d["sign_id"], round(d["confidence"], 3)) for d in diagnostics["top3"]],
+            timings.last("tcn_inference"),
+        )
+        logger.info(
+            "[GLOSS][INFERENCE] capture quality | frames=%d | undetected=%d | missing_landmark_fraction=%.3f",
             raw_frame_count, fully_undetected_frames, missing_landmark_fraction,
         )
         if missing_landmark_fraction > 0.6 or (
             raw_frame_count and fully_undetected_frames / raw_frame_count > 0.25
         ):
             logger.warning(
-                "LOW LANDMARK QUALITY for target=%s: missing_fraction=%.3f undetected_frames=%d/%d "
-                "— recognition is unreliable for this clip (framing/lighting/hands-out-of-frame).",
+                "[GLOSS][INFERENCE][WARNING] low landmark quality | target=%s | missing_fraction=%.3f "
+                "| undetected=%d/%d — recognition unreliable (framing/lighting/hands out of frame)",
                 target_sign_id, missing_landmark_fraction, fully_undetected_frames, raw_frame_count,
             )
 
@@ -241,8 +257,8 @@ def submit_attempt(
                 moderate_max = class_thresholds[target_sign_id]["moderate_max"]
                 execution_score = compute_execution_score(eval_result["distance"], moderate_max)
             logger.info(
-                "evaluation done: distance=%.2f quality_tier=%s execution_score=%.4f",
-                eval_result["distance"], quality_tier, execution_score,
+                "[GLOSS][DTW] execution scored | distance=%.2f | quality=%s | score=%.4f | dtw_ms=%s",
+                eval_result["distance"], quality_tier, execution_score, timings.last("dtw_evaluation"),
             )
         else:
             corrective_feedback = {
@@ -252,7 +268,7 @@ def submit_attempt(
                 ),
                 "top_deviating_groups": [],
             }
-            logger.info("evaluation skipped: recognized sign did not match target")
+            logger.info("[GLOSS][DTW] execution scoring skipped | predicted sign != target")
 
     else:  # multiple_choice
         recognized_sign_id = selected_sign_id
@@ -267,7 +283,7 @@ def submit_attempt(
         diagnostics["selected_sign_id"] = selected_sign_id
         diagnostics["note"] = "quiz answer — no landmark extraction, no model inference, no movement scoring"
         logger.info(
-            "multiple_choice recorded: target=%s selected=%s is_correct_sign=%s",
+            "[GLOSS][ATTEMPT] multiple-choice recorded | target=%s | selected=%s | correct=%s",
             target_sign_id, selected_sign_id, is_correct_sign,
         )
 
@@ -290,7 +306,7 @@ def submit_attempt(
     with timings.stage("persist_attempt"):
         inserted = supabase_client.table("gloss_attempts").insert(attempt_row).execute()
         attempt_id = inserted.data[0]["id"]
-    logger.info("attempt persisted: attempt_id=%s", attempt_id)
+    logger.info("[GLOSS][DB] attempt persisted | attempt_id=%s", str(attempt_id)[:8])
 
     with timings.stage("mastery_update"):
         mastery_row = update_mastery(
@@ -303,16 +319,19 @@ def submit_attempt(
             execution_score=execution_score,
         )
     logger.info(
-        "mastery updated: sign_id=%s status=%s streak=%s",
+        "[GLOSS][MASTERY] updated | sign=%s | status=%s | strong_streak=%s",
         target_sign_id, mastery_row["mastery_status"], mastery_row["consecutive_strong_streak"],
     )
 
     with timings.stage("next_lesson_selection"):
         next_sign = select_next_lesson(supabase_client, caregiver_profile_id)
-    logger.info("next lesson selected: sign_id=%s", next_sign)
+    logger.info("[GLOSS][RECOMMENDATION] next sign selected | sign=%s", next_sign)
 
     stage_timings = timings.as_dict()
-    logger.info("attempt timings (ms): %s", stage_timings)
+    logger.info(
+        "[GLOSS][ATTEMPT] pipeline timings (ms) | %s",
+        " | ".join(f"{k}={v}" for k, v in stage_timings.items()),
+    )
 
     return {
         "attempt_id": attempt_id,

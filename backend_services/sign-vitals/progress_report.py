@@ -12,7 +12,10 @@ plain dict, so it is unit-testable.
 Only ever reads rows belonging to the given caregiver_profile_id.
 """
 
+import logging
 from collections import Counter
+
+logger = logging.getLogger("sign_vitals")
 
 # mastery_status values produced by mastery_engine._compute_status.
 _MASTERED = "mastered"
@@ -50,6 +53,11 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
     ) or []
     display_name_by_id = {s["id"]: s["display_name"] for s in signs}
 
+    logger.info(
+        "[GLOSS][DB] progress data loaded | mastery rows=%d | attempt rows=%d | signs rows=%d",
+        len(mastery_rows), len(attempt_rows), len(signs),
+    )
+
     status_counts = Counter(r["mastery_status"] for r in mastery_rows)
 
     mastery_summary = [
@@ -81,6 +89,11 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
 
     learning_count = sum(
         1 for r in mastery_rows if r["mastery_status"] not in _NON_LEARNING
+    )
+
+    logger.info(
+        "[GLOSS][PROGRESS] summary prepared | practised=%d | mastered=%d | improving=%d | total_attempts=%d",
+        len(mastery_rows), status_counts[_MASTERED], status_counts[_IMPROVING], len(attempt_rows),
     )
 
     return {

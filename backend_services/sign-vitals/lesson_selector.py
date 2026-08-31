@@ -31,7 +31,10 @@ Independent of any HTTP endpoint — plain function, to be wired into
 GET /gloss/next-lesson/{caregiver_id} in Phase 9, not here.
 """
 
+import logging
 import random
+
+logger = logging.getLogger("sign_vitals")
 
 # BRANCH 1 threshold: minimum total_attempts for a sign's
 # error_rate_percent to be considered "meaningful" difficulty data.
@@ -99,6 +102,10 @@ def _select_weighted_random(supabase_client, caregiver_profile_id: str) -> str:
         .execute()
     )
     status_by_sign = {row["sign_id"]: row["mastery_status"] for row in mastery_rows.data}
+    logger.info(
+        "[GLOSS][DB] mastery records loaded | rows=%d (weighted-random selection)",
+        len(mastery_rows.data or []),
+    )
 
     weights = [STATUS_WEIGHTS[status_by_sign.get(sign_id, "new")] for sign_id in sign_ids]
 
@@ -109,4 +116,5 @@ def select_next_lesson(supabase_client, caregiver_profile_id: str) -> str:
     """Returns a single sign_id — the next lesson to give this caregiver."""
     if _has_any_mastery_rows(supabase_client, caregiver_profile_id):
         return _select_weighted_random(supabase_client, caregiver_profile_id)
+    logger.info("[GLOSS][RECOMMENDATION] cold start | no mastery history — using easiest-first")
     return _select_cold_start(supabase_client)

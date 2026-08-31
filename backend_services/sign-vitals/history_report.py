@@ -11,8 +11,12 @@ Independent of FastAPI — takes a supabase client + caregiver_profile_id
 and returns a plain list, so it is unit-testable.
 """
 
+import logging
+
 DEFAULT_LIMIT = 30
 MAX_LIMIT = 100
+
+logger = logging.getLogger("sign_vitals")
 
 
 def build_history(supabase_client, caregiver_profile_id: str, limit: int = DEFAULT_LIMIT) -> list[dict]:
@@ -30,6 +34,7 @@ def build_history(supabase_client, caregiver_profile_id: str, limit: int = DEFAU
         .execute()
         .data
     ) or []
+    logger.info("[GLOSS][DB] attempt history loaded | rows=%d | limit=%d", len(rows), limit)
 
     signs = (
         supabase_client.table("gloss_signs").select("id, display_name").execute().data

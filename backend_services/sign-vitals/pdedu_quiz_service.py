@@ -179,8 +179,8 @@ def start_session(supabase_client, caregiver_profile_id: str) -> dict:
     ).eq("id", session_id).execute()
 
     logger.info(
-        "pdedu quiz started: caregiver_profile_id=%s session_id=%s n_video=%d n_text=%d",
-        caregiver_profile_id, session_id, len(chosen_video), len(chosen_text),
+        "[PDEDU][QUIZ] quiz started | caregiver=%s | session=%s | video=%d | text=%d",
+        str(caregiver_profile_id)[:8], str(session_id)[:8], len(chosen_video), len(chosen_text),
     )
 
     return {
@@ -279,8 +279,8 @@ def record_answer(
     ).data[0]
 
     logger.info(
-        "pdedu quiz answer: session_id=%s question_id=%s is_correct=%s xp=%d streak=%d",
-        session_id, question_id, is_correct, xp_awarded, totals["current_streak"],
+        "[PDEDU][QUIZ] answer evaluated | session=%s | question=%s | is_correct=%s | xp=%d | streak=%d",
+        str(session_id)[:8], str(question_id)[:8], is_correct, xp_awarded, totals["current_streak"],
     )
 
     return {
@@ -444,8 +444,8 @@ def complete_session(supabase_client, caregiver_profile_id: str, session_id: str
         badges.append({"id": "video_detective", "label": "Video Detective"})
 
     logger.info(
-        "pdedu quiz complete: session_id=%s score=%d/%d xp=%d best_streak=%d",
-        session_id, totals["correct_answers"], answered, totals["xp_earned"], totals["best_streak"],
+        "[PDEDU][QUIZ] quiz completed | session=%s | score=%d/%d | xp=%d | best_streak=%d",
+        str(session_id)[:8], totals["correct_answers"], answered, totals["xp_earned"], totals["best_streak"],
     )
 
     return {

@@ -11,6 +11,10 @@ accuracy and this feature does NOT diagnose Parkinson's disease.
 Independent of any HTTP endpoint — plain functions, callable directly.
 """
 
+import logging
+
+logger = logging.getLogger("sign_vitals")
+
 
 def _pct(correct: int, total: int) -> int:
     return round(100 * correct / total) if total else 0
@@ -39,6 +43,11 @@ def build_pdedu_progress(supabase_client, caregiver_profile_id: str) -> dict:
         .order("display_order")
         .execute()
     ).data or []
+
+    logger.info(
+        "[PDEDU][DB] progress data loaded | quiz sessions=%d | quiz attempts=%d | active symptoms=%d",
+        len(sessions), len(attempts), len(symptoms),
+    )
 
     total_answered = len(attempts)
     total_correct = sum(1 for a in attempts if a["is_correct"])
@@ -75,6 +84,11 @@ def build_pdedu_progress(supabase_client, caregiver_profile_id: str) -> dict:
     weakest = [s["display_name"] for s in ranked[:3] if s["accuracy_pct"] < 100]
     strongest = [s["display_name"] for s in reversed(ranked) if s["accuracy_pct"] >= 80][:3]
 
+    logger.info(
+        "[PDEDU][PROGRESS] summary generated | quizzes=%d | questions=%d | overall_accuracy=%d%% | total_xp=%d",
+        len(completed), total_answered, _pct(total_correct, total_answered), total_xp,
+    )
+
     return {
         "quizzes_completed": len(completed),
         "total_questions_answered": total_answered,
@@ -98,6 +112,7 @@ def build_pdedu_history(supabase_client, caregiver_profile_id: str, limit: int =
         .limit(limit)
         .execute()
     ).data or []
+    logger.info("[PDEDU][DB] quiz history loaded | rows=%d | limit=%d", len(sessions), limit)
 
     history = []
     for s in sessions:
