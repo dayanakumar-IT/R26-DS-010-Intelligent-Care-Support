@@ -1,7 +1,30 @@
+/* ── Page header ────────────────────────────────────────────────────── *
+ * Mirrors the sibling fall-detection module's page-header pattern
+ * (title + muted tagline) for visual consistency across the shared app —
+ * deliberately without its action buttons (Sound On / Refresh), which
+ * don't apply to this module. */
+.pageHeader {
+  margin-bottom: 20px;
+}
+
+.pageTitle {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.pageSub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .tabRow {
   display: flex;
   align-items: center;
   gap: 24px;
+  border-bottom: 2px solid rgba(15, 23, 42, 0.08);
 }
 
 .tab {
@@ -12,6 +35,7 @@
   padding: 0 16px;
   border: none;
   border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
   background: transparent;
   font: inherit;
   font-size: 14px;
@@ -30,6 +54,7 @@
 .tabActive {
   border-bottom-color: var(--brand-blue);
   color: var(--brand-blue);
+  font-weight: 700;
 }
 
 .panel {
@@ -40,8 +65,30 @@
   box-shadow: var(--shadow-sm);
 }
 
-.placeholder {
+.status {
   margin: 0;
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.errorBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
 }

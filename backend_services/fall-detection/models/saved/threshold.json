@@ -1,0 +1,6 @@
+{
+  "fusion_threshold": 0.94,
+  "val_macro_f1_at_threshold": 0.9744925229776271,
+  "default_threshold_macro_f1": 0.9642724458204335,
+  "epoch": 21
+}

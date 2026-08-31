@@ -1,0 +1,119 @@
+.status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.errorBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
+}
+
+.chartContainer {
+  composes: dd-card from global;
+  padding: 16px;
+}
+
+/* Ward Risk Comparison table */
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  white-space: nowrap;
+}
+
+.td {
+  padding: 10px 14px;
+  color: #111827;
+  white-space: nowrap;
+}
+
+.tableRow {
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 160ms ease);
+}
+
+.tableRow:hover {
+  background: rgba(30, 58, 138, 0.06);
+}
+
+.tableRow:not(:last-child) .td {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* Network Centrality panel (admin only) — deliberately visually distinct
+   from the sections above: a bordered, tinted panel rather than another
+   plain CollapsibleSection, since this is research context, not a live
+   team metric. */
+
+.centralityPanel {
+  margin-top: 28px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 2px dashed rgba(124, 58, 237, 0.35);
+  background: rgba(124, 58, 237, 0.04);
+}
+
+.centralityHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.centralityIcon {
+  color: var(--brand-purple);
+}
+
+.centralityTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--brand-purple);
+}
+
+.centralityCaption {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
