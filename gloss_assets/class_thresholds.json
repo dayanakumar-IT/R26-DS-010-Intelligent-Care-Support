@@ -1,0 +1,356 @@
+{
+  "afternoon": {
+    "strong_max": 5.035953785686625,
+    "moderate_max": 6.204961224987581,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "angry": {
+    "strong_max": 2.613896551961011,
+    "moderate_max": 3.283942375504324,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "arm": {
+    "strong_max": 4.767772023912936,
+    "moderate_max": 6.020039558920683,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "back": {
+    "strong_max": 3.1803577875670275,
+    "moderate_max": 4.256987165648264,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "bread": {
+    "strong_max": 3.0610464341746417,
+    "moderate_max": 3.840062357369883,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "call": {
+    "strong_max": 3.4065523687423918,
+    "moderate_max": 10.619333763042507,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "close": {
+    "strong_max": 3.6943344907321958,
+    "moderate_max": 4.6753324085917916,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "coffee": {
+    "strong_max": 3.7375593783116496,
+    "moderate_max": 4.810150130969441,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "come": {
+    "strong_max": 4.1751416215988835,
+    "moderate_max": 11.61881429730963,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "comfortable": {
+    "strong_max": 2.5708863284063916,
+    "moderate_max": 3.139671272174025,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "confused": {
+    "strong_max": 3.242701703424285,
+    "moderate_max": 4.2023614630030615,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "cough": {
+    "strong_max": 4.42676236770338,
+    "moderate_max": 10.781884105725432,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "danger": {
+    "strong_max": 2.96164881615713,
+    "moderate_max": 3.5094154256345833,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "dizzy": {
+    "strong_max": 3.981736359893341,
+    "moderate_max": 9.990160537882392,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "doctor": {
+    "strong_max": 3.5081132551079595,
+    "moderate_max": 4.784386121321497,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "drink": {
+    "strong_max": 2.8195118053802934,
+    "moderate_max": 7.057348658208411,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "eat": {
+    "strong_max": 2.8453633874610906,
+    "moderate_max": 6.851148899320442,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "egg": {
+    "strong_max": 2.8179143242705686,
+    "moderate_max": 3.0373330917103276,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "fruit": {
+    "strong_max": 3.1812330252543664,
+    "moderate_max": 7.4642146269880545,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "give": {
+    "strong_max": 4.7141549483777,
+    "moderate_max": 9.705535474544059,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "go": {
+    "strong_max": 3.7744027310322115,
+    "moderate_max": 4.346021526915007,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "good": {
+    "strong_max": 6.94082828088878,
+    "moderate_max": 8.41359154889,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "happy": {
+    "strong_max": 8.640794406685188,
+    "moderate_max": 13.14128033320811,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "head": {
+    "strong_max": 2.2257031728338537,
+    "moderate_max": 4.829602228509857,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "hello": {
+    "strong_max": 2.7555262159246823,
+    "moderate_max": 9.346844523837023,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "help": {
+    "strong_max": 3.3836949066626745,
+    "moderate_max": 4.19513980381582,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "hospital": {
+    "strong_max": 4.3239099610310845,
+    "moderate_max": 10.145624296634132,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "hot": {
+    "strong_max": 3.2694484415902143,
+    "moderate_max": 10.596696920492898,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "hungry": {
+    "strong_max": 2.8022358518661106,
+    "moderate_max": 3.96750596364767,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "hurt": {
+    "strong_max": 2.3999119508345292,
+    "moderate_max": 2.801920198822537,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "me": {
+    "strong_max": 2.565626422657881,
+    "moderate_max": 10.466031985875192,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "meet": {
+    "strong_max": 3.1143913694171927,
+    "moderate_max": 3.568323130350781,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "milk": {
+    "strong_max": 6.709219452371713,
+    "moderate_max": 9.830389029649565,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "morning": {
+    "strong_max": 3.6789305381572026,
+    "moderate_max": 6.196015897924274,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "mouth": {
+    "strong_max": 3.1556110455579014,
+    "moderate_max": 9.638736852214652,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "no": {
+    "strong_max": 3.2469762956375394,
+    "moderate_max": 7.85510741083517,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "nose": {
+    "strong_max": 3.0819188603682433,
+    "moderate_max": 10.492123995586025,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "open": {
+    "strong_max": 3.7151440238776043,
+    "moderate_max": 4.096838562491413,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "pain": {
+    "strong_max": 2.7638520709510477,
+    "moderate_max": 3.334072853016408,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "please": {
+    "strong_max": 2.5839388266780903,
+    "moderate_max": 10.975905083099503,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "sad": {
+    "strong_max": 3.4875794823838517,
+    "moderate_max": 3.6863834860474998,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "scared": {
+    "strong_max": 2.493788361029866,
+    "moderate_max": 3.3671230865888138,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "sick": {
+    "strong_max": 4.001656297789017,
+    "moderate_max": 6.195085298962172,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "sit": {
+    "strong_max": 2.918936776473657,
+    "moderate_max": 3.6880404317569617,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "sleep": {
+    "strong_max": 3.557033346893139,
+    "moderate_max": 7.802724149830771,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "sorry": {
+    "strong_max": 3.0438185901777115,
+    "moderate_max": 5.455231053698688,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "stand": {
+    "strong_max": 3.0892977140034064,
+    "moderate_max": 3.8518591356700513,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "stomach": {
+    "strong_max": 2.998026912578427,
+    "moderate_max": 12.016052895723666,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "stop": {
+    "strong_max": 3.6420310817161123,
+    "moderate_max": 5.044191006468891,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "take": {
+    "strong_max": 6.133262181703944,
+    "moderate_max": 12.753051163335622,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "tea": {
+    "strong_max": 3.0924040033740976,
+    "moderate_max": 3.4560303727628847,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "thirsty": {
+    "strong_max": 2.6751386103088826,
+    "moderate_max": 7.71091169927704,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "tired": {
+    "strong_max": 2.6542852661792984,
+    "moderate_max": 3.067165184616861,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "wait": {
+    "strong_max": 2.831002015399525,
+    "moderate_max": 3.5126445933559043,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "walk": {
+    "strong_max": 3.783693218910748,
+    "moderate_max": 7.551000564825355,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "water": {
+    "strong_max": 6.047917485339339,
+    "moderate_max": 11.086661985948995,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "weak": {
+    "strong_max": 3.365215133743997,
+    "moderate_max": 3.674583757786117,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "welcome": {
+    "strong_max": 9.696332160788355,
+    "moderate_max": 10.800236175862189,
+    "n_samples": 12,
+    "confidence": "OK"
+  },
+  "yes": {
+    "strong_max": 3.283701070219797,
+    "moderate_max": 12.091206636876953,
+    "n_samples": 12,
+    "confidence": "OK"
+  }
+}

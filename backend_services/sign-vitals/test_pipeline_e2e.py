@@ -4,21 +4,21 @@ GLOSS component — Phase 1 architecture verification.
 
 Runs the FULL pipeline from the main .venv (no MediaPipe installed
 here): subprocess -> .venv_mediapipe for raw landmark extraction, then
-the rest of preprocessing.py in-process, then a TCN model.predict()
-regression check. Run this with .venv's python, NOT .venv_mediapipe's.
+the rest of preprocessing.py in-process, then a regression check on
+the recognition model (gloss_assets/GLOSS_ensemble.keras). Run this with .venv's python, NOT .venv_mediapipe's.
 """
 
+import os
 import sys
 
 import numpy as np
-import tensorflow as tf
 
 from extract_landmarks_bridge import extract_landmarks_via_subprocess
 from preprocessing import preprocess_landmarks_for_inference
+from recogniser import ASSETS_DIR, load_ensemble, predict_probs
 
 VIDEO_PATH = sys.argv[1] if len(sys.argv) > 1 else "test_samples/pain.mp4"
-SCALER_PATH = "models/feature_scaler.npz"
-MODEL_PATH = "models/TCN_FINAL_layer2.keras"
+SCALER_PATH = os.path.join(ASSETS_DIR, "feature_scaler.npz")
 
 print(f"=== GLOSS Phase 1 end-to-end pipeline check ({VIDEO_PATH}) ===")
 
@@ -57,10 +57,10 @@ assert not np.isnan(positional).any() and not np.isinf(positional).any()
 assert not np.isnan(dtw_sequence).any() and not np.isinf(dtw_sequence).any()
 assert not np.isnan(tensor).any() and not np.isinf(tensor).any()
 
-print("\n[4] Regression check: feeding TCN tensor into the model...")
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-prediction = model.predict(tensor, verbose=0)
+print("\n[4] Regression check: feeding the tensor into the model...")
+model = load_ensemble()
+prediction = predict_probs(model, tensor)
 print("    model output shape:", prediction.shape)
-assert prediction.shape == (1, 59), f"unexpected model output shape {prediction.shape}"
+assert prediction.shape == (59,), f"unexpected model output shape {prediction.shape}"
 
 print("\n=== ALL CHECKS PASSED ===")

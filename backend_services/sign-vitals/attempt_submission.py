@@ -4,13 +4,13 @@ GLOSS component — Phase 8: the real, combined attempt-submission flow.
 
 Wires together landmark extraction + preprocessing (Phase 0/1),
 recognition (Phase 3), DTW execution evaluation + corrective feedback
-(Phase 4/7), persistence, mastery update (Phase 5), and next-lesson
-selection (Phase 6) into one call. This is what the frontend actually
+(Phase 4/7, with the guarded Gemini rewording), persistence, mastery
+update (Phase 5), and next-lesson selection (Phase 6) into one call. This is what the frontend actually
 calls — unlike /gloss/attempts/recognize and /gloss/attempts/evaluate,
 which stay internal/testing utilities for their individual pipelines.
 
 Independent of any HTTP endpoint / FastAPI app state — takes plain
-arguments (including the model/scaler/class-names/thresholds, the same
+arguments (including the model/class-names/thresholds, the same
 dependency-injection pattern as execution_evaluator.py and
 mastery_engine.py) and returns a plain dict, so it's testable directly.
 caregiver_profile_id must already be server-derived (see
@@ -26,9 +26,10 @@ import numpy as np
 
 from execution_evaluator import evaluate_execution
 from extract_landmarks_bridge import NoLandmarksExtractedError, extract_landmarks_via_subprocess
+from gemini_feedback import feedback_text
 from lesson_selector import select_next_lesson
 from mastery_engine import compute_execution_score, update_mastery
-from preprocessing import preprocess_landmarks_for_inference
+from preprocessing import normalize_raw_landmarks
 
 logger = logging.getLogger("sign_vitals")
 
@@ -108,8 +109,6 @@ def submit_attempt(
     selected_sign_id: str | None = None,
     model=None,
     class_names=None,
-    scaler_mean=None,
-    scaler_std=None,
     class_thresholds=None,
 ) -> dict:
     """
@@ -122,8 +121,9 @@ def submit_attempt(
       forbidden for "multiple_choice".
     selected_sign_id: the sign the caregiver picked in the MC UI —
       required for "multiple_choice", forbidden for "webcam".
-    model, class_names, scaler_mean, scaler_std, class_thresholds:
-      the same startup-loaded resources main.py's other endpoints use.
+    model, class_names, class_thresholds: the same startup-loaded
+      resources main.py's other endpoints use (the scaler and DTW
+      references are grading.py's startup-loaded globals).
 
     Returns the response dict described in the Phase 8 design (see
     main.py's POST /gloss/attempts docstring).
@@ -178,10 +178,10 @@ def submit_attempt(
     }
 
     if attempt_type == "webcam":
-        # Landmarks are extracted ONCE and preprocessed ONCE here; the
-        # resulting `tensor` feeds the TCN and the `dtw_sequence` from the
-        # SAME preprocessing call feeds DTW evaluation. No second decode,
-        # no second extraction, no second preprocessing pass.
+        # Landmarks are extracted ONCE and normalized ONCE here; the
+        # same `normalized` sequence feeds both recognition and DTW
+        # grading (grading.grade_learner_attempt, the notebook pipeline).
+        # No second decode, no second extraction, no second normalization.
         with timings.stage("landmark_extraction"):
             try:
                 raw = extract_landmarks_via_subprocess(video_path)
@@ -193,20 +193,21 @@ def submit_attempt(
         )
 
         with timings.stage("preprocessing"):
-            tensor, _positional, dtw_sequence = preprocess_landmarks_for_inference(raw, scaler_mean, scaler_std)
-        if tensor is None:
+            normalized = normalize_raw_landmarks(raw)
+        if normalized is None:
             raise AttemptError(400, "Could not extract usable landmarks from video")
         logger.info(
-            "[GLOSS][INFERENCE] preprocessing completed | tensor=%s | preprocessing_ms=%s",
-            tuple(tensor.shape), timings.last("preprocessing"),
+            "[GLOSS][INFERENCE] preprocessing completed | normalized=%s | preprocessing_ms=%s",
+            tuple(normalized.shape), timings.last("preprocessing"),
         )
 
-        logger.info("[GLOSS][INFERENCE] TCN inference started")
-        with timings.stage("tcn_inference"):
-            prediction = model.predict(tensor, verbose=0)[0]  # (59,)
-            class_index = int(np.argmax(prediction))
-            recognized_sign_id = class_names[class_index]
-            recognition_confidence = float(prediction[class_index])
+        logger.info("[GLOSS][INFERENCE] recognition + DTW grading started")
+        with timings.stage("recognition_and_grading"):
+            eval_result = evaluate_execution(normalized, target_sign_id, model)
+            grading_result = eval_result["result"]
+            prediction = grading_result["probs"]  # (59,)
+            recognized_sign_id = str(grading_result["predicted_class"])
+            recognition_confidence = grading_result["tcn_confidence"]
 
         # Capture-quality + top-3 diagnostics (cheap; does not change the
         # prediction). Raw landmark array is (T, 49, 3), NaN where a
@@ -223,15 +224,18 @@ def submit_attempt(
         diagnostics["missing_landmark_fraction"] = round(missing_landmark_fraction, 4)
         diagnostics["preprocessing"] = (
             "notebook-parity: interpolate_missing -> normalize (translate/scale/rotate) "
-            "-> resample 60 frames -> kinematic 147->441 -> standardize (feature_scaler.npz)"
+            "-> [first repetition if several] -> resample 60 frames -> kinematic 147->441 "
+            "-> standardize (gloss_assets/feature_scaler.npz)"
         )
+        diagnostics["was_multi_attempt"] = bool(grading_result["was_multi_attempt"])
+        diagnostics["n_repetitions_detected"] = int(grading_result["n_repetitions_detected"])
 
         logger.info(
-            "[GLOSS][INFERENCE] TCN inference completed | target=%s | predicted=%s | confidence=%.4f "
-            "| top3=%s | inference_ms=%s",
+            "[GLOSS][INFERENCE] recognition completed | target=%s | predicted=%s | confidence=%.4f "
+            "| top3=%s | recognition_and_grading_ms=%s",
             target_sign_id, recognized_sign_id, recognition_confidence,
             [(d["sign_id"], round(d["confidence"], 3)) for d in diagnostics["top3"]],
-            timings.last("tcn_inference"),
+            timings.last("recognition_and_grading"),
         )
         logger.info(
             "[GLOSS][INFERENCE] capture quality | frames=%d | undetected=%d | missing_landmark_fraction=%.3f",
@@ -246,29 +250,31 @@ def submit_attempt(
                 target_sign_id, missing_landmark_fraction, fully_undetected_frames, raw_frame_count,
             )
 
-        is_correct_sign = recognized_sign_id == target_sign_id
+        is_correct_sign = eval_result["is_correct_sign"]
+        corrective_feedback = eval_result["corrective_feedback"]
 
         if is_correct_sign:
-            with timings.stage("dtw_evaluation"):
-                eval_result = evaluate_execution(dtw_sequence, target_sign_id, supabase_client, class_thresholds)
-                quality_tier = eval_result["quality_tier"]
-                deviating_landmarks = eval_result["deviating_landmarks"]
-                corrective_feedback = eval_result["corrective_feedback"]
-                moderate_max = class_thresholds[target_sign_id]["moderate_max"]
-                execution_score = compute_execution_score(eval_result["distance"], moderate_max)
+            quality_tier = eval_result["quality_tier"]
+            deviating_landmarks = eval_result["deviating_landmarks"]
+            thresholds = class_thresholds[target_sign_id]
+            execution_score = compute_execution_score(
+                eval_result["distance"], thresholds["strong_max"], thresholds["moderate_max"]
+            )
             logger.info(
-                "[GLOSS][DTW] execution scored | distance=%.2f | quality=%s | score=%.4f | dtw_ms=%s",
-                eval_result["distance"], quality_tier, execution_score, timings.last("dtw_evaluation"),
+                "[GLOSS][DTW] execution scored | distance=%.4f | quality=%s | score=%.4f",
+                eval_result["distance"], quality_tier, execution_score,
             )
         else:
-            corrective_feedback = {
-                "summary": (
-                    f"This was recognized as '{recognized_sign_id}', not '{target_sign_id}'. "
-                    f"Try performing the sign for '{target_sign_id}' again."
-                ),
-                "top_deviating_groups": [],
-            }
             logger.info("[GLOSS][DTW] execution scoring skipped | predicted sign != target")
+
+        # Guarded Gemini rewording of the notebook's rule-based text
+        # (gloss_feedback_guard.safe_feedback_text). Falls back to the
+        # rule-based text if GEMINI_API_KEY is unset, the call fails, or
+        # the reply isn't faithful. The app's own mismatch sentence is
+        # never sent to Gemini.
+        if eval_result["rewordable"]:
+            with timings.stage("feedback_rewording"):
+                corrective_feedback["summary"] = feedback_text(grading_result, eval_result["base"])
 
     else:  # multiple_choice
         recognized_sign_id = selected_sign_id

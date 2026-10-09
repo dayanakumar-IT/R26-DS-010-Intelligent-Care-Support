@@ -1,113 +1,117 @@
 """
 feedback_generator.py
-GLOSS component — corrective feedback generation (Phase 7).
+GLOSS component — rule-based explainable feedback (Layer 4 of the thesis).
 
-Given a DTW alignment path between an attempt and a reference
-sequence, identifies which of 9 friendly body regions deviated most,
-and turns that into a short plain-language message alongside the
-existing strong/moderate/weak quality_tier.
+generate_feedback() and its helpers are copied VERBATIM from
+gloss_assets/gloss_reference_pipeline.py (notebook 03, cell A2). The
+thesis reports and evaluates this exact wording, and
+gloss_feedback_guard.py keys on its phrases ("wasn't fully certain",
+"couldn't confidently identify") — do not reword it here.
 
-This is a rough guide, not a certified movement assessment — the
-wording is deliberately kept general/hedged rather than diagnostic-
-sounding.
+to_api_deviations() / to_api_feedback() are app-side only: they map the
+notebook's values into the response fields the API already had
+(deviating_landmarks, corrective_feedback.summary /
+.top_deviating_groups). They add no wording of their own.
 """
 
-# ---------------------------------------------------------------
-# Landmark grouping: 49 landmarks (indices 0-48, per
-# models/landmark_names.json's fixed order) -> 9 friendly regions.
-# ---------------------------------------------------------------
-LANDMARK_GROUPS = [
-    {"group": "nose", "friendly_name": "nose", "indices": [0]},
-    {"group": "left_shoulder", "friendly_name": "left shoulder", "indices": [1]},
-    {"group": "right_shoulder", "friendly_name": "right shoulder", "indices": [2]},
-    {"group": "left_elbow", "friendly_name": "left elbow", "indices": [3]},
-    {"group": "right_elbow", "friendly_name": "right elbow", "indices": [4]},
-    {"group": "left_wrist", "friendly_name": "left wrist", "indices": [5]},
-    {"group": "right_wrist", "friendly_name": "right wrist", "indices": [6]},
-    {"group": "left_hand", "friendly_name": "left hand", "indices": list(range(7, 28))},
-    {"group": "right_hand", "friendly_name": "right hand", "indices": list(range(28, 49))},
-]
+HAND_LANDMARK_NAMES = {
+    0: "wrist", 1: "thumb base", 2: "thumb knuckle", 3: "thumb joint", 4: "thumb tip",
+    5: "index finger base", 6: "index finger middle joint", 7: "index finger upper joint", 8: "index fingertip",
+    9: "middle finger base", 10: "middle finger middle joint", 11: "middle finger upper joint", 12: "middle fingertip",
+    13: "ring finger base", 14: "ring finger middle joint", 15: "ring finger upper joint", 16: "ring fingertip",
+    17: "pinky base", 18: "pinky middle joint", 19: "pinky upper joint", 20: "pinky tip",
+}
 
-N_LANDMARKS = 49
-N_COORDS = 3  # x, y, z per landmark
-
-
-def compute_group_deviations(attempt_seq, reference_seq, path):
-    """
-    attempt_seq, reference_seq: (T, 147) arrays — the flat
-      49-landmarks x (x,y,z) DTW sequences being compared (same
-      sequences dtw_distance_with_path() was called on).
-    path: the DTW alignment path from dtw.dtw_distance_with_path(),
-      a list of (i, j) tuples aligning attempt_seq[i] to
-      reference_seq[j].
-
-    For each of the 9 groups, sums the Euclidean distance between
-    the attempt's and reference's landmark position(s) in that group,
-    across every aligned frame pair in the path (for left_hand/
-    right_hand, the 21 individual per-landmark 3D distances are
-    summed together).
-
-    Returns: list of {"group", "friendly_name", "deviation_score"}
-      dicts, sorted descending by deviation_score.
-    """
-    attempt_frames = attempt_seq.reshape(-1, N_LANDMARKS, N_COORDS)
-    reference_frames = reference_seq.reshape(-1, N_LANDMARKS, N_COORDS)
-
-    scores = {g["group"]: 0.0 for g in LANDMARK_GROUPS}
-
-    for i, j in path:
-        a_frame = attempt_frames[i]
-        r_frame = reference_frames[j]
-        for g in LANDMARK_GROUPS:
-            indices = g["indices"]
-            diff = a_frame[indices] - r_frame[indices]
-            per_landmark_dist = (diff ** 2).sum(axis=-1) ** 0.5
-            scores[g["group"]] += float(per_landmark_dist.sum())
-
-    results = [
-        {
-            "group": g["group"],
-            "friendly_name": g["friendly_name"],
-            "deviation_score": scores[g["group"]],
-        }
-        for g in LANDMARK_GROUPS
-    ]
-    results.sort(key=lambda r: r["deviation_score"], reverse=True)
-    return results
+def landmark_to_plain_english(landmark_name):
+    for joint in ("wrist", "elbow", "shoulder"):
+        if landmark_name in (f"left_{joint}", f"right_{joint}"):
+            return f"{'left' if 'left' in landmark_name else 'right'} {joint}"
+    if landmark_name == "nose":
+        return "head position"
+    if "_hand_" in landmark_name:
+        side = "left" if landmark_name.startswith("left") else "right"
+        return f"{side} {HAND_LANDMARK_NAMES.get(int(landmark_name.split('_')[-1]), 'hand')}"
+    return landmark_name.replace("_", " ")
 
 
-def generate_feedback(quality_tier, group_deviations):
-    """
-    quality_tier: "strong" | "moderate" | "weak".
-    group_deviations: the sorted output of compute_group_deviations().
+NON_ACTIONABLE_LANDMARKS = {"nose"}
 
-    Returns: {"summary": str, "top_deviating_groups": [...]}
-      top_deviating_groups is empty for "strong".
-    """
-    if quality_tier == "strong":
-        return {
-            "summary": "Great job — this sign was performed well.",
-            "top_deviating_groups": [],
-        }
+def get_actionable_landmarks(top_deviating_landmarks, max_items=2):
+    filtered = [d for d in top_deviating_landmarks if d["landmark"] not in NON_ACTIONABLE_LANDMARKS]
+    return filtered[:max_items] if filtered else top_deviating_landmarks[:max_items]
 
-    top_two = group_deviations[:2]
-    names = [g["friendly_name"] for g in top_two]
 
-    if len(names) >= 2:
-        summary = (
-            f"Your {names[0]} position and {names[1]} position seem to need the most "
-            f"adjustment compared to the reference — this is a rough guide, not an exact "
-            f"measurement, so use it as a general pointer rather than a precise correction."
-        )
-    elif len(names) == 1:
-        summary = (
-            f"Your {names[0]} position seems to need the most adjustment compared to the "
-            f"reference — this is a rough guide, not an exact measurement."
-        )
+def join_landmarks_naturally(names):
+    return names[0] if len(names) == 1 else " and ".join(names)
+
+
+def generate_feedback(result, confidence_threshold=0.6, low_confidence_cutoff=0.35):
+    predicted, confidence, tier = result["predicted_class"], result["tcn_confidence"], result["quality_tier"]
+    if confidence < low_confidence_cutoff:
+        return {"full_text": "The system couldn't confidently identify which sign was performed. "
+                             "Please try the sign again, making sure your hands are clearly visible.",
+                "headline": "Sign not clearly recognized.", "quality_tier": "unclear", "cited_landmarks": [],
+                "evidence": {"tcn_confidence": confidence, "dtw_distance": None, "raw_top_landmarks": []}}
+
+    landmarks = get_actionable_landmarks(result["top_deviating_landmarks"])
+    parts = []
+    if confidence < confidence_threshold:
+        parts.append(f"This looked like it might be '{predicted}', though the system wasn't fully certain.")
     else:
-        summary = "This attempt didn't match the reference closely — try comparing your movement to the reference sign again."
+        parts.append(f"The sign was recognized as '{predicted}'.")
+    if result.get("was_multi_attempt"):
+        parts.append(f"It looks like you signed this {result['n_repetitions_detected']} times — "
+                     f"your best attempt was used for grading.")
+    if tier == "strong":
+        parts.append("Your execution closely matched the reference sign. Well done.")
+    elif tier == "moderate":
+        parts.append(f"Your movement was reasonably close to the reference, with the largest "
+                     f"difference around your {landmark_to_plain_english(landmarks[0]['landmark'])}.")
+        parts.append("Try again, paying a little more attention to that movement.")
+    elif tier == "weak":
+        named = join_landmarks_naturally([landmark_to_plain_english(d["landmark"]) for d in landmarks])
+        parts.append(f"Your movement differed noticeably from the reference sign, mainly around your {named}.")
+        parts.append("Try slowing down and focusing on that part of the movement, then attempt it again.")
+    else:
+        parts.append("Not enough calibration data was available to grade this sign's execution quality yet.")
 
+    return {"full_text": " ".join(parts), "headline": parts[0], "quality_tier": tier,
+            "cited_landmarks": [landmark_to_plain_english(d["landmark"]) for d in landmarks],
+            "evidence": {"tcn_confidence": confidence, "dtw_distance": result["dtw_distance"],
+                         "raw_top_landmarks": result["top_deviating_landmarks"]}}
+
+
+# ---------------------------------------------------------------
+# App-side mapping into the existing API response fields.
+# ---------------------------------------------------------------
+def to_api_deviations(landmarks):
+    """landmarks: notebook-style [{"landmark", "deviation"}, ...].
+    Returns the API's [{"group", "friendly_name", "deviation_score"}, ...]
+    — "group" is now the landmark name (e.g. "left_hand_8")."""
+    return [
+        {
+            "group": d["landmark"],
+            "friendly_name": landmark_to_plain_english(d["landmark"]),
+            "deviation_score": d["deviation"],
+        }
+        for d in landmarks
+    ]
+
+
+def to_api_feedback(result, base, summary=None):
+    """result: grade_learner_attempt() dict. base: generate_feedback(result).
+    summary: the text to show (defaults to base["full_text"]; pass the
+    guarded Gemini rewording here when there is one).
+
+    Returns {"summary": str, "top_deviating_groups": [...]}.
+    top_deviating_groups are the landmarks the feedback cites
+    (base["cited_landmarks"]); empty for "strong", as before, and when
+    the sign wasn't confidently recognised.
+    """
+    cited = []
+    if base["cited_landmarks"] and base["quality_tier"] != "strong":
+        cited = get_actionable_landmarks(result["top_deviating_landmarks"])
     return {
-        "summary": summary,
-        "top_deviating_groups": top_two,
+        "summary": base["full_text"] if summary is None else summary,
+        "top_deviating_groups": to_api_deviations(cited),
     }

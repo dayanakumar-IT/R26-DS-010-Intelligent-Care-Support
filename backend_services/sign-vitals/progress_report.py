@@ -15,13 +15,18 @@ Only ever reads rows belonging to the given caregiver_profile_id.
 import logging
 from collections import Counter
 
+from mastery_engine import current_status
+
 logger = logging.getLogger("sign_vitals")
 
 # mastery_status values produced by mastery_engine._compute_status.
+# Rows written under the old rules may still hold the retired "weak" /
+# "needs_revision"; they are reported as "improving" (see
+# mastery_engine.current_status) — the stored rows are not changed.
 _MASTERED = "mastered"
 _IMPROVING = "improving"
 # "learning" bucket = anything a caregiver has practised that is neither
-# mastered nor improving (learning / weak / needs_revision / new-with-attempts).
+# mastered nor improving (learning / new-with-attempts).
 _NON_LEARNING = {_MASTERED, _IMPROVING}
 
 
@@ -52,6 +57,8 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
         .data
     ) or []
     display_name_by_id = {s["id"]: s["display_name"] for s in signs}
+    for r in mastery_rows:
+        r["mastery_status"] = current_status(r["mastery_status"])
 
     logger.info(
         "[GLOSS][DB] progress data loaded | mastery rows=%d | attempt rows=%d | signs rows=%d",

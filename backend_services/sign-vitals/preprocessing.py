@@ -173,7 +173,7 @@ def preprocess_landmarks_for_inference(raw_landmarks, feature_mean, feature_std)
 
     Returns a tuple (tensor, positional, dtw_sequence):
       - tensor: np.ndarray of shape (1, 60, 441), standardized,
-        ready for model.predict() (TCN input).
+        ready for recogniser.predict_probs() (model input).
       - positional: np.ndarray of shape (60, 147), resampled but
         NOT standardized and NOT kinematic-expanded.
       - dtw_sequence: np.ndarray of shape (T, 147), the ORIGINAL
@@ -185,22 +185,53 @@ def preprocess_landmarks_for_inference(raw_landmarks, feature_mean, feature_std)
         the video's actual detected frame count.
     Returns (None, None, None) if raw_landmarks is None or too short.
     """
-    if raw_landmarks is None or raw_landmarks.shape[0] < 3:
+    normalized = normalize_raw_landmarks(raw_landmarks)               # (T, 49, 3)
+    if normalized is None:
         return None, None, None
 
-    repaired, _ = interpolate_missing(raw_landmarks)
-    normalized = normalize_sequence(repaired)                          # (T, 49, 3)
     dtw_sequence = normalized.reshape(-1, N_FEATURES_PER_FRAME).astype(np.float32)  # (T, 147)
 
     resampled = resample_sequence(normalized, TARGET_FRAMES)          # (60, 49, 3)
+    positional = resampled.reshape(TARGET_FRAMES, N_FEATURES_PER_FRAME).astype(np.float32)  # (60, 147)
 
-    flat = resampled.reshape(1, TARGET_FRAMES, N_FEATURES_PER_FRAME)  # (1, 60, 147)
-    positional = flat.reshape(TARGET_FRAMES, N_FEATURES_PER_FRAME).astype(np.float32)  # (60, 147)
+    standardized = features_from_normalized(normalized, feature_mean, feature_std)
+    return standardized, positional, dtw_sequence
 
-    kinematic = add_kinematic_features(flat, TARGET_FRAMES, N_TOTAL_LANDMARKS)  # (1, 60, 441)
 
+# ---------------------------------------------------------------
+# The two halves of the pipeline above, exposed separately.
+#
+# normalize_raw_landmarks(): raw MediaPipe landmarks -> the normalized
+#   (T, 49, 3) sequence. This is the input to
+#   grading.grade_learner_attempt().
+# features_from_normalized(): normalized (T, 49, 3) -> the model input.
+#   Exactly the training-time steps: resample to 60 frames -> position
+#   + velocity + acceleration (441 per frame) -> standardize with
+#   gloss_assets/feature_scaler.npz.
+# ---------------------------------------------------------------
+def normalize_raw_landmarks(raw_landmarks):
+    """
+    raw_landmarks: (T, 49, 3), NaN where a landmark was not detected.
+    Returns the NaN-repaired, normalized (T, 49, 3) array, or None if
+    raw_landmarks is None or too short.
+    """
+    if raw_landmarks is None or raw_landmarks.shape[0] < 3:
+        return None
+
+    repaired, _ = interpolate_missing(raw_landmarks)
+    return normalize_sequence(repaired)
+
+
+def features_from_normalized(normalized, feature_mean, feature_std):
+    """
+    normalized: (T, 49, 3) normalized landmarks (any T).
+    Returns np.ndarray of shape (1, 60, 441), float32, standardized —
+    ready for recogniser.predict_probs().
+    """
+    resampled = resample_sequence(normalized, TARGET_FRAMES).reshape(1, TARGET_FRAMES, -1)  # (1, 60, 147)
+    kinematic = add_kinematic_features(resampled, TARGET_FRAMES, N_TOTAL_LANDMARKS)        # (1, 60, 441)
     standardized = (kinematic - feature_mean) / feature_std
-    return standardized.astype(np.float32), positional, dtw_sequence
+    return standardized.astype(np.float32)
 
 
 # ---------------------------------------------------------------

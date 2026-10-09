@@ -1,0 +1,46 @@
+{
+  "GLOSS_ensemble.keras": {
+    "fingerprint": "87693587f51c",
+    "source": "TCN_phase1.keras + SPOTER-style_phase1.keras, averaged (A8)"
+  },
+  "SPOTER-style_phase1.keras": {
+    "fingerprint": "34d8a2e874fd",
+    "source": "CareSense_Layer2_Phase1_v3/SPOTER-style_phase1.keras"
+  },
+  "TCN_phase1.keras": {
+    "fingerprint": "09830d629d4c",
+    "source": "CareSense_Layer2_Phase1_v3/TCN_phase1.keras"
+  },
+  "class_names.json": {
+    "fingerprint": "c5bf6ab3cbff",
+    "source": "label_encoder.classes_"
+  },
+  "class_thresholds.json": {
+    "fingerprint": "8797064a2ccf",
+    "source": "CareSense_Layer3_DTW/class_thresholds_v3.json"
+  },
+  "feature_scaler.npz": {
+    "fingerprint": "48e3bcee6d07",
+    "source": "CareSense_Layer2_Phase1_v3/feature_scaler.npz"
+  },
+  "label_encoder.pkl": {
+    "fingerprint": "361d4640faab",
+    "source": "PP2_Preprocessed_Sign_Language/final/label_encoder.pkl"
+  },
+  "landmark_names.json": {
+    "fingerprint": "17a5aa3c0d0d",
+    "source": "CareSense_Layer3_DTW/landmark_names.json"
+  },
+  "parity_check.npz": {
+    "fingerprint": "a1964400db9f",
+    "source": "first 10 test sequences + expected ensemble output (A9)"
+  },
+  "reference_exemplars.npz": {
+    "fingerprint": "8f867dd57281",
+    "source": "CareSense_Layer3_DTW/reference_exemplars.npz"
+  },
+  "pipeline_parity.npz": {
+    "fingerprint": "7eaaa457049a",
+    "source": "10 full attempts: expected recognition, DTW, tier, landmarks, feedback (A10)"
+  }
+}

@@ -1,5 +1,5 @@
-# Main backend environment (.venv) — FastAPI + TensorFlow/Keras TCN
-# inference + Supabase. Does NOT include mediapipe/opencv/pandas —
+# Main backend environment (.venv) — FastAPI + TensorFlow/Keras
+# inference + DTW grading + guarded Gemini rewording + Supabase. Does NOT include mediapipe/opencv/pandas —
 # those belong to .venv_mediapipe (see requirements-mediapipe.txt).
 # Pinned to the versions currently installed and verified working.
 fastapi==0.141.1
@@ -8,4 +8,6 @@ uvicorn[standard]==0.52.4
 tensorflow==2.21.0
 numpy==2.4.6
 supabase==2.31.0
+dtw-python==1.9.0
+google-genai==2.29.0
 python-dotenv==1.2.3

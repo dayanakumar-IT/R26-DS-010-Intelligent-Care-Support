@@ -40,6 +40,7 @@ import {
 import type {
   GlossAttemptResult,
   GlossMasteryStatus,
+  GlossMasterySummaryRow,
   GlossPracticeCalendarDay,
   GlossProgressReport,
   GlossSign,
@@ -123,10 +124,17 @@ export default function SignLanguage() {
   // (the same endpoint the Progress tab uses). A failed fetch just hides
   // those widgets — it never blocks the practice flow.
   const [progress, setProgress] = useState<GlossProgressReport | null>(null)
+  // Mastery rows as they were when this session started (the first progress
+  // snapshot, taken before any attempt) — the "before" the session summary
+  // compares against. Never overwritten by later refreshes.
+  const [sessionBaseline, setSessionBaseline] = useState<GlossMasterySummaryRow[] | null>(null)
 
   const refreshProgress = useCallback(() => {
     cachedGlossProgress()
-      .then(setProgress)
+      .then((report) => {
+        setProgress(report)
+        setSessionBaseline((prev) => prev ?? report.mastery_summary)
+      })
       .catch(() => {
         /* landing stats/history widgets stay hidden — practice flow unaffected */
       })
@@ -495,7 +503,11 @@ export default function SignLanguage() {
       </GlossTabBar>
 
       {showSummary && (
-        <SessionSummaryModal attempts={sessionAttempts} onClose={() => setShowSummary(false)} />
+        <SessionSummaryModal
+          attempts={sessionAttempts}
+          baseline={sessionBaseline}
+          onClose={() => setShowSummary(false)}
+        />
       )}
     </div>
   )

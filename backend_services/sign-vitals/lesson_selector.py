@@ -1,120 +1,82 @@
 """
 lesson_selector.py
-GLOSS component — adaptive lesson selection (Phase 6, Option C:
-weighted-random).
+GLOSS component — next-lesson selection (Layer 7 of the thesis).
 
 select_next_lesson(supabase_client, caregiver_profile_id) -> sign_id
 
-Two branches, checked in this order:
+The priority SCORING is the notebook's get_next_lesson()
+(gloss_assets/gloss_reference_pipeline.py); the STORAGE is the app's
+(active signs from gloss_signs, learner state from
+gloss_caregiver_mastery). tests/test_learner_model.py asserts both
+produce the same scores.
 
-BRANCH 1 — true cold start: this caregiver has ZERO
-gloss_caregiver_mastery rows at all (their very first-ever lesson).
-Deterministic, NOT weighted-random — a brand new caregiver's first
-lesson should be the gentlest onboarding, not randomized:
-  1. Look at gloss_sign_difficulty for signs with
-     total_attempts >= COLD_START_MIN_ATTEMPTS (a minimum sample size
-     for "meaningful" difficulty data).
-  2. If any such signs exist, pick the one with the lowest
-     error_rate_percent (easiest-first).
-  3. Otherwise (true today — no real usage data exists yet), fall
-     back to the alphabetically-first active sign_id in gloss_signs.
+Every active sign gets a score; the LOWEST score is taught next:
+  - never attempted                      -> 5
+  - mastered                             -> 100
+  - otherwise                            -> max(0, attempts - strong streak - 3)
 
-BRANCH 2 — caregiver already has at least one mastery row (not their
-first-ever lesson, even if it's their first for this particular
-sign): genuine weighted-random selection over all active signs,
-weighted by mastery_status per STATUS_WEIGHTS below (default 'new'
-for any active sign with no mastery row — this also covers a row
-that exists with attempts=0, since that row's stored mastery_status
-is itself 'new' by the same rule used everywhere else in the app).
+Ties are broken randomly (shuffle, then a stable sort by score), not
+alphabetically — exactly as in the notebook. The notebook returns the
+5 best signs; the API's next_recommended_sign_id is a single sign, so
+the first of that ranking is returned.
 
-Independent of any HTTP endpoint — plain function, to be wired into
-GET /gloss/next-lesson/{caregiver_id} in Phase 9, not here.
+Independent of any HTTP endpoint — plain functions; score_lessons() and
+rank_lessons() are pure (no I/O).
 """
 
 import logging
 import random
 
+from mastery_engine import current_status
+
 logger = logging.getLogger("sign_vitals")
 
-# BRANCH 1 threshold: minimum total_attempts for a sign's
-# error_rate_percent to be considered "meaningful" difficulty data.
-COLD_START_MIN_ATTEMPTS = 5
-
-# BRANCH 2 weight table: higher weight = more likely to be selected.
-# 'mastered' is intentionally non-zero — occasional review is
-# deliberate, not a bug.
-STATUS_WEIGHTS = {
-    "needs_revision": 5,
-    "weak": 4,
-    "new": 3,
-    "learning": 3,
-    "improving": 1.5,
-    "mastered": 0.3,
-}
+NEVER_ATTEMPTED_SCORE = 5
+MASTERED_SCORE = 100
 
 
-def _has_any_mastery_rows(supabase_client, caregiver_profile_id: str) -> bool:
-    result = (
-        supabase_client.table("gloss_caregiver_mastery")
-        .select("id")
-        .eq("caregiver_profile_id", caregiver_profile_id)
-        .limit(1)
-        .execute()
-    )
-    return bool(result.data)
+def lesson_priority_score(mastery_row: dict | None) -> tuple[int, str]:
+    """mastery_row: the caregiver's gloss_caregiver_mastery row for one
+    sign, or None if there is none. Returns (score, reason) — lower
+    score = taught sooner."""
+    if mastery_row is None or mastery_row["attempts"] == 0:
+        return NEVER_ATTEMPTED_SCORE, "never_attempted"
+    status = current_status(mastery_row["mastery_status"])
+    if status == "mastered":
+        return MASTERED_SCORE, "mastered"
+    score = max(0, mastery_row["attempts"] - mastery_row["consecutive_strong_streak"] - 3)
+    return score, status
 
 
-def _select_cold_start(supabase_client) -> str:
-    difficulty = (
-        supabase_client.table("gloss_sign_difficulty")
-        .select("sign_id, total_attempts, error_rate_percent")
-        .gte("total_attempts", COLD_START_MIN_ATTEMPTS)
-        .execute()
-    )
-    candidates = difficulty.data or []
-    if candidates:
-        candidates.sort(key=lambda row: row["error_rate_percent"])
-        return candidates[0]["sign_id"]
-
-    active_signs = (
-        supabase_client.table("gloss_signs")
-        .select("id")
-        .eq("is_active", True)
-        .order("id")
-        .limit(1)
-        .execute()
-    )
-    if not active_signs.data:
-        raise ValueError("No active signs found in gloss_signs — cannot select a lesson")
-    return active_signs.data[0]["id"]
+def score_lessons(sign_ids, mastery_by_sign: dict) -> list[tuple[str, int, str]]:
+    """Returns [(sign_id, score, reason), ...] in sign_ids order."""
+    return [(sign_id, *lesson_priority_score(mastery_by_sign.get(sign_id))) for sign_id in sign_ids]
 
 
-def _select_weighted_random(supabase_client, caregiver_profile_id: str) -> str:
+def rank_lessons(sign_ids, mastery_by_sign: dict) -> list[tuple[str, int, str]]:
+    """score_lessons(), best lesson first."""
+    scored = score_lessons(sign_ids, mastery_by_sign)
+    random.shuffle(scored)          # break ties randomly, not alphabetically
+    scored.sort(key=lambda x: x[1])
+    return scored
+
+
+def select_next_lesson(supabase_client, caregiver_profile_id: str) -> str:
+    """Returns a single sign_id — the next lesson to give this caregiver."""
     active_signs = supabase_client.table("gloss_signs").select("id").eq("is_active", True).execute()
-    sign_ids = [row["id"] for row in active_signs.data]
+    sign_ids = [row["id"] for row in active_signs.data or []]
     if not sign_ids:
         raise ValueError("No active signs found in gloss_signs — cannot select a lesson")
 
     mastery_rows = (
         supabase_client.table("gloss_caregiver_mastery")
-        .select("sign_id, mastery_status")
+        .select("sign_id, attempts, consecutive_strong_streak, mastery_status")
         .eq("caregiver_profile_id", caregiver_profile_id)
         .execute()
     )
-    status_by_sign = {row["sign_id"]: row["mastery_status"] for row in mastery_rows.data}
-    logger.info(
-        "[GLOSS][DB] mastery records loaded | rows=%d (weighted-random selection)",
-        len(mastery_rows.data or []),
-    )
+    mastery_by_sign = {row["sign_id"]: row for row in mastery_rows.data or []}
+    logger.info("[GLOSS][DB] mastery records loaded | rows=%d", len(mastery_by_sign))
 
-    weights = [STATUS_WEIGHTS[status_by_sign.get(sign_id, "new")] for sign_id in sign_ids]
-
-    return random.choices(sign_ids, weights=weights, k=1)[0]
-
-
-def select_next_lesson(supabase_client, caregiver_profile_id: str) -> str:
-    """Returns a single sign_id — the next lesson to give this caregiver."""
-    if _has_any_mastery_rows(supabase_client, caregiver_profile_id):
-        return _select_weighted_random(supabase_client, caregiver_profile_id)
-    logger.info("[GLOSS][RECOMMENDATION] cold start | no mastery history — using easiest-first")
-    return _select_cold_start(supabase_client)
+    sign_id, score, reason = rank_lessons(sign_ids, mastery_by_sign)[0]
+    logger.info("[GLOSS][RECOMMENDATION] priority | sign=%s | score=%d | reason=%s", sign_id, score, reason)
+    return sign_id

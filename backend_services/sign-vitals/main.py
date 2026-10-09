@@ -1,12 +1,13 @@
 """GLOSS sign-vitals service — FastAPI app.
 
-Loads the TCN model, feature scaler, class thresholds, class names,
-and a Supabase connection on startup, and exposes their status via
-GET /health. Also exposes POST /gloss/attempts/recognize for running
-a video through the TCN recognition pipeline in isolation.
+Loads the recognition model (GLOSS_ensemble.keras), feature scaler,
+class thresholds (v3), class names and DTW reference exemplars — all
+from gloss_assets/ — and a Supabase connection on startup, and exposes
+their status via GET /health. Also exposes POST
+/gloss/attempts/recognize for running a video through the recognition
+pipeline in isolation.
 """
 
-import json
 import logging
 import os
 import tempfile
@@ -14,7 +15,6 @@ import time
 from contextlib import asynccontextmanager
 
 import numpy as np
-import tensorflow as tf
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +23,7 @@ from supabase import create_client
 
 from attempt_submission import AttemptError, submit_attempt
 from auth_helper import AuthError, get_authenticated_caregiver
+import grading
 from execution_evaluator import evaluate_execution
 from extract_landmarks_bridge import (
     NoLandmarksExtractedError,
@@ -43,10 +44,10 @@ from progress_report import build_progress_report
 from r2_presign import DEFAULT_EXPIRES_IN as PRESIGN_EXPIRES_IN
 from r2_presign import get_reference_video_url
 from pdedu_mastery_engine import update_mastery as pdedu_update_mastery
-from preprocessing import preprocess_landmarks_for_inference
+from preprocessing import normalize_raw_landmarks
+from recogniser import MODEL_PATH, load_ensemble
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODELS_DIR = os.path.join(BASE_DIR, "models")
 
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
@@ -73,10 +74,9 @@ def _ms(start: float) -> float:
 
 
 def _check_model() -> dict:
-    model_path = os.path.join(MODELS_DIR, "TCN_FINAL_layer2.keras")
-    model = tf.keras.models.load_model(model_path, compile=False)
+    model = load_ensemble()
     state["model"] = model
-    state["model_name"] = os.path.basename(model_path)
+    state["model_name"] = os.path.basename(MODEL_PATH)
     state["model_input_shape"] = list(model.input_shape)
     return {
         "loaded": True,
@@ -86,10 +86,7 @@ def _check_model() -> dict:
 
 
 def _check_feature_scaler() -> dict:
-    scaler_path = os.path.join(MODELS_DIR, "feature_scaler.npz")
-    scaler = np.load(scaler_path)
-    state["scaler_mean"] = scaler["mean"]
-    state["scaler_std"] = scaler["std"]
+    scaler = grading.load_feature_scaler()
     return {
         "loaded": True,
         "mean_shape": list(scaler["mean"].shape),
@@ -98,9 +95,7 @@ def _check_feature_scaler() -> dict:
 
 
 def _check_class_thresholds() -> dict:
-    thresholds_path = os.path.join(MODELS_DIR, "class_thresholds.json")
-    with open(thresholds_path) as f:
-        thresholds = json.load(f)
+    thresholds = grading.load_thresholds()
     state["class_thresholds"] = thresholds
     return {
         "loaded": True,
@@ -109,13 +104,19 @@ def _check_class_thresholds() -> dict:
 
 
 def _check_class_names() -> dict:
-    class_names_path = os.path.join(MODELS_DIR, "class_names.json")
-    with open(class_names_path) as f:
-        class_names = json.load(f)
+    class_names = grading.load_class_names()
     state["class_names"] = class_names
     return {
         "loaded": True,
         "sign_count": len(class_names),
+    }
+
+
+def _check_reference_exemplars() -> dict:
+    references = grading.load_references()
+    return {
+        "loaded": True,
+        "sign_count": len(references),
     }
 
 
@@ -132,10 +133,11 @@ def _check_supabase() -> dict:
 
 
 _STARTUP_LABELS = {
-    "model": "TCN model",
+    "model": "recognition model (GLOSS_ensemble.keras)",
     "feature_scaler": "standardization parameters",
     "class_thresholds": "class thresholds",
     "class_names": "class names",
+    "reference_exemplars": "DTW reference exemplars",
     "supabase": "Supabase connection",
 }
 
@@ -149,6 +151,7 @@ async def lifespan(app: FastAPI):
         ("feature_scaler", _check_feature_scaler),
         ("class_thresholds", _check_class_thresholds),
         ("class_names", _check_class_names),
+        ("reference_exemplars", _check_reference_exemplars),
         ("supabase", _check_supabase),
     ):
         label = _STARTUP_LABELS.get(name, name)
@@ -202,7 +205,7 @@ def health():
 
 @app.post("/gloss/attempts/recognize")
 async def recognize(video: UploadFile = File(...)):
-    """Run a caregiver attempt clip through the TCN recognition pipeline
+    """Run a caregiver attempt clip through the recognition pipeline
     and return the predicted sign + confidence.
 
     NOTE: this is an internal/testing utility for verifying recognition
@@ -230,17 +233,17 @@ async def recognize(video: UploadFile = File(...)):
 
         logger.info("landmarks extracted: shape=%s", raw.shape)
 
-        mean, std = state["scaler_mean"], state["scaler_std"]
-        tensor, positional, dtw_sequence = preprocess_landmarks_for_inference(raw, mean, std)
+        normalized = normalize_raw_landmarks(raw)
 
-        if tensor is None:
+        if normalized is None:
             logger.warning("preprocessing produced no usable landmarks: filename=%s", video.filename)
             raise HTTPException(status_code=400, detail="Could not extract usable landmarks from video")
 
-        logger.info("preprocessing done: tensor_shape=%s", tensor.shape)
+        logger.info("preprocessing done: normalized_shape=%s", normalized.shape)
 
-        model = state["model"]
-        prediction = model.predict(tensor, verbose=0)[0]  # (59,)
+        # Same recognise-then-grade call as POST /gloss/attempts, so this
+        # utility reports exactly what the real endpoint would recognise.
+        prediction = grading.grade(normalized, state["model"])["probs"]  # (59,)
         class_index = int(np.argmax(prediction))
         confidence = float(prediction[class_index])
         predicted_sign = state["class_names"][class_index]
@@ -284,8 +287,10 @@ async def recognize(video: UploadFile = File(...)):
 
 @app.post("/gloss/attempts/evaluate")
 async def evaluate(video: UploadFile = File(...), target_sign_id: str = Form(...)):
-    """Run a caregiver attempt clip through the DTW execution evaluator
-    against a target sign and return the distance + quality tier.
+    """Run a caregiver attempt clip through recognition + the DTW
+    execution evaluator against a target sign and return the distance +
+    quality tier. distance / quality_tier / deviating_landmarks are
+    null when the clip isn't recognised as the target sign.
 
     NOTE: this is an internal/testing utility for verifying DTW
     evaluation in isolation — NOT necessarily the final endpoint the
@@ -316,26 +321,23 @@ async def evaluate(video: UploadFile = File(...), target_sign_id: str = Form(...
 
         logger.info("landmarks extracted: shape=%s", raw.shape)
 
-        mean, std = state["scaler_mean"], state["scaler_std"]
-        _tensor, _positional, dtw_sequence = preprocess_landmarks_for_inference(raw, mean, std)
+        normalized = normalize_raw_landmarks(raw)
 
-        if dtw_sequence is None:
+        if normalized is None:
             logger.warning("preprocessing produced no usable landmarks: filename=%s", video.filename)
             raise HTTPException(status_code=400, detail="Could not extract usable landmarks from video")
 
-        logger.info("preprocessing done: dtw_sequence_shape=%s", dtw_sequence.shape)
+        logger.info("preprocessing done: normalized_shape=%s", normalized.shape)
 
         try:
-            result = evaluate_execution(
-                dtw_sequence, target_sign_id, state["supabase"], state["class_thresholds"]
-            )
+            result = evaluate_execution(normalized, target_sign_id, state["model"])
         except ValueError as e:
             logger.warning("evaluation failed: target_sign_id=%s error=%s", target_sign_id, e)
             raise HTTPException(status_code=400, detail=str(e))
 
         logger.info(
-            "evaluation done: target_sign_id=%s distance=%.2f quality_tier=%s",
-            target_sign_id, result["distance"], result["quality_tier"],
+            "evaluation done: target_sign_id=%s recognized=%s distance=%s quality_tier=%s",
+            target_sign_id, result["result"]["predicted_class"], result["distance"], result["quality_tier"],
         )
 
         return {
@@ -411,8 +413,6 @@ async def create_attempt(
             selected_sign_id=selected_sign_id,
             model=state["model"],
             class_names=state["class_names"],
-            scaler_mean=state["scaler_mean"],
-            scaler_std=state["scaler_std"],
             class_thresholds=state["class_thresholds"],
         )
         # Task 6 instrumentation — fold the endpoint-level timings (multipart
@@ -511,10 +511,11 @@ async def get_sign_reference(sign_id: str, authorization: str | None = Header(No
     frontend-friendly per-frame/per-landmark structure, for the 3D
     signing avatar. Read-only relative to the ML pipeline — this does
     not touch recognition, DTW, preprocessing, mastery, or lesson
-    selection in any way; it only reads the already-stored reference
-    used by execution_evaluator.py's DTW comparison.
+    selection in any way; it only reads the reference stored in
+    Supabase's gloss_sign_references (DTW grading itself reads
+    gloss_assets/reference_exemplars.npz — see grading.py).
 
-    Returns only spatial x/y/z positions — never TCN features,
+    Returns only spatial x/y/z positions — never model features,
     velocity/acceleration, DTW thresholds, or other caregiver data.
     """
     t0 = time.perf_counter()

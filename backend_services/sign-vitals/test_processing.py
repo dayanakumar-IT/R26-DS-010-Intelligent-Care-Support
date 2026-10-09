@@ -4,7 +4,7 @@ from preprocessing import preprocess_video_for_inference
 
 
 VIDEO_PATH = "test_samples/eat.mp4"
-SCALER_PATH = "models/feature_scaler.npz"
+SCALER_PATH = "../../gloss_assets/feature_scaler.npz"
 
 
 scaler = np.load(SCALER_PATH)
