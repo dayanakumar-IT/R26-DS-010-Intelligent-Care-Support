@@ -2,13 +2,10 @@
 // Real API calls to the fall-detection backend.
 
 import 'package:dio/dio.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/api_config.dart';
 
 class SentryService {
-  static SupabaseClient get _supabase => Supabase.instance.client;
-
-  static final Dio _dio = Dio(BaseOptions(
+  static Dio get _dio => Dio(BaseOptions(
     baseUrl:        ApiConfig.baseUrl,
     connectTimeout: ApiConfig.timeout,
     receiveTimeout: ApiConfig.timeout,
@@ -82,22 +79,7 @@ class SentryService {
       );
       return true;
     } catch (_) {}
-    // Fallback: write directly to Supabase using correct schema field names.
-    // fall_alerts schema: acknowledged (bool), ack_by (text), ack_at (timestamptz)
-    try {
-      await _supabase
-          .from('fall_alerts')
-          .update({
-            'acknowledged': true,
-            'ack_by':       'caregiver',
-            'ack_at':       DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('id', alertId)
-          .eq('acknowledged', false);
-      return true;
-    } catch (_) {
-      return false;
-    }
+    return false;
   }
 
   // ── Event replay ──────────────────────────────────────────────────────────

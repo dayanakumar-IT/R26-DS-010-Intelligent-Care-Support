@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
+import '../../core/services/sentry_service.dart';
 import '../../widgets/module_switcher_pill.dart';
 import 'live_room_screen.dart';
 
@@ -30,47 +30,8 @@ class _RoomsScreenState extends State<RoomsScreen> {
   Future<void> _load() async {
     setState(() { _patients = null; _error = null; });
     try {
-      final db     = Supabase.instance.client;
-      final authId = db.auth.currentUser?.id;
-
-      String? syntheticCgId;
-      if (authId != null) {
-        final profileRes = await db.from('profiles').select('name')
-            .eq('id', authId).maybeSingle();
-        final realName = profileRes?['name']?.toString();
-        if (realName != null && realName.isNotEmpty) {
-          final cgRes = await db.from('caregiver_profiles').select('id')
-              .ilike('display_name', '%$realName%').limit(1).maybeSingle();
-          syntheticCgId = cgRes?['id']?.toString();
-        }
-      }
-
-      List<dynamic> roomsRes = syntheticCgId != null
-          ? await db.from('rooms').select('room_code, ward, caregiver_id')
-              .eq('caregiver_id', syntheticCgId)
-          : [];
-
-      if (roomsRes.isEmpty) {
-        roomsRes = await db.from('rooms').select('room_code, ward, caregiver_id');
-      }
-
-      final roomCodes = roomsRes.map((r) => r['room_code'].toString()).toList();
-      if (roomCodes.isEmpty) {
-        if (mounted) setState(() => _patients = []);
-        return;
-      }
-
-      final patientsRes = await db
-          .from('patients')
-          .select('id, patient_code, room_id, gender')
-          .inFilter('room_id', roomCodes)
-          .order('room_id');
-
-      if (mounted) {
-        setState(() => _patients = (patientsRes as List)
-            .map((p) => Map<String, dynamic>.from(p as Map))
-            .toList());
-      }
+      final list = await SentryService.getPatients();
+      if (mounted) setState(() => _patients = list);
     } catch (e) {
       if (mounted) setState(() { _patients = []; _error = e.toString(); });
     }

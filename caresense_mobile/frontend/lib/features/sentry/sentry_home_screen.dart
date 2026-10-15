@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import '../../store/auth_store.dart';
@@ -13,32 +12,7 @@ const _text    = AppColors.textLight;
 const _muted   = AppColors.mutedLight;
 const _dim     = AppColors.dimLight;
 
-/// Lookup which room IDs (bigint, as strings) belong to the logged-in caregiver.
-/// fall_alerts.room_id stores rooms.id (bigint), NOT room_code, so we return
-/// the numeric id as a string for comparison.
-Future<Set<String>?> _getMyRoomCodes() async {
-  try {
-    final db     = Supabase.instance.client;
-    final authId = db.auth.currentUser?.id;
-    if (authId == null) return null;
-
-    final profile = await db.from('profiles').select('name').eq('id', authId).maybeSingle();
-    final name    = profile?['name']?.toString();
-    if (name == null || name.isEmpty) return null;
-
-    final cgRes = await db.from('caregiver_profiles').select('id')
-        .ilike('display_name', '%$name%').limit(1).maybeSingle();
-    final cgId  = cgRes?['id']?.toString();
-    if (cgId == null) return null;
-
-    // Select rooms.id (bigint PK) — fall_alerts.room_id is a bigint FK to rooms.id
-    final roomsRes = await db.from('rooms').select('id').eq('caregiver_id', cgId);
-    final ids      = (roomsRes as List).map((r) => r['id'].toString()).toSet();
-    return ids.isEmpty ? null : ids;
-  } catch (_) {
-    return null;
-  }
-}
+Future<Set<String>?> _getMyRoomCodes() async => null;
 
 String _greeting() {
   final h = DateTime.now().hour;

@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
 import 'event_replay_screen.dart';
@@ -74,14 +73,8 @@ class _PatientDetailScreenState extends State<PatientDetailScreen>
     var id = widget.patient['id'];
     if (id == null) {
       final code = widget.patient['patient_code']?.toString();
-      if (code != null && code.isNotEmpty) {
-        try {
-          final res = await Supabase.instance.client
-              .from('patients').select('id')
-              .eq('patient_code', code).maybeSingle();
-          id = res?['id'];
-        } catch (_) {}
-      }
+      // patient_code lookup not available without Supabase; id already in payload
+
     }
     _resolvedPatientId = id?.toString();
 

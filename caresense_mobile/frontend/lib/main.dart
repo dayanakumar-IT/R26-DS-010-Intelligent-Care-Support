@@ -10,12 +10,13 @@ import 'core/config/api_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url:     'https://mxxpfvxpbktlturlrrae.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14eHBmdnhwYmt0bHR1cmxycmFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2Njk2NDQsImV4cCI6MjEwMzI0NTY0NH0.YKPjklZWR6bXh3AZsCbQrubfTSqDdhFk4hXssZrOdy0',
-  );
-
-  // Start WebSocket listener for alert sounds
+  try {
+    await Supabase.initialize(
+      url:     'https://mxxpfvxpbktlturlrrae.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14eHBmdnhwYmt0bHR1cmxycmFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2Njk2NDQsImV4cCI6MjEwMzI0NTY0NH0.YKPjklZWR6bXh3AZsCbQrubfTSqDdhFk4hXssZrOdy0',
+    );
+  } catch (_) { /* DNS unreachable — app continues; login uses backend proxy */ }
+  await ApiConfig.discoverAndSave();
   AlertWsService.start(ApiConfig.baseUrl);
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);

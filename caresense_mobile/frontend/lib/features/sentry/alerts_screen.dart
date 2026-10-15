@@ -1,8 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/colors.dart';
 import '../../core/services/sentry_service.dart';
-import '../../core/services/sound_service.dart';
 import '../../widgets/module_switcher_pill.dart';
 import 'event_replay_screen.dart';
 
@@ -30,14 +29,9 @@ class _AlertsScreenState extends State<AlertsScreen>
   String _filter = 'all';
   List<Map<String, dynamic>>? _localAlerts;
 
-  // rooms this caregiver is assigned to (empty = show all as fallback)
-  Set<String> _assignedRooms = {};
-
   late final AnimationController _heroCtrl;
   late final Animation<double>    _heroFade;
-
-  // Supabase Realtime — new alerts from web appear on mobile instantly
-  RealtimeChannel? _realtimeChannel;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -46,88 +40,31 @@ class _AlertsScreenState extends State<AlertsScreen>
         duration: const Duration(milliseconds: 500));
     _heroFade = CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOut);
     _heroCtrl.forward();
-    _load();
-    _subscribeRealtime();
-  }
-
-  void _subscribeRealtime() {
-    _realtimeChannel = Supabase.instance.client
-        .channel('fall_alerts_live')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'fall_alerts',
-          callback: (_) { if (mounted) _load(); },
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'fall_alerts',
-          callback: (_) { if (mounted) _load(); },
-        )
-        .subscribe();
+    _load(showSpinner: true);
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) { if (mounted) _load(); });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _heroCtrl.dispose();
-    if (_realtimeChannel != null) {
-      Supabase.instance.client.removeChannel(_realtimeChannel!);
-    }
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() => _localAlerts = null);
+  bool _isUnacked(Map<String, dynamic> a) {
+    final acked = a['acknowledged'];
+    if (acked is bool) return !acked;
+    if (acked == true || acked == 1) return false;
+    return a['acknowledged_at'] == null && a['ack_at'] == null;
+  }
 
-    // ── Resolve caregiver's assigned room codes (same logic as rooms_screen) ──
-    try {
-      final db     = Supabase.instance.client;
-      final authId = db.auth.currentUser?.id;
-      String? syntheticCgId;
-
-      if (authId != null) {
-        final profileRes = await db.from('profiles').select('name')
-            .eq('id', authId).maybeSingle();
-        final realName = profileRes?['name']?.toString();
-        if (realName != null && realName.isNotEmpty) {
-          final cgRes = await db.from('caregiver_profiles').select('id')
-              .ilike('display_name', '%$realName%').limit(1).maybeSingle();
-          syntheticCgId = cgRes?['id']?.toString();
-        }
-      }
-
-      if (syntheticCgId != null) {
-        // Select rooms.id (bigint) — fall_alerts.room_id stores the numeric PK,
-        // NOT room_code, so we compare bigint IDs as strings.
-        final roomsRes = await db
-            .from('rooms')
-            .select('id')
-            .eq('caregiver_id', syntheticCgId);
-        final codes = (roomsRes as List)
-            .map((r) => r['id'].toString())
-            .toSet();
-        if (mounted) setState(() => _assignedRooms = codes);
-      }
-    } catch (_) {
-      // On error, fall back to showing all alerts
+  Future<void> _load({bool showSpinner = false}) async {
+    if (showSpinner || _localAlerts == null) {
+      setState(() => _localAlerts = null);
     }
-
-    // ── Fetch all alerts, then filter client-side by assigned rooms ──────────
     final list = await SentryService.getAlerts(unackedOnly: false);
     if (!mounted) return;
-
-    final filtered = _assignedRooms.isEmpty
-        ? list // no room filter resolved → show all
-        : list.where((a) {
-            final rid = a['room_id']?.toString() ?? '';
-            // Include alerts that match an assigned room OR have no room_id
-            // (NULL room_id = backend couldn't resolve room at insert time —
-            //  still valid alerts that belong to this caregiver's session)
-            return rid.isEmpty || _assignedRooms.contains(rid);
-          }).toList();
-
-    setState(() => _localAlerts = filtered);
+    setState(() => _localAlerts = list);
   }
 
   Future<void> _ack(Map<String, dynamic> alert) async {
@@ -138,20 +75,20 @@ class _AlertsScreenState extends State<AlertsScreen>
       if (idx >= 0) {
         _localAlerts![idx] = {
           ..._localAlerts![idx],
-          'acknowledged_at': DateTime.now().toIso8601String(),
+          'acknowledged': true,
+          'ack_at': DateTime.now().toIso8601String(),
         };
       }
     });
-    if ((alert['risk_level'] ?? '') == 'HIGH') SoundService.stopHighAlert();
     try {
       await SentryService.acknowledgeAlert(id as int);
-    } catch (_) { _load(); }
+    } catch (_) { _load(showSpinner: true); }
   }
 
   List<Map<String, dynamic>> get _shown {
     final list = _localAlerts ?? [];
     String lvl(Map a) => (a['risk_level'] ?? '').toString().toUpperCase();
-    if (_filter == 'unacked')  return list.where((a) => a['acknowledged_at'] == null).toList();
+    if (_filter == 'unacked')  return list.where((a) => _isUnacked(a)).toList();
     if (_filter == 'high')     return list.where((a) => lvl(a) == 'HIGH').toList();
     if (_filter == 'moderate') return list.where((a) => lvl(a) == 'MODERATE').toList();
     return list;
@@ -162,7 +99,7 @@ class _AlertsScreenState extends State<AlertsScreen>
     final all   = _localAlerts ?? [];
     final high  = all.where((a) => (a['risk_level'] ?? '').toString().toUpperCase() == 'HIGH').length;
     final mod   = all.where((a) => (a['risk_level'] ?? '').toString().toUpperCase() == 'MODERATE').length;
-    final unack = all.where((a) => a['acknowledged_at'] == null).length;
+    final unack = all.where((a) => _isUnacked(a)).length;
     final acked = all.length - unack;
 
     return Scaffold(
@@ -566,7 +503,10 @@ class _AlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level   = (a['risk_level'] ?? 'NORMAL').toString().toUpperCase();
-    final acked   = a['acknowledged_at'] != null;
+    final ackedRaw = a['acknowledged'];
+    final acked = (ackedRaw is bool && ackedRaw) ||
+        ackedRaw == true || ackedRaw == 1 ||
+        (a['acknowledged_at'] != null) || (a['ack_at'] != null);
     final color   = level == 'HIGH'     ? AppColors.high
                   : level == 'MODERATE' ? AppColors.moderate
                   : AppColors.low;
