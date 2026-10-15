@@ -309,6 +309,8 @@ def insert_alert(patient_id, room_id, timestamp: float,
 
 
 def acknowledge_alert(alert_id: int, ack_by: str = "caregiver") -> bool:
+    # Update without the acknowledged=False guard so re-acking is idempotent
+    # and already-acked alerts don't return 404.
     res = (
         _get_client().table("fall_alerts")
         .update({
@@ -317,7 +319,6 @@ def acknowledge_alert(alert_id: int, ack_by: str = "caregiver") -> bool:
             "ack_at":       datetime.now(timezone.utc).isoformat(),
         })
         .eq("id", alert_id)
-        .eq("acknowledged", False)
         .execute()
     )
     return len(res.data) > 0
