@@ -38,6 +38,7 @@ from dataclasses import dataclass, field
 from typing import Deque, Iterator, List, Optional, Union
 
 import cv2
+import hashlib
 import numpy as np
 
 # Suppress OpenCV/MSMF verbose warnings — they appear even when DSHOW is used
@@ -122,24 +123,35 @@ class InferenceEngine:
         self._pose    = None   # MediaPipe Pose handle
 
     # ------------------------------------------------------------------ #
+    @staticmethod
+    def _md5(path: str) -> str:
+        h = hashlib.md5()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
     def load_models(self):
         self._scaler = load_scaler(self.suffix)
 
+        stgcn_path = os.path.join(MODELS_DIR, f"stgcn_best{self.suffix}.pth")
         self._stgcn = SkeletalSTGCN().to(self.device).eval()
         self._stgcn.load_state_dict(torch.load(
-            os.path.join(MODELS_DIR, f"stgcn_best{self.suffix}.pth"),
-            map_location=self.device, weights_only=True))
+            stgcn_path, map_location=self.device, weights_only=True))
+        print(f"[inference] stgcn_best{self.suffix}.pth  md5={self._md5(stgcn_path)}")
 
+        fusion_path = os.path.join(MODELS_DIR, f"fusion_best{self.suffix}.pth")
         self._fusion = LateFusionNetwork().to(self.device).eval()
         self._fusion.load_state_dict(torch.load(
-            os.path.join(MODELS_DIR, f"fusion_best{self.suffix}.pth"),
-            map_location=self.device, weights_only=True))
+            fusion_path, map_location=self.device, weights_only=True))
+        print(f"[inference] fusion_best{self.suffix}.pth  md5={self._md5(fusion_path)}")
 
         clf_path = os.path.join(MODELS_DIR, f"classifier_best{self.suffix}.pth")
         if os.path.exists(clf_path):
             self._clf = FeatureClassifier().to(self.device).eval()
             self._clf.load_state_dict(torch.load(
                 clf_path, map_location=self.device, weights_only=True))
+            print(f"[inference] classifier_best{self.suffix}.pth  md5={self._md5(clf_path)}")
 
         print(f"[inference] Models loaded. Device: {self.device}")
 
@@ -201,12 +213,31 @@ class InferenceEngine:
 
             print(f"[inference] Capture started: {self.source}")
             last_joints = None
+            _bad_reads = 0
+            _MAX_BAD = 30   # ~1 second of consecutive failures → try reconnect
             while self._running:
                 ok, frame = cap.read()
                 if not ok:
                     if isinstance(self.source, str):
                         break   # video file ended
+                    _bad_reads += 1
+                    if _bad_reads >= _MAX_BAD:
+                        print(f"[inference] Camera {self.source} dropped — attempting reconnect…")
+                        cap.release()
+                        time.sleep(2.0)
+                        if isinstance(self.source, int):
+                            cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
+                        else:
+                            cap = cv2.VideoCapture(self.source)
+                        if cap.isOpened():
+                            print(f"[inference] Camera {self.source} reconnected.")
+                        else:
+                            print(f"[inference] Camera {self.source} still unavailable — retrying in 2 s…")
+                        _bad_reads = 0
+                    else:
+                        time.sleep(0.033)
                     continue
+                _bad_reads = 0
 
                 self._frame_count += 1
                 joint_frame = self._mediapipe_frame(frame, pose)
@@ -353,6 +384,9 @@ class InferenceEngine:
         """Assess pose quality from the last frame in the buffer."""
         last = buffer_arr[-1]          # (14, 4)
         vis  = last[:, 3]
+        # No person in frame — all joints invisible
+        if float(vis.max()) < VIS_THRESH:
+            return "UNAVAILABLE"
         frac = float((vis >= VIS_THRESH).mean())
         if frac >= GOOD_JOINT_FRAC:
             return "GOOD"
