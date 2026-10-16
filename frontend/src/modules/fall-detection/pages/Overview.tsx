@@ -1624,16 +1624,16 @@ function AnalyticsPanel({ summary, alerts, patients, rooms }: {
   const zoneCounts: Record<string,number> = {}
   periodAlerts.forEach(a => (a.key_factors??[]).forEach(f => { zoneCounts[f]=(zoneCounts[f]??0)+1 }))
 
-  // Top patients by avg score (risk_score is stored 0..1 — compare on that scale)
-  const patScores: Record<string, number[]> = {}
+  // Top patients by avg score — group by patient_id if available, else by room_id
+  const patScores: Record<string, { scores: number[], room: string }> = {}
   periodAlerts.forEach(a => {
-    if (!a.patient_id) return
-    const k = String(a.patient_id)
-    if (!patScores[k]) patScores[k] = []
-    patScores[k].push(a.risk_score)
+    const k = a.patient_id ? String(a.patient_id) : (a.room_id ? `Room ${a.room_id}` : 'Unknown')
+    if (!patScores[k]) patScores[k] = { scores: [], room: a.room_code ?? a.room_id ?? '—' }
+    patScores[k].scores.push(a.risk_score)
   })
-  const topPats = Object.entries(patScores).map(([pid, scores]) => ({
+  const topPats = Object.entries(patScores).map(([pid, { scores, room }]) => ({
     pid,
+    room,
     avg: scores.reduce((s,x)=>s+x,0)/scores.length,
     high: scores.filter(s=>s>=0.50).length,
     mod: scores.filter(s=>s>=0.25&&s<0.50).length,
@@ -1720,7 +1720,7 @@ function AnalyticsPanel({ summary, alerts, patients, rooms }: {
                     <tr key={p.pid}>
                       <td style={{fontWeight:700}}>{i+1}</td>
                       <td style={{color:'#60a5fa',fontWeight:600}}>{pat?.patient_code ?? p.pid}</td>
-                      <td>{pat?.room_id ?? '—'}</td>
+                      <td>{pat?.room_id ?? p.room}</td>
                       <td style={{fontWeight:700,color:p.avg>=0.50?'#ef4444':'#f59e0b'}}>{Math.round(p.avg*100)}</td>
                       <td style={{color:'#ef4444',fontWeight:600}}>{p.high}</td>
                       <td style={{color:'#f59e0b'}}>{p.mod}</td>
