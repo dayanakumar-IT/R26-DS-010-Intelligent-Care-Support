@@ -174,3 +174,119 @@ def active_days_in_month(attempts: list[dict], month: str, timezone: str = cfg.D
 def new_milestones(computed: list[dict], existing_keys: set[tuple[str, str]]) -> list[dict]:
     """The computed milestones not yet stored (by (type, key))."""
     return [m for m in computed if (m["type"], m["key"]) not in existing_keys]
+
+
+# ---------------------------------------------------------------
+# Incremental: only what ONE new attempt can change (live path)
+# ---------------------------------------------------------------
+def _streak_run(sign_attempts: list[dict]) -> list[str]:
+    """Ids of the current strong run for one sign (mastery_engine rules),
+    over that sign's current-pipeline practice/recall attempts in order."""
+    run: list[str] = []
+    for a in sign_attempts:
+        camera = a.get("attempt_type", "webcam") == "webcam"
+        recognised = a.get("recognized_sign_id")
+        if camera and recognised is None:
+            continue
+        if recognised != a.get("target_sign_id"):
+            run = []
+        elif camera:
+            run = run + [str(a["id"])] if a.get("quality_tier") == "strong" else []
+    return run
+
+
+def milestones_for_new_attempt(new: dict, ctx: dict, timezone: str = cfg.DEFAULT_TIMEZONE) -> list[dict]:
+    """The milestones `new` earns, from a small context instead of the full
+    history (same rules as compute_milestones; tests/test_progress_rules.py
+    checks they always agree). ctx:
+      existing         {(type, key): milestone row} already stored
+      sign_attempts    this sign's earlier current-pipeline practice/recall attempts, oldest first
+      practised_first  {sign: first camera practice/recall attempt id}, all versions, in order
+      month_days       {local YYYY-MM-DD: first practice/recall attempt id} for new's month
+    """
+    mode = new.get("mode") or "practice"
+    if mode not in COUNTED_MODES:
+        return []
+    tz = ZoneInfo(timezone or cfg.DEFAULT_TIMEZONE)
+    existing = ctx["existing"]
+    at, aid, sign = _ts(new["attempted_at"]), str(new["id"]), new.get("target_sign_id")
+    camera = new.get("attempt_type", "webcam") == "webcam"
+    out: list[dict] = []
+    have = lambda kind, key: (kind, key) in existing or any(m["type"] == kind and m["key"] == key for m in out)  # noqa: E731
+
+    demonstrated = {k: _ts(m["achieved_at"]) for (t, k), m in existing.items() if t == "demonstrated"}
+    proof = {k: str(m["evidence"][-1]) for (t, k), m in existing.items() if t == "demonstrated" and m.get("evidence")}
+    retained = {k for (t, k) in existing if t == "retained"}
+
+    if new.get("pipeline_version") == cfg.PIPELINE_VERSION:
+        if camera and not have("level", "starter"):
+            out.append(_m("level", "starter", at, [aid]))
+        run = _streak_run(ctx["sign_attempts"] + [new])
+        if cfg.is_countable(sign) and sign not in demonstrated and len(run) >= cfg.DEMONSTRATED_STREAK:
+            demonstrated[sign], proof[sign] = at, aid
+            out.append(_m("demonstrated", sign, at, run[-cfg.DEMONSTRATED_STREAK:]))
+            ordered = [proof[s] for s in sorted(demonstrated, key=lambda s: (demonstrated[s], proof.get(s, "")))]
+            if len(demonstrated) >= 5 and not have("level", "learner"):
+                out.append(_m("level", "learner", at, ordered[:5]))
+            if len(demonstrated) >= 30 and not have("level", "care_signer"):
+                out.append(_m("level", "care_signer", at, ordered[:30]))
+            cat = cfg.CATEGORY_OF[sign]
+            if not have("category", cat) and all(s in demonstrated for s in cfg.countable_signs(cat)):
+                cat_proof = [proof[s] for s in cfg.countable_signs(cat)]
+                out.append(_m("category", cat, at, cat_proof))
+                if not have("level", "communicator"):
+                    out.append(_m("level", "communicator", at, cat_proof))
+        correct = new.get("recognized_sign_id") is not None and new.get("recognized_sign_id") == sign
+        if (mode == "recall" and camera and correct and new.get("quality_tier") == "strong"
+                and sign in demonstrated and sign not in retained
+                and at - demonstrated[sign] >= timedelta(days=cfg.RETAINED_AFTER_DAYS)):
+            retained.add(sign)
+            out.append(_m("retained", sign, at, [aid]))
+        countable = cfg.countable_signs()
+        if (not have("level", "master") and all(s in demonstrated for s in countable)
+                and all(s in retained for s in countable)):
+            ids = [str(existing[("retained", s)]["evidence"][-1]) if ("retained", s) in existing else aid for s in countable]
+            out.append(_m("level", "master", at, ids))
+
+    first = dict(ctx["practised_first"])
+    if camera and sign and sign not in first:
+        first[sign] = aid
+        n = len(first)
+        if n in cfg.PRACTICE_SIGN_COUNTS and not have("practice", f"signs_{n}"):
+            out.append(_m("practice", f"signs_{n}", at, list(first.values())))
+    if mode == "recall" and not have("practice", "first_recall"):
+        out.append(_m("practice", "first_recall", at, [aid]))
+    local = at.astimezone(tz)
+    month, day = local.strftime("%Y-%m"), local.strftime("%Y-%m-%d")
+    days = dict(ctx["month_days"])
+    if day not in days:
+        days[day] = aid
+        n = len(days)
+        if n in cfg.MONTHLY_TIERS and not have("monthly", f"{month}:{n}"):
+            out.append(_m("monthly", f"{month}:{n}", at, list(days.values())))
+    return out
+
+
+def context_from_history(history: list[dict], new: dict, existing_rows: list[dict],
+                         timezone: str = cfg.DEFAULT_TIMEZONE) -> dict:
+    """The ctx milestones_for_new_attempt needs, built from a full history
+    (used by tests; the live path loads the same pieces with small queries)."""
+    tz = ZoneInfo(timezone or cfg.DEFAULT_TIMEZONE)
+    rows = sorted((a for a in history if (a.get("mode") or "practice") in COUNTED_MODES),
+                  key=lambda a: (_ts(a["attempted_at"]), str(a["id"])))
+    sign = new.get("target_sign_id")
+    month = _ts(new["attempted_at"]).astimezone(tz).strftime("%Y-%m")
+    first: dict[str, str] = {}
+    days: dict[str, str] = {}
+    for a in rows:
+        if a.get("attempt_type", "webcam") == "webcam" and a.get("target_sign_id") and a["target_sign_id"] not in first:
+            first[a["target_sign_id"]] = str(a["id"])
+        d = _ts(a["attempted_at"]).astimezone(tz)
+        if d.strftime("%Y-%m") == month:
+            days.setdefault(d.strftime("%Y-%m-%d"), str(a["id"]))
+    return {
+        "existing": {(m["type"], m["key"]): m for m in existing_rows},
+        "sign_attempts": [a for a in rows if a.get("target_sign_id") == sign and a.get("pipeline_version") == cfg.PIPELINE_VERSION],
+        "practised_first": first,
+        "month_days": days,
+    }

@@ -263,11 +263,13 @@ def next_mastery_row(
     is_correct_sign: bool,
     quality_tier: str | None = None,
     execution_score: float | None = None,
+    existing: dict | None = None,
 ) -> dict:
     """The gloss_caregiver_mastery row after one more attempt (same rules
     and arguments as update_mastery()), WITHOUT saving it — the caller
-    stores it, e.g. together with the attempt in gloss_record_attempt."""
-    existing = _fetch_existing_row(supabase_client, caregiver_profile_id, sign_id)
+    stores it, e.g. together with the attempt in gloss_record_attempt.
+    existing: the current row if already loaded (saves a query)."""
+    existing = existing or _fetch_existing_row(supabase_client, caregiver_profile_id, sign_id)
     updated = apply_attempt(existing, attempt_type, is_correct_sign, quality_tier, execution_score)
     return {
         "caregiver_profile_id": caregiver_profile_id,

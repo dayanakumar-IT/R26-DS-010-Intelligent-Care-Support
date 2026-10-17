@@ -34,6 +34,14 @@ class _Query:
         self.filters[col] = ("in", list(vals))
         return self
 
+    def gte(self, col, val):
+        self.filters[col] = ("gte", val)
+        return self
+
+    def update(self, row, *a, **k):
+        self.op, self.payload = "update", row
+        return self
+
     def order(self, col, desc=False):
         self.order_by = (col, desc)
         return self
@@ -59,12 +67,20 @@ class _Query:
             if isinstance(v, tuple) and v[0] == "in":
                 if r.get(c) not in v[1]:
                     return False
+            elif isinstance(v, tuple) and v[0] == "gte":
+                if str(r.get(c) or "") < str(v[1]):
+                    return False
             elif r.get(c) != v:
                 return False
         return True
 
     def execute(self):
         rows = self.db.tables.setdefault(self.table, [])
+        if self.op == "update":
+            hit = [r for r in rows if self._match(r)]
+            for r in hit:
+                r.update(copy.deepcopy(self.payload))
+            return _Result(copy.deepcopy(hit))
         if self.op in ("insert", "upsert"):
             items = self.payload if isinstance(self.payload, list) else [self.payload]
             out = []

@@ -30,9 +30,13 @@ from execution_evaluator import CONFIDENCE_THRESHOLD, LOW_CONFIDENCE_CUTOFF, eva
 from extract_landmarks_bridge import NoLandmarksExtractedError, extract_landmarks_via_subprocess
 from gemini_feedback import feedback_text
 from lesson_selector import select_next_lesson
-from mastery_engine import compute_execution_score, get_mastery, next_mastery_row, update_mastery
+import feedback_async
+from mastery_engine import _fetch_existing_row, compute_execution_score, get_mastery, next_mastery_row, update_mastery
 from preprocessing import normalize_raw_landmarks
-from progress_store import MIGRATIONS_NEEDED, record_attempt, schema_ready
+from progress_store import (
+    MIGRATIONS_NEEDED, POOL, active_sign_ids, caregiver_timezone, load_context, load_mastery_rows,
+    next_lesson_in_memory, record_attempt, schema_ready,
+)
 from sign_config import PIPELINE_VERSION
 from stage_timing import TimedDb, db_summary, instrument_grading, start_detail, take_detail
 
@@ -221,13 +225,33 @@ def submit_attempt(
     if mode != "practice" and not progress_ready:
         raise AttemptError(503, MIGRATIONS_NEEDED)
 
+    prefetch: dict = {}
     with timings.stage("validate_sign_and_session"):
-        if mode != "free":
-            sign_check = supabase_client.table("gloss_signs").select("id").eq("id", target_sign_id).limit(1).execute()
-            if not sign_check.data:
+        if progress_ready:
+            # Catalogue from cache; the reads this attempt needs start now, on
+            # worker threads, so they run while MediaPipe works.
+            if mode != "free" and target_sign_id not in active_sign_ids(supabase_client):
                 raise AttemptError(400, f"Unknown target_sign_id: {target_sign_id!r}")
+            cg, tz = caregiver_profile_id, caregiver_timezone(supabase_client, caregiver_profile_id)
+            prefetch["session"] = POOL.submit(_resolve_session, supabase_client, cg, session_id)
+            if mode != "free":
+                prefetch["mastery"] = POOL.submit(_fetch_existing_row, supabase_client, cg, target_sign_id)
+                prefetch["all_mastery"] = POOL.submit(load_mastery_rows, supabase_client, cg)
+                prefetch["context"] = POOL.submit(load_context, supabase_client, cg, target_sign_id, tz)
+            prefetch["timezone"] = tz
+        else:
+            if mode != "free":
+                sign_check = supabase_client.table("gloss_signs").select("id").eq("id", target_sign_id).limit(1).execute()
+                if not sign_check.data:
+                    raise AttemptError(400, f"Unknown target_sign_id: {target_sign_id!r}")
+            session_id = _resolve_session(supabase_client, caregiver_profile_id, session_id)
 
-        session_id = _resolve_session(supabase_client, caregiver_profile_id, session_id)
+    def session() -> str:
+        """The session id (from the parallel read once it is needed)."""
+        nonlocal session_id
+        if "session" in prefetch:
+            session_id = prefetch.pop("session").result()
+        return session_id
 
     recognized_sign_id = None
     recognition_confidence = None
@@ -287,7 +311,7 @@ def submit_attempt(
             return {
                 "outcome": OUTCOME_CAPTURE_REJECTED,
                 "mode": mode,
-                "session_id": session_id,
+                "session_id": session(),
                 "capture_check": capture,
                 "message": capture["message"],
                 "timings": {**timings.as_dict(), **db_summary(supabase_client.calls)},
@@ -295,7 +319,7 @@ def submit_attempt(
             }
 
         if mode == "free":
-            return _free_attempt(supabase_client, caregiver_profile_id, session_id, normalized, raw,
+            return _free_attempt(supabase_client, caregiver_profile_id, session(), normalized, raw,
                                  model, class_names, capture, diagnostics, timings)
 
         logger.info("[GLOSS][INFERENCE] recognition + DTW grading started")
@@ -387,7 +411,9 @@ def submit_attempt(
         # rule-based text if GEMINI_API_KEY is unset, the call fails, or
         # the reply isn't faithful. The app's own mismatch sentence is
         # never sent to Gemini.
-        if eval_result["rewordable"]:
+        # The Gemini rewording runs after the response (feedback_async) when
+        # the new schema is in; before it, it runs inline as it always did.
+        if eval_result["rewordable"] and not progress_ready:
             with timings.stage("feedback_rewording"):
                 corrective_feedback["summary"] = feedback_text(grading_result, eval_result["base"])
         grading_detail = take_detail()
@@ -419,7 +445,7 @@ def submit_attempt(
 
     attempt_row = {
         "caregiver_profile_id": caregiver_profile_id,
-        "session_id": session_id,
+        "session_id": session(),
         "target_sign_id": target_sign_id,
         "recognized_sign_id": recognized_sign_id,
         "recognition_confidence": recognition_confidence,
@@ -430,22 +456,32 @@ def submit_attempt(
         "attempt_type": attempt_type,
     }
     new_milestones = []
+    feedback_pending = False
     if progress_ready:
         # Attempt + mastery row + newly earned milestones, one transaction.
         attempt_row["mode"] = mode
         attempt_row["pipeline_version"] = PIPELINE_VERSION
         with timings.stage("mastery_update"):
+            existing = prefetch["mastery"].result()
             if not_recognised:
-                mastery_row, pending_mastery = get_mastery(supabase_client, caregiver_profile_id, target_sign_id), None
+                mastery_row = {"caregiver_profile_id": caregiver_profile_id, "sign_id": target_sign_id, **existing}
+                pending_mastery = None
             else:
                 mastery_row = pending_mastery = next_mastery_row(
                     supabase_client, caregiver_profile_id, target_sign_id, attempt_type=attempt_type,
                     is_correct_sign=is_correct_sign, quality_tier=quality_tier, execution_score=execution_score,
+                    existing=existing,
                 )
         with timings.stage("persist_attempt"):
-            stored = record_attempt(supabase_client, attempt_row, pending_mastery)
+            stored = record_attempt(supabase_client, attempt_row, pending_mastery,
+                                    context=prefetch["context"].result(), timezone=prefetch["timezone"])
             attempt_id = stored["attempt_id"]
             new_milestones = stored["new_milestones"]
+        feedback_pending = (
+            attempt_type == "webcam" and eval_result["rewordable"]
+            and feedback_async.start(supabase_client._client if isinstance(supabase_client, TimedDb) else supabase_client,
+                                     attempt_id, caregiver_profile_id, grading_result, eval_result["base"], corrective_feedback)
+        )
         logger.info(
             "[GLOSS][DB] attempt persisted | attempt_id=%s | mode=%s | new milestones=%s",
             str(attempt_id)[:8], mode, [m["key"] for m in new_milestones],
@@ -476,7 +512,11 @@ def submit_attempt(
         )
 
     with timings.stage("next_lesson_selection"):
-        next_sign = select_next_lesson(supabase_client, caregiver_profile_id)
+        if progress_ready:
+            next_sign = next_lesson_in_memory(active_sign_ids(supabase_client), prefetch["all_mastery"].result(),
+                                              pending_mastery)
+        else:
+            next_sign = select_next_lesson(supabase_client, caregiver_profile_id)
     logger.info("[GLOSS][RECOMMENDATION] next sign selected | sign=%s", next_sign)
 
     stage_timings = {**timings.as_dict(), **db_summary(supabase_client.calls)}
@@ -504,6 +544,9 @@ def submit_attempt(
         "next_recommended_sign_id": next_sign,
         # Milestones this attempt newly earned (empty before migrations 0045-0047).
         "new_milestones": new_milestones,
+        # True while the guarded Gemini rewording is still running: the app
+        # shows the rule text now and swaps in GET /gloss/attempts/{id}/feedback.
+        "feedback_pending": bool(progress_ready and feedback_pending),
         "pipeline_version": PIPELINE_VERSION,
         # Task 6 instrumentation — additive; existing consumers ignore it.
         "timings": stage_timings,

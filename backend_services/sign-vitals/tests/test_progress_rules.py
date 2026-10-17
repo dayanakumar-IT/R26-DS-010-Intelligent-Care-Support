@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import mastery_engine  # noqa: E402
 import sign_config as cfg  # noqa: E402
-from progress_rules import compute_milestones, new_milestones  # noqa: E402
+from progress_rules import compute_milestones, context_from_history, milestones_for_new_attempt, new_milestones  # noqa: E402
 from progress_summary import build_summary  # noqa: E402
 from recall_selector import pick_recall_sign  # noqa: E402
 from recogniser import ASSETS_DIR  # noqa: E402
@@ -170,6 +170,34 @@ def test_recall_picks_practised_signs_only_never_not_recommended():
     assert pick_recall_sign([], []) is None
     ms = [{"type": "demonstrated", "key": "tea", "achieved_at": (T0 - timedelta(days=9)).isoformat()}]
     assert pick_recall_sign(a, ms, now=T0, rng=rng) == "tea"   # due for Retained
+
+
+def test_incremental_equals_full_replay():
+    """The live path computes only what the new attempt can change; it must
+    always equal full replay (history + attempt) minus what was earned."""
+    rng = random.Random(7)
+    signs = cfg.CATEGORIES["health_medical"]["signs"] + cfg.CATEGORIES["body_parts"]["signs"] + ["water", "tea"]
+    checked = 0
+    for trial in range(40):
+        history, t = [], T0
+        for k in range(rng.randint(30, 120)):
+            t += timedelta(minutes=rng.choice([1, 5, 60, 60 * 24, 60 * 24 * 8]))
+            sign = rng.choice(signs)
+            kind = rng.choice(["webcam"] * 5 + ["multiple_choice"])
+            mode = rng.choice(["practice"] * 4 + ["recall", "free"]) if kind == "webcam" else "practice"
+            rec = rng.choice([sign] * 6 + [None, "water"])
+            a = {"id": f"t{trial}-{k}", "target_sign_id": None if mode == "free" else sign, "attempt_type": kind, "mode": mode,
+                 "pipeline_version": rng.choice([V] * 4 + [OLD]), "recognized_sign_id": rec,
+                 "quality_tier": rng.choice(["strong"] * 3 + ["moderate", "weak"]) if (kind == "webcam" and rec == sign) else None,
+                 "attempted_at": t.isoformat()}
+            existing = compute_milestones(history)
+            expected = new_milestones(compute_milestones(history + [a]), {(m["type"], m["key"]) for m in existing})
+            got = milestones_for_new_attempt(a, context_from_history(history, a, existing))
+            norm = lambda ms: sorted((m["type"], m["key"], m["achieved_at"], tuple(m["evidence"])) for m in ms)  # noqa: E731
+            assert norm(got) == norm(expected), (trial, k, norm(got), norm(expected))
+            history.append(a)
+            checked += 1
+    print(f"    incremental == full replay on {checked} attempts")
 
 
 if __name__ == "__main__":

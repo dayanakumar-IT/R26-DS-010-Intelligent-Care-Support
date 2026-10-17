@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import tempfile
+import threading
 import time
 from contextlib import asynccontextmanager
 
@@ -32,7 +33,9 @@ from recall_selector import pick_recall_sign
 from auth_helper import AuthError, get_authenticated_caregiver
 import grading
 from execution_evaluator import evaluate_execution
+import feedback_async
 from extract_landmarks_bridge import (
+    warm_up_worker,
     NoLandmarksExtractedError,
     extract_landmarks_via_subprocess,
 )
@@ -234,7 +237,22 @@ async def lifespan(app: FastAPI):
         )
     else:
         logger.info("[SIGN_VITALS][STARTUP] backend ready for inference")
+    # Warm-up in the background (does not delay start-up): the first real
+    # attempt then finds the model graph built and the MediaPipe worker loaded.
+    threading.Thread(target=_warm_up, name="gloss-warmup", daemon=True).start()
     yield
+
+
+def _warm_up():
+    t0 = time.perf_counter()
+    try:
+        if state.get("model") is not None:
+            grading.predict_probs(state["model"], np.zeros((60, 441), dtype=np.float32))
+    except Exception:
+        logger.exception("[SIGN_VITALS][STARTUP] model warm-up failed (first attempt will build the graph)")
+    worker_ok = warm_up_worker()
+    logger.info("[SIGN_VITALS][STARTUP] warm-up done | mediapipe_worker=%s | ms=%s",
+                "ready" if worker_ok else "one-shot fallback", _ms(t0))
 
 
 app = FastAPI(title="sign-vitals", lifespan=lifespan)
@@ -782,6 +800,19 @@ def gloss_progress(authorization: str | None = Header(None)):
     report = build_progress_report(_db(), caregiver_profile_id)
     logger.info("[GLOSS][PROGRESS] request completed | status=200 | duration_ms=%s", _ms(t0))
     return report
+
+
+@app.get("/gloss/attempts/{attempt_id}/feedback")
+def gloss_attempt_feedback(attempt_id: str, authorization: str | None = Header(None)):
+    """The guarded Gemini rewording of an attempt's feedback, which runs
+    after the attempt response (feedback_async). {"status": "pending" |
+    "ready" | "unchanged", "summary"}: the app shows the rule text first and
+    swaps this in when ready. Only the attempt's own caregiver can read it."""
+    try:
+        caregiver_profile_id = get_authenticated_caregiver(_db(), authorization, context="GLOSS")
+    except AuthError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    return feedback_async.get(attempt_id, caregiver_profile_id)
 
 
 @app.get("/gloss/progress/summary")
