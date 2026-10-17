@@ -9,7 +9,6 @@ import {
   CameraOff,
   ChevronLeft,
   ChevronRight,
-  History,
   List,
   LogOut,
   Route,
@@ -28,7 +27,6 @@ import SessionSummaryModal from '../components/SessionSummaryModal'
 import GlossTabBar, { type GlossTab } from '../components/GlossTabBar'
 import CameraPermissionPrompt from '../components/CameraPermissionPrompt'
 import ProgressReport from '../components/ProgressReport'
-import HistoryList from '../components/HistoryList'
 import GlossStatCard from '../components/gloss/GlossStatCard'
 import PracticeSignCard from '../components/gloss/PracticeSignCard'
 import StrongInARowMeter from '../components/gloss/StrongInARowMeter'
@@ -80,7 +78,7 @@ type Stage =
   | 'quiz'
   | 'error'
 
-type TabId = 'practice' | 'check' | 'recall' | 'browse' | 'journey' | 'progress' | 'history'
+type TabId = 'practice' | 'check' | 'recall' | 'browse' | 'journey' | 'progress'
 
 const TABS: ReadonlyArray<GlossTab<TabId>> = [
   { id: 'practice', label: 'Practice', icon: Video },
@@ -89,7 +87,6 @@ const TABS: ReadonlyArray<GlossTab<TabId>> = [
   { id: 'browse', label: 'Browse Signs', icon: List },
   { id: 'journey', label: 'My Journey', icon: Route },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
-  { id: 'history', label: 'History', icon: History },
 ]
 
 function signLabel(signId: string): string {
@@ -444,7 +441,7 @@ export default function SignLanguage() {
                 <h2 className="text-xl font-bold text-[var(--brand-blue)]">Continue Practising</h2>
                 <button
                   type="button"
-                  onClick={() => setTab('history')}
+                  onClick={() => setTab('progress')}
                   className="flex items-center gap-1 text-sm font-medium text-[#2563EB] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
                 >
                   View all practice history
@@ -630,9 +627,7 @@ export default function SignLanguage() {
           />
         )}
 
-        {tab === 'progress' && <ProgressReport />}
-
-        {tab === 'history' && <HistoryList />}
+        {tab === 'progress' && <ProgressReport summary={summary} />}
       </GlossTabBar>
 
       {showReport && summary && <ProgressReportPrint summary={summary} onClose={() => setShowReport(false)} />}

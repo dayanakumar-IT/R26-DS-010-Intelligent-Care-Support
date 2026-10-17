@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 interface ProgressStatCardProps {
   icon: LucideIcon
   label: string
-  value: number
+  value: number | string
   /** Thick left-edge accent colour for this metric. */
   border: string
   tileBg: string

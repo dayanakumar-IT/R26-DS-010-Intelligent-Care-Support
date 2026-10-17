@@ -16,6 +16,7 @@ import tempfile
 import threading
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import numpy as np
 from dotenv import load_dotenv
@@ -39,7 +40,7 @@ from extract_landmarks_bridge import (
     NoLandmarksExtractedError,
     extract_landmarks_via_subprocess,
 )
-from history_report import build_history
+from history_report import build_history_page
 from lesson_selector import select_next_lesson
 from pdedu_lesson_selector import select_next_question
 from pdedu_progress_report import build_pdedu_history, build_pdedu_progress
@@ -852,10 +853,17 @@ def gloss_recall_next(authorization: str | None = Header(None)):
 
 
 @app.get("/gloss/history")
-def gloss_history(limit: int = 30, authorization: str | None = Header(None)):
-    """The caller's most recent attempts (newest first) for the History
-    tab. Read-only; returns only per-attempt summary fields — never raw
-    landmarks, video, or auth data.
+def gloss_history(
+    limit: int = 30,
+    before: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    authorization: str | None = Header(None),
+):
+    """The caller's attempts, newest first, for the practice history list
+    (Progress tab). before: older than this attempted_at (load more);
+    start / end: one day only (calendar filter). Read-only; returns only
+    per-attempt summary fields — never raw landmarks, video, or auth data.
     """
     t0 = time.perf_counter()
     logger.info("[GLOSS][HISTORY] request received | limit=%d", limit)
@@ -866,10 +874,16 @@ def gloss_history(limit: int = 30, authorization: str | None = Header(None)):
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
-    attempts = build_history(_db(), caregiver_profile_id, limit)
-    logger.info("[GLOSS][HISTORY] response prepared | rows=%d", len(attempts))
+    for value in (before, start, end):
+        if value is not None:
+            try:
+                datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="before / start / end must be ISO date-times")
+    page = build_history_page(_db(), caregiver_profile_id, limit, before=before, start=start, end=end)
+    logger.info("[GLOSS][HISTORY] response prepared | rows=%d | has_more=%s", len(page["attempts"]), page["has_more"])
     logger.info("[GLOSS][HISTORY] request completed | status=200 | duration_ms=%s", _ms(t0))
-    return {"attempts": attempts}
+    return page
 
 
 # ============================================================

@@ -1,29 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Award, BookOpen, ClipboardList, ListChecks, RotateCcw, Video } from 'lucide-react'
+import { Award, BookOpen, ListChecks, RotateCcw, Video } from 'lucide-react'
 // eslint config runs the React Compiler rules; keep derived values that
 // depend on plain locals as inline consts, not useMemo.
-import {
-  cachedGlossHistory,
-  cachedGlossProgress,
-  peekGlossHistory,
-  peekGlossProgress,
-} from '../services/glossCache'
-import type {
-  GlossHistoryEntry,
-  GlossMasteryStatus,
-  GlossMasterySummaryRow,
-  GlossProgressReport,
-} from '../types/gloss'
-import {
-  LAST_RESULT_LABEL,
-  PROGRESS_LABEL,
-  STRONG_NEEDED,
-  progressState,
-  strongInARow,
-} from '../utils/progressLabels'
+import { cachedGlossProgress, peekGlossProgress } from '../services/glossCache'
+import type { GlossMasterySummaryRow, GlossProgressReport, GlossProgressSummary } from '../types/gloss'
+import { LAST_RESULT_LABEL, STRONG_NEEDED, progressState, strongInARow } from '../utils/progressLabels'
 import ProgressStatCard from './gloss/ProgressStatCard'
 import PracticeCalendar from './gloss/PracticeCalendar'
-import DailyPracticePopup from './gloss/DailyPracticePopup'
+import HistoryList from './HistoryList'
 
 // Task 2 — polished caregiver learning dashboard. A learning report,
 // not an analytics dashboard. GET /gloss/progress and GET /gloss/history
@@ -33,63 +17,11 @@ import DailyPracticePopup from './gloss/DailyPracticePopup'
 
 type Status = 'loading' | 'ready' | 'error'
 
-const HISTORY_LIMIT = 200
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
-}
-function localDateKey(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
-}
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
-const STATUS_DOT: Record<GlossMasteryStatus, string> = {
-  new: '#94a3b8',
-  learning: '#6E5AE6',
-  weak: '#EE7A32',
-  improving: '#EE7A32',
-  mastered: '#32A862',
-  needs_revision: '#E9792D',
-}
-
-function DemonstratedChip({ row }: { row: GlossMasterySummaryRow }) {
-  return (
-    <li className="flex items-center justify-between gap-3 rounded-[12px] border border-[#CDEEDB] bg-white px-3 py-2.5">
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate text-sm font-semibold capitalize text-[#17223E]">
-          {row.display_name}
-        </span>
-        <span className="text-xs text-[#4B5873]">
-          Last practised {formatDate(row.last_practiced_at)} · {row.attempts} attempt
-          {row.attempts === 1 ? '' : 's'}
-        </span>
-      </span>
-      <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#EDF9F1] px-2 py-0.5 text-xs font-semibold text-[#2F9E57]">
-        <Award size={12} />
-        {PROGRESS_LABEL.demonstrated}
-      </span>
-    </li>
-  )
 }
 
 function InProgressCard({ row, strongNeeded }: { row: GlossMasterySummaryRow; strongNeeded: number }) {
@@ -114,14 +46,13 @@ function InProgressCard({ row, strongNeeded }: { row: GlossMasterySummaryRow; st
   )
 }
 
-export default function ProgressReport() {
+// Signs Practised and Demonstrated come from GET /gloss/progress/summary,
+// the same numbers as Practice and My Journey.
+export default function ProgressReport({ summary }: { summary: GlossProgressSummary | null }) {
   // Seed from the session cache so returning to this tab shows data
   // immediately instead of flashing a spinner.
   const [status, setStatus] = useState<Status>(peekGlossProgress() ? 'ready' : 'loading')
   const [report, setReport] = useState<GlossProgressReport | null>(peekGlossProgress() ?? null)
-  const [history, setHistory] = useState<GlossHistoryEntry[]>(
-    peekGlossHistory(HISTORY_LIMIT) ?? [],
-  )
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
 
@@ -142,15 +73,6 @@ export default function ProgressReport() {
       .catch(() => {
         if (isMounted) setStatus('error')
       })
-    // Same endpoint the History tab uses — powers the calendar day-popup.
-    // A failure just leaves the popup empty.
-    cachedGlossHistory(HISTORY_LIMIT)
-      .then((data) => {
-        if (isMounted) setHistory(data)
-      })
-      .catch(() => {
-        /* popup shows its empty state; progress view unaffected */
-      })
     return () => {
       isMounted = false
     }
@@ -162,22 +84,6 @@ export default function ProgressReport() {
     return map
   }, [report])
 
-  const historyByDate = useMemo(() => {
-    const map = new Map<string, GlossHistoryEntry[]>()
-    for (const entry of history) {
-      const key = localDateKey(entry.attempted_at)
-      if (!key) continue
-      const list = map.get(key)
-      if (list) list.push(entry)
-      else map.set(key, [entry])
-    }
-    return map
-  }, [history])
-
-  const mastered = useMemo(
-    () => (report?.mastery_summary ?? []).filter((r) => r.mastery_status === 'mastered'),
-    [report],
-  )
   // Every attempted, not-yet-demonstrated sign, most recently practised first.
   const inProgress = useMemo(
     () =>
@@ -186,15 +92,6 @@ export default function ProgressReport() {
         .sort((a, b) => (b.last_practiced_at ?? '').localeCompare(a.last_practiced_at ?? '')),
     [report],
   )
-  const recent = useMemo(
-    () =>
-      [...(report?.mastery_summary ?? [])]
-        .filter((r) => r.last_practiced_at)
-        .sort((a, b) => (b.last_practiced_at ?? '').localeCompare(a.last_practiced_at ?? ''))
-        .slice(0, 6),
-    [report],
-  )
-
   const strongNeeded = report?.strong_needed ?? STRONG_NEEDED
 
   if (status === 'loading') {
@@ -232,7 +129,7 @@ export default function ProgressReport() {
         <ProgressStatCard
           icon={BookOpen}
           label="Signs Practised"
-          value={report.signs_practiced}
+          value={summary ? summary.counts.practised : '–'}
           border="#D9D5FF"
           tileBg="#F2EFFF"
           tileFg="#6E5AE6"
@@ -240,7 +137,7 @@ export default function ProgressReport() {
         <ProgressStatCard
           icon={Award}
           label="Demonstrated"
-          value={report.mastered_count}
+          value={summary ? `${summary.counts.demonstrated} of ${summary.counts.countable}` : '–'}
           border="#CDEEDB"
           tileBg="#EDF9F1"
           tileFg="#32A862"
@@ -272,26 +169,9 @@ export default function ProgressReport() {
           />
         </div>
 
-        <section className="flex flex-1 flex-col gap-3 lg:w-[60%]">
-          <h3 className="text-sm font-bold text-[#17223E]">Demonstrated Signs</h3>
-          {mastered.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-[16px] border border-dashed border-[#D9D5FF] bg-[#FBFAFF] px-4 py-10 text-center">
-              <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#F2EFFF] text-[#6E5AE6]">
-                <ClipboardList size={22} aria-hidden="true" />
-              </span>
-              <p className="text-sm font-semibold text-[#17223E]">No signs demonstrated yet</p>
-              <p className="max-w-xs text-sm text-[#4B5873]">
-                A sign is demonstrated after {strongNeeded} strong camera attempts in a row.
-              </p>
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {mastered.map((row) => (
-                <DemonstratedChip key={row.sign_id} row={row} />
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="flex-1 lg:w-[60%]">
+          <HistoryList selectedDate={selectedDate} onClearDate={() => setSelectedDate(null)} />
+        </div>
       </div>
 
       <section className="flex flex-col gap-3">
@@ -309,42 +189,7 @@ export default function ProgressReport() {
         )}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h3 className="text-sm font-bold text-[#17223E]">Recently Practised</h3>
-        <ul className="overflow-hidden rounded-[14px] border border-[#E1E7F0] bg-white">
-          {recent.map((row, i) => (
-            <li
-              key={row.sign_id}
-              className={`flex items-center gap-3 px-4 py-2.5 text-sm transition hover:bg-[#F7F9FC] ${
-                i > 0 ? 'border-t border-[#EEF1F6]' : ''
-              }`}
-            >
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: STATUS_DOT[row.mastery_status] ?? '#94a3b8' }}
-                aria-hidden="true"
-              />
-              <span className="min-w-0 flex-1 truncate font-medium capitalize text-[#17223E]">
-                {row.display_name}
-              </span>
-              <span className="shrink-0 text-xs text-[#4B5873]">
-                {PROGRESS_LABEL[progressState(row.mastery_status, row.attempts)]}
-              </span>
-              <span className="w-[128px] shrink-0 text-right text-[11px] text-[#73809A]">
-                {formatDateTime(row.last_practiced_at)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
 
-      {selectedDate && (
-        <DailyPracticePopup
-          dateIso={selectedDate}
-          entries={historyByDate.get(selectedDate) ?? []}
-          onClose={() => setSelectedDate(null)}
-        />
-      )}
     </div>
   )
 }

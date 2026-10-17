@@ -69,10 +69,23 @@ export function getGlossProgress(): Promise<GlossProgressReport> {
 }
 
 export async function getGlossHistory(limit = 30): Promise<GlossHistoryEntry[]> {
-  const result = await apiGet<{ attempts: GlossHistoryEntry[] }>(
-    `/gloss/history?limit=${encodeURIComponent(String(limit))}`,
-  )
-  return result.attempts
+  return (await getGlossHistoryPage({ limit })).attempts
+}
+
+// One page of the practice history, newest first. before: older than this
+// attempted_at (load more); start / end: one day only (calendar filter).
+export function getGlossHistoryPage(params: {
+  limit?: number
+  before?: string
+  start?: string
+  end?: string
+}): Promise<{ attempts: GlossHistoryEntry[]; has_more: boolean }> {
+  const query = new URLSearchParams({ limit: String(params.limit ?? 30) })
+  for (const key of ['before', 'start', 'end'] as const) {
+    const value = params[key]
+    if (value) query.set(key, value)
+  }
+  return apiGet<{ attempts: GlossHistoryEntry[]; has_more: boolean }>(`/gloss/history?${query}`)
 }
 
 // Filename extension should match the blob's actual recorded format (see
