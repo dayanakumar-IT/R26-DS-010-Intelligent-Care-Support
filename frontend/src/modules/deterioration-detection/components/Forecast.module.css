@@ -1,0 +1,286 @@
+/* Shared by ForecastSection (the compact card) and ForecastTab — same
+   card/table/status treatment as Trends/ModelCheck, built only from
+   existing tokens (src/index.css and ../styles/tokens.css). */
+
+.status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.errorBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
+}
+
+.caption {
+  margin: 0 2px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.note {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.chartContainer {
+  composes: dd-card from global;
+  padding: 16px;
+  min-width: 0;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.tableSpacing {
+  margin-top: 16px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  white-space: nowrap;
+}
+
+.td {
+  padding: 10px 14px;
+  color: #111827;
+  white-space: nowrap;
+}
+
+.tableRow:not(:last-child) .td {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.tableRowClickable {
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 160ms ease);
+}
+
+.tableRowClickable:hover,
+.tableRowClickable:focus-visible {
+  background: rgba(30, 58, 138, 0.06);
+  outline: none;
+}
+
+.sortButton {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: var(--brand-blue);
+  cursor: pointer;
+}
+
+.fewTag {
+  margin-left: 8px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.linkButton {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--brand-blue);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 160ms ease);
+}
+
+.linkButton:hover {
+  background: rgba(30, 58, 138, 0.06);
+}
+
+/* ForecastSection: compact "Next 7 days forecast" card */
+
+.card {
+  composes: dd-card from global;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.cardTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.bigNumberRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 4px;
+}
+
+.bigNumber {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--brand-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.bigNumberSub {
+  margin: 0;
+  font-size: 14px;
+  color: #111827;
+}
+
+.asOf {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.reason {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #111827;
+}
+
+/* ForecastTab */
+
+.explainer {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(30, 58, 138, 0.2);
+  background: rgba(30, 58, 138, 0.04);
+  font-size: 13px;
+  line-height: 1.55;
+  color: #111827;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.select {
+  min-width: 240px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: var(--surface);
+  font-size: 13px;
+  color: #111827;
+}
+
+.select:focus {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+}
+
+/* Previous results stay visible, dimmed, while a new selection loads. */
+.dimmed {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity var(--transition-fast, 160ms ease);
+}
+
+.fewDaysNote {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--risk-moderate-border);
+  background: var(--risk-moderate-bg);
+  font-size: 13px;
+  color: var(--risk-moderate);
+}
+
+.revealNote {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brand-purple);
+}
+
+.pickRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.pickResult {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.honestNote {
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--risk-neutral-border);
+  background: var(--risk-neutral-bg);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #111827;
+}

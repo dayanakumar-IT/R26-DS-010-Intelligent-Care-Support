@@ -2,6 +2,8 @@ import Icon from '../../../shared/components/Icon'
 import type { IconName } from '../../../shared/components/Icon'
 import CaregiverProfiles from '../components/CaregiverProfiles'
 import DemoControl from '../components/DemoControl'
+import ForecastTab from '../components/ForecastTab'
+import ModelCheck from '../components/ModelCheck'
 import OverviewSummary from '../components/OverviewSummary'
 import Redistribution from '../components/Redistribution'
 import RiskAnalysis from '../components/RiskAnalysis'
@@ -31,6 +33,10 @@ const TABS: TabDef[] = [
   { id: 'caregiver-profiles', label: 'Caregiver Profiles', icon: 'users' },
   { id: 'trends', label: 'Trends', icon: 'trending-up' },
   { id: 'redistribution', label: 'Redistribution', icon: 'users', roles: ['admin', 'supervisor'] },
+  // Same roles as GET /analytics/model-validation (admin or supervisor).
+  { id: 'model-check', label: 'Model Check', icon: 'eye', roles: ['admin', 'supervisor'] },
+  // Same roles as GET /analytics/forecast-validation (admin or supervisor).
+  { id: 'forecast', label: 'Forecast', icon: 'trending-up', roles: ['admin', 'supervisor'] },
   { id: 'demo-control', label: 'Demo Control', icon: 'settings', roles: ['admin'] },
 ]
 
@@ -118,6 +124,10 @@ export default function Overview() {
           <Trends />
         ) : activeTab === 'redistribution' ? (
           <Redistribution />
+        ) : activeTab === 'model-check' ? (
+          <ModelCheck />
+        ) : activeTab === 'forecast' ? (
+          <ForecastTab />
         ) : (
           <DemoControl />
         )}

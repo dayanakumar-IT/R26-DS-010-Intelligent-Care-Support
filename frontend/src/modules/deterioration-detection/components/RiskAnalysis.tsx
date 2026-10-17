@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Icon from '../../../shared/components/Icon'
 import CaregiverSearchSelect from './CaregiverSearchSelect'
 import CollapsibleSection from './CollapsibleSection'
+import ForecastSection from './ForecastSection'
 import RiskHistorySection from './RiskHistorySection'
 import ShapFactorsList from './ShapFactorsList'
 import { useDeteriorationData } from '../context/useDeteriorationData'
@@ -140,6 +141,7 @@ function CaregiverRiskPanel({ caregiverId }: { caregiverId: string }) {
         ) : history ? (
           <RiskHistorySection history={history} caregiverId={caregiverId} />
         ) : null}
+        <ForecastSection caregiverId={caregiverId} />
       </CollapsibleSection>
     </>
   )
