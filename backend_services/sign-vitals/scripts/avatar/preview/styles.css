@@ -1,0 +1,4 @@
+/* Dev-only harness styles: the app's index.css (Tailwind + CareSense tokens), scanning the module's sources. */
+@import '../../../../../frontend/src/index.css';
+@source '../../../../../frontend/src/modules/sign-vitals';
+@source '../../../../../frontend/src/shared';
