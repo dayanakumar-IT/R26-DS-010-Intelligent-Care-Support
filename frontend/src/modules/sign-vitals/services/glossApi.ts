@@ -1,4 +1,4 @@
-import { apiGet, apiPostFormData } from './apiClient'
+import { apiGet, apiPostFormData, apiPostJson } from './apiClient'
 import type {
   GlossAttemptResult,
   GlossCaptureRejection,
@@ -6,10 +6,13 @@ import type {
   GlossDemoVideo,
   GlossFreeResult,
   GlossHistoryEntry,
+  GlossMe,
   GlossProgressReport,
   GlossProgressSummary,
   GlossSign,
   GlossSignReference,
+  SupervisorCaregiverDetail,
+  SupervisorOverview,
 } from '../types/gloss'
 
 export interface NextLessonResponse {
@@ -158,3 +161,22 @@ export function getGlossAttemptFeedback(attemptId: string): Promise<GlossFeedbac
   return apiGet<GlossFeedbackUpdate>(`/gloss/attempts/${encodeURIComponent(attemptId)}/feedback`)
 }
 
+// Who is signed in (role, own learner id). The server checks the role again
+// on every supervisor endpoint.
+export function getGlossMe(): Promise<GlossMe> {
+  return apiGet<GlossMe>('/gloss/me')
+}
+
+// Supervisors only.
+export function getSupervisorOverview(): Promise<SupervisorOverview> {
+  return apiGet<SupervisorOverview>('/gloss/supervisor/overview')
+}
+
+export function getSupervisorCaregiver(caregiverProfileId: string): Promise<SupervisorCaregiverDetail> {
+  return apiGet<SupervisorCaregiverDetail>(`/gloss/supervisor/caregivers/${encodeURIComponent(caregiverProfileId)}`)
+}
+
+// A supervisor's own learner profile (created once; name from their profile).
+export function createSupervisorLearnerProfile(): Promise<{ learner_id: string }> {
+  return apiPostJson<{ learner_id: string }>('/gloss/supervisor/learner-profile', {})
+}

@@ -17,19 +17,29 @@ const PRINT_CSS = `
   .gloss-no-print { display: none !important; }
 }`
 
-export default function ProgressReportPrint({ summary, onClose }: { summary: GlossProgressSummary; onClose: () => void }) {
+/** learnerName: set when a supervisor views a caregiver's report. */
+export default function ProgressReportPrint({
+  summary,
+  onClose,
+  learnerName,
+}: {
+  summary: GlossProgressSummary
+  onClose: () => void
+  learnerName?: string
+}) {
+  const title = learnerName ? `Progress report — ${learnerName}` : 'My progress report'
   const earnedSkill = summary.skill_badges.filter((b) => b.earned_at)
   const earnedPractice = summary.practice_badges.filter((b) => b.earned_at)
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/30 p-4" role="dialog" aria-modal="true" aria-label="My progress report">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/30 p-4" role="dialog" aria-modal="true" aria-label={title}>
       <style>{PRINT_CSS}</style>
       <article id="gloss-progress-report" className="w-full max-w-3xl rounded-[var(--radius-lg)] bg-white p-8 text-slate-800 shadow-xl">
         <p className="mb-4 rounded-[var(--radius-md)] bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">
-          Your supervisors can see this report.
+          {learnerName ? `${learnerName} can see this report too (shared with supervisors).` : 'Your supervisors can see this report.'}
         </p>
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--brand-blue)]">My progress report — Sign language (GLOSS)</h1>
+            <h1 className="text-2xl font-bold text-[var(--brand-blue)]">{title} — Sign language (GLOSS)</h1>
             <p className="text-sm text-slate-500">
               {new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })} · from your camera
               attempts with the current version of the camera check

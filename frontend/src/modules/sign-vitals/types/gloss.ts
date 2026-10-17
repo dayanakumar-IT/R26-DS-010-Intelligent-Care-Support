@@ -296,3 +296,42 @@ export interface GlossProgressSummary {
   pipeline_version: string
 }
 
+// GET /gloss/me
+export interface GlossMe {
+  role: 'admin' | 'supervisor' | 'caregiver' | null
+  name: string | null
+  learner_id: string | null
+  is_supervisor: boolean
+}
+
+// GET /gloss/supervisor/overview (supervisors only)
+export interface SupervisorCaregiverRow {
+  caregiver_profile_id: string
+  name: string
+  short_id: string
+  countable: number
+  demonstrated: number
+  retained: number
+  practised: number
+  pace: { weeks: string[]; demonstrated: number[]; trend: string }
+  active_days_this_week: number
+  active_days_total: number
+  new_demonstrated_this_week: number
+  last_active: string | null
+  parkinsons: {
+    quizzes_completed: number
+    questions_answered: number
+    symptoms_mastered: number
+    symptom_count: number
+    average_mastery: number | null
+  }
+}
+
+export interface SupervisorOverview {
+  caregivers: SupervisorCaregiverRow[]
+  popup: string[]
+}
+
+export interface SupervisorCaregiverDetail extends SupervisorCaregiverRow {
+  summary: GlossProgressSummary
+}

@@ -176,3 +176,40 @@ test("before 0048 the view leaked every caregiver's attempts (the test can fail)
     (await tx.query("select sum(total_attempts)::int n from gloss_sign_difficulty")).rows[0].n);
   assert.equal(seen, 1, "caregiver A saw caregiver B's attempt through the view");
 });
+test("pdedu (0050): every supervisor reads all caregivers' rows; a caregiver only their own", async () => {
+  await db.exec(`
+    insert into pdedu_quiz_sessions (caregiver_profile_id) values ('${CP.A}'), ('${CP.B}');
+    insert into pdedu_caregiver_mastery (caregiver_profile_id, symptom_id) select '${CP.A}', id from pdedu_symptoms limit 1;
+    insert into pdedu_caregiver_mastery (caregiver_profile_id, symptom_id) select '${CP.B}', id from pdedu_symptoms limit 1;
+  `);
+  for (const t of ["pdedu_quiz_sessions", "pdedu_caregiver_mastery"]) {
+    assert.deepEqual(await count({ role: "authenticated", uid: U.careA }, t), [CP.A], t);
+    for (const sup of [U.sup1, U.sup2]) {
+      assert.deepEqual((await count({ role: "authenticated", uid: sup }, t)).sort(), [CP.A, CP.B].sort(), `${t} as ${sup}`);
+    }
+  }
+});
+
+test("a supervisor learner (0049) learns with their own id only; caregivers cannot see it", async () => {
+  const learner = (await db.query(
+    `insert into gloss_learners (kind, user_id, display_name) values ('supervisor', '${U.sup2}', 'Supervisor 2') returning id`)).rows[0].id;
+  // Parkinson's education: own id allowed, a caregiver's id refused.
+  await as(db, { role: "authenticated", uid: U.sup2 }, (tx) =>
+    tx.query("insert into pdedu_quiz_sessions (caregiver_profile_id) values ($1)", [learner]));
+  await assert.rejects(as(db, { role: "authenticated", uid: U.sup2 }, (tx) =>
+    tx.query("insert into pdedu_quiz_sessions (caregiver_profile_id) values ($1)", [CP.A])));
+  // GLOSS: the backend stores their attempt; they read it as their own.
+  await db.query("select gloss_record_attempt($1::jsonb, null, '[]'::jsonb)", [
+    { caregiver_profile_id: learner, target_sign_id: "water", attempt_type: "webcam", mode: "practice", pipeline_version: V }]);
+  assert.ok((await count({ role: "authenticated", uid: U.sup2 }, "gloss_attempts")).includes(learner));
+  for (const t of ["gloss_attempts", "pdedu_quiz_sessions"]) {
+    assert.ok(!(await count({ role: "authenticated", uid: U.careA }, t)).includes(learner), `caregiver sees supervisor's ${t}`);
+  }
+  // Learners cannot create learner rows themselves.
+  await assert.rejects(as(db, { role: "authenticated", uid: U.sup1 }, (tx) =>
+    tx.query(`insert into gloss_learners (kind, user_id, display_name) values ('supervisor', '${U.sup1}', 'S1')`)));
+  // Every caregiver id is its own learner id.
+  const rows = (await db.query("select id, caregiver_profile_id from gloss_learners where kind = 'caregiver'")).rows;
+  assert.deepEqual(rows.map((r) => r.id).sort(), [CP.A, CP.B].sort());
+  assert.ok(rows.every((r) => r.id === r.caregiver_profile_id));
+});

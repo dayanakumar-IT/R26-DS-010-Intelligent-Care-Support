@@ -31,7 +31,14 @@ from attempt_submission import AttemptError, submit_attempt
 from progress_store import MIGRATIONS_NEEDED, schema_ready
 from progress_summary import load_attempts, load_milestones, load_summary
 from recall_selector import pick_recall_sign
-from auth_helper import AuthError, get_authenticated_caregiver
+from auth_helper import (
+    AuthError,
+    forget_learner,
+    get_authenticated_caregiver,
+    get_authenticated_identity,
+    get_authenticated_supervisor,
+)
+import supervisor_report
 import grading
 from execution_evaluator import evaluate_execution
 import feedback_async
@@ -814,6 +821,76 @@ def gloss_attempt_feedback(attempt_id: str, authorization: str | None = Header(N
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
     return feedback_async.get(attempt_id, caregiver_profile_id)
+
+
+LEARNERS_NEEDED = "Supervisor learning needs the Sign & Vitals database migration 0049 to be applied first."
+
+
+@app.get("/gloss/me")
+def gloss_me(authorization: str | None = Header(None)):
+    """Who is calling: {role, name, learner_id | null, is_supervisor}. Drives
+    which Sign & Vitals screens the app shows; the server still checks the
+    role on every supervisor endpoint."""
+    try:
+        me = get_authenticated_identity(_db(), authorization, context="GLOSS")
+    except AuthError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    return {"role": me["role"], "name": me["name"], "learner_id": me["learner_id"],
+            "is_supervisor": me["role"] == "supervisor"}
+
+
+@app.get("/gloss/supervisor/overview")
+def gloss_supervisor_overview(authorization: str | None = Header(None)):
+    """Supervisors only (role checked here): every caregiver with a GLOSS
+    account, sorted by name — Demonstrated / Retained / practised, pace,
+    active days, last active, Parkinson's education — and the neutral
+    one-line notes for the daily popup. Read-only; no rankings."""
+    t0 = time.perf_counter()
+    try:
+        get_authenticated_supervisor(_db(), authorization, context="GLOSS")
+    except AuthError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    if not schema_ready(_db()):
+        raise HTTPException(status_code=503, detail=MIGRATIONS_NEEDED)
+    out = supervisor_report.load_overview(_db())
+    logger.info("[GLOSS][SUPERVISOR] overview | caregivers=%d | duration_ms=%s", len(out["caregivers"]), _ms(t0))
+    return out
+
+
+@app.get("/gloss/supervisor/caregivers/{caregiver_profile_id}")
+def gloss_supervisor_caregiver(caregiver_profile_id: str, authorization: str | None = Header(None)):
+    """Supervisors only: one caregiver's numbers plus their progress summary
+    (the same data as their own My Journey and progress report)."""
+    try:
+        get_authenticated_supervisor(_db(), authorization, context="GLOSS")
+    except AuthError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    if not schema_ready(_db()):
+        raise HTTPException(status_code=503, detail=MIGRATIONS_NEEDED)
+    detail = supervisor_report.load_caregiver(_db(), caregiver_profile_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="No such caregiver")
+    return detail
+
+
+@app.post("/gloss/supervisor/learner-profile")
+def gloss_supervisor_learner_profile(authorization: str | None = Header(None)):
+    """Supervisors only: create (or return) the caller's own learner profile,
+    so they can practise signs and do Parkinson's education with their own
+    progress. Name from profiles.name. Idempotent."""
+    try:
+        sup = get_authenticated_supervisor(_db(), authorization, context="GLOSS")
+    except AuthError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    try:
+        learner_id = supervisor_report.create_supervisor_learner(_db(), sup["user_id"], sup["name"])
+    except Exception as e:
+        if "gloss_learners" in str(e):
+            raise HTTPException(status_code=503, detail=LEARNERS_NEEDED)
+        raise
+    forget_learner(authorization)
+    logger.info("[GLOSS][SUPERVISOR] learner profile ready | learner=%s", str(learner_id)[:8])
+    return {"learner_id": learner_id}
 
 
 @app.get("/gloss/progress/summary")
