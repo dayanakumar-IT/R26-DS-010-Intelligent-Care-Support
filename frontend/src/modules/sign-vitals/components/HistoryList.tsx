@@ -26,11 +26,19 @@ function formatWhen(iso: string): string {
 
 type Variant = 'correct' | 'mismatch' | 'not-recognised' | 'quiz-correct' | 'quiz-wrong'
 
+function Tag({ children, title }: { children: string; title?: string }) {
+  return (
+    <span title={title} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-slate-500">
+      {children}
+    </span>
+  )
+}
+
 function variantFor(entry: GlossHistoryEntry): Variant {
   if (entry.attempt_type === 'multiple_choice') {
     return entry.is_correct_sign ? 'quiz-correct' : 'quiz-wrong'
   }
-  if (entry.not_recognised) return 'not-recognised'
+  if (entry.not_recognised || entry.mode === 'free') return 'not-recognised'
   return entry.is_correct_sign ? 'correct' : 'mismatch'
 }
 
@@ -63,10 +71,17 @@ function HistoryRow({ entry }: { entry: GlossHistoryEntry }) {
       </span>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-sm font-semibold uppercase tracking-wide text-slate-800">
-          {entry.target_display_name}
+        <span className="flex flex-wrap items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-800">
+          {entry.mode === 'free' ? 'Check my sign' : entry.target_display_name}
+          {entry.mode === 'recall' && <Tag>Recall</Tag>}
+          {entry.earlier_version && <Tag title="Made with an earlier version of the camera check: counts as practice, not toward Demonstrated or levels">Earlier version</Tag>}
         </span>
-
+        {entry.mode === 'free' && (
+          <span className="text-xs text-slate-500">
+            {entry.recognized_display_name ? `The camera thought: ${entry.recognized_display_name}` : 'No match among the 59 signs'}
+            <span className="text-slate-400"> · Not counted towards progress</span>
+          </span>
+        )}
         {variant === 'correct' && (
           <span className="text-xs font-medium" style={{ color: accent.fg }}>
             Correct sign
@@ -82,7 +97,7 @@ function HistoryRow({ entry }: { entry: GlossHistoryEntry }) {
             <span className="text-slate-400"> · Try again</span>
           </span>
         )}
-        {variant === 'not-recognised' && (
+        {variant === 'not-recognised' && entry.mode !== 'free' && (
           <span className="text-xs">
             <span className="font-medium" style={{ color: accent.fg }}>
               Not recognised

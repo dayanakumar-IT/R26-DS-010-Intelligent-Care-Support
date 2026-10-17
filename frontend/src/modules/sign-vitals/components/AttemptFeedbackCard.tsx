@@ -56,6 +56,8 @@ interface AttemptFeedbackCardProps {
   targetSignId: string
   onPracticeAgain: () => void
   onNextSign: () => void
+  /** Label of the second button (Recall uses "Next word"). */
+  nextLabel?: string
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -72,6 +74,7 @@ export default function AttemptFeedbackCard({
   targetSignId,
   onPracticeAgain,
   onNextSign,
+  nextLabel = 'Next Recommended Sign',
 }: AttemptFeedbackCardProps) {
   const banner = resultBanner(result, targetSignId)
   const isCamera = result.outcome !== 'quiz_correct' && result.outcome !== 'quiz_wrong'
@@ -219,7 +222,7 @@ export default function AttemptFeedbackCard({
         <Button variant="secondary" onClick={onPracticeAgain}>
           Practice Again
         </Button>
-        <Button onClick={onNextSign}>Next Recommended Sign</Button>
+        <Button onClick={onNextSign}>{nextLabel}</Button>
       </div>
     </div>
   )

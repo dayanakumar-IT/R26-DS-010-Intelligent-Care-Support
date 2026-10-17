@@ -5,6 +5,10 @@ import Button from '../../../shared/components/Button'
 interface WebcamCaptureProps {
   onRecorded: (blob: Blob) => void
   onCameraError: () => void
+  /** Check my sign / Recall: count down this many seconds before recording starts. */
+  countdownSeconds?: number
+  /** Stop automatically after this many seconds (the learner can still stop earlier). */
+  maxSeconds?: number
 }
 
 // Investigated (Task 2, see report): a synthetic VP8/VP9-in-webm sample
@@ -25,9 +29,9 @@ function pickSupportedMimeType(): string {
   return 'video/webm' // last-resort default; browsers without isTypeSupported are effectively all webm-capable
 }
 
-// Manual Start/Stop recording only, per the first frontend version's scope —
-// automatic attempt detection may be added later.
-export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptureProps) {
+// Start/Stop recording. Practice uses it as is; Check my sign and Recall add a
+// countdown before recording and an automatic stop (countdownSeconds / maxSeconds).
+export default function WebcamCapture({ onRecorded, onCameraError, countdownSeconds = 0, maxSeconds }: WebcamCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -35,6 +39,9 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
   const [isRecording, setIsRecording] = useState(false)
   const [hasRecording, setHasRecording] = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const timersRef = useRef<number[]>([])
+  useEffect(() => () => timersRef.current.forEach((t) => window.clearTimeout(t)), [])
 
   useEffect(() => {
     let cancelled = false
@@ -91,11 +98,27 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
     recorderRef.current = recorder
     setIsRecording(true)
     setHasRecording(false)
+    if (maxSeconds) timersRef.current.push(window.setTimeout(stopRecording, maxSeconds * 1000))
   }
 
   const stopRecording = () => {
-    recorderRef.current?.stop()
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
     setIsRecording(false)
+  }
+
+  // 3, 2, 1 … then record.
+  const beginWithCountdown = () => {
+    if (!countdownSeconds) return startRecording()
+    setHasRecording(false)
+    for (let i = 0; i <= countdownSeconds; i++) {
+      timersRef.current.push(
+        window.setTimeout(() => {
+          const left = countdownSeconds - i
+          setCountdown(left > 0 ? left : null)
+          if (left === 0) startRecording()
+        }, i * 1000),
+      )
+    }
   }
 
   return (
@@ -127,6 +150,14 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
         <span className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-slate-900/70 px-3 py-1 text-xs font-medium text-white">
           Head in the oval, hands inside the box
         </span>
+        {countdown !== null && (
+          <span
+            aria-live="assertive"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center text-7xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+          >
+            {countdown}
+          </span>
+        )}
         {isRecording && (
           <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-1 text-xs font-medium text-white">
             <Circle size={8} className="fill-current" />
@@ -142,7 +173,7 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
 
       <div className="flex justify-center gap-3">
         {!isRecording ? (
-          <Button onClick={startRecording} disabled={!cameraReady} variant="primary">
+          <Button onClick={beginWithCountdown} disabled={!cameraReady || countdown !== null} variant="primary">
             <Circle size={16} />
             {hasRecording ? 'Record Again' : 'Start Recording'}
           </Button>

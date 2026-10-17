@@ -2,9 +2,12 @@ import { apiGet, apiPostFormData } from './apiClient'
 import type {
   GlossAttemptResult,
   GlossCaptureRejection,
+  GlossAttemptMode,
   GlossDemoVideo,
+  GlossFreeResult,
   GlossHistoryEntry,
   GlossProgressReport,
+  GlossProgressSummary,
   GlossSign,
   GlossSignReference,
 } from '../types/gloss'
@@ -85,10 +88,12 @@ export function submitWebcamAttempt(
   targetSignId: string,
   videoBlob: Blob,
   sessionId?: string,
+  mode: Exclude<GlossAttemptMode, 'free'> = 'practice',
 ): Promise<GlossAttemptResult | GlossCaptureRejection> {
   const formData = new FormData()
   formData.append('target_sign_id', targetSignId)
   formData.append('attempt_type', 'webcam')
+  formData.append('mode', mode)
   formData.append('video', videoBlob, `attempt.${extensionForMimeType(videoBlob.type)}`)
   if (sessionId) formData.append('session_id', sessionId)
   return apiPostFormData<GlossAttemptResult | GlossCaptureRejection>('/gloss/attempts', formData)
@@ -105,4 +110,26 @@ export function submitMultipleChoiceAttempt(
   formData.append('selected_sign_id', selectedSignId)
   if (sessionId) formData.append('session_id', sessionId)
   return apiPostFormData<GlossAttemptResult>('/gloss/attempts', formData)
+}
+
+// Check my sign: no target; the camera names the sign. Stored with
+// mode='free' and never counted toward progress.
+export function submitFreeAttempt(
+  videoBlob: Blob,
+  sessionId?: string,
+): Promise<GlossFreeResult | GlossCaptureRejection> {
+  const formData = new FormData()
+  formData.append('attempt_type', 'webcam')
+  formData.append('mode', 'free')
+  formData.append('video', videoBlob, `attempt.${extensionForMimeType(videoBlob.type)}`)
+  if (sessionId) formData.append('session_id', sessionId)
+  return apiPostFormData<GlossFreeResult | GlossCaptureRejection>('/gloss/attempts', formData)
+}
+
+export function getGlossProgressSummary(): Promise<GlossProgressSummary> {
+  return apiGet<GlossProgressSummary>('/gloss/progress/summary')
+}
+
+export function getRecallSign(): Promise<{ sign_id: string }> {
+  return apiGet<{ sign_id: string }>('/gloss/recall/next')
 }

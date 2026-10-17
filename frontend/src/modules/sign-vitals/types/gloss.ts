@@ -1,5 +1,9 @@
 export type GlossAttemptType = 'webcam' | 'multiple_choice'
 
+// practice = lesson flow; recall = word only, from memory (graded like practice);
+// free = Check my sign (no target; never counted toward progress).
+export type GlossAttemptMode = 'practice' | 'recall' | 'free'
+
 export type GlossQualityTier = 'strong' | 'moderate' | 'weak'
 
 export type GlossMasteryStatus =
@@ -109,6 +113,10 @@ export interface GlossAttemptResult {
   corrective_feedback: CorrectiveFeedback
   mastery: GlossMastery
   next_recommended_sign_id: string
+  mode?: GlossAttemptMode
+  // Milestones this attempt newly earned (celebrated only on a success).
+  new_milestones?: GlossNewMilestone[]
+  pipeline_version?: string
   // Task 6 instrumentation — per-stage backend timings in ms. Additive
   // and optional; the UI only uses it for a dev/diagnostic readout.
   timings?: Record<string, number>
@@ -169,6 +177,10 @@ export interface GlossMasterySummaryRow {
   consecutive_strong_streak: number
   last_result: GlossLastResult | null
   recommendable?: boolean
+  // Demonstrated, then a strong recall attempt 7+ days later.
+  retained?: boolean
+  // hurt, pain, me, sleep: the camera cannot judge these reliably.
+  camera_unreliable_note?: string | null
   best_score: number | null
   last_score: number | null
   last_practiced_at: string | null
@@ -197,8 +209,8 @@ export interface GlossProgressReport {
 // GET /gloss/history
 export interface GlossHistoryEntry {
   attempt_id: string
-  target_sign_id: string
-  target_display_name: string
+  target_sign_id: string | null // null for Check my sign (mode 'free')
+  target_display_name: string | null
   recognized_sign_id: string | null
   recognized_display_name: string | null
   is_correct_sign: boolean
@@ -209,4 +221,72 @@ export interface GlossHistoryEntry {
   quality_tier: GlossQualityTier | null
   execution_score: number | null
   attempted_at: string
+  mode?: GlossAttemptMode
+  // Made with an earlier grading pipeline: practice only, never skill.
+  earlier_version?: boolean
+}
+
+export interface GlossNewMilestone {
+  type: GlossMilestoneType
+  key: string
+  name: string
+  achieved_at: string
+}
+
+export type GlossMilestoneType = 'demonstrated' | 'retained' | 'level' | 'category' | 'practice' | 'monthly'
+
+// POST /gloss/attempts with mode='free' (Check my sign).
+export interface GlossFreeResult {
+  outcome: 'free_match' | 'free_maybe' | 'free_no_match'
+  mode: 'free'
+  attempt_id: string
+  session_id: string
+  recognition_confidence: number
+  suggestions: Array<{ sign_id: string; confidence: number }>
+  top3: Array<{ sign_id: string; confidence: number }>
+  capture_check: GlossCaptureCheck
+}
+
+export type GlossSignStatus = 'not_started' | 'practising' | 'demonstrated' | 'retained'
+
+export interface GlossBadge {
+  type: GlossMilestoneType
+  key: string
+  name: string
+  description: string
+  earned_at: string | null
+}
+
+// GET /gloss/progress/summary — levels, badges and My Journey.
+export interface GlossProgressSummary {
+  level: { key: string; name: string } | null
+  next_level: { key: string; name: string; missing: string } | null
+  levels: Array<{ key: string; name: string; rule: string; earned_at: string | null }>
+  counts: { countable: number; demonstrated: number; retained: number; practised: number }
+  categories: Array<{
+    key: string
+    name: string
+    countable: number
+    demonstrated: number
+    retained: number
+    badge_earned_at: string | null
+    signs: Array<{
+      sign_id: string
+      status: GlossSignStatus
+      countable: boolean
+      note: string | null
+      demonstrated_at: string | null
+      retained_at: string | null
+    }>
+  }>
+  skill_badges: GlossBadge[]
+  practice_badges: GlossBadge[]
+  monthly: {
+    month: string
+    active_days: number
+    tiers: number[]
+    badges: Array<{ type: 'monthly'; key: string; month: string; days: number; name: string; earned_at: string }>
+  }
+  timezone: string
+  pipeline_version: string
 }

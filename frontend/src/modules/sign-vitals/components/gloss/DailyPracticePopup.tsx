@@ -49,12 +49,15 @@ export default function DailyPracticePopup({ dateIso, entries, onClose }: DailyP
 
   // One row per sign — keep that day's best existing result for the badge.
   const bySign = new Map<string, GlossHistoryEntry>()
-  for (const entry of entries) {
-    const prev = bySign.get(entry.target_sign_id)
-    if (!prev || rankOf(entry) > rankOf(prev)) bySign.set(entry.target_sign_id, entry)
+  // Check my sign attempts (no target sign) are not practice: left out.
+  const practice = entries.filter((e) => e.target_sign_id !== null)
+  for (const entry of practice) {
+    const sign = entry.target_sign_id as string
+    const prev = bySign.get(sign)
+    if (!prev || rankOf(entry) > rankOf(prev)) bySign.set(sign, entry)
   }
   const rows = [...bySign.values()]
-  const totalAttempts = entries.length
+  const totalAttempts = practice.length
 
   return (
     <div
@@ -111,7 +114,7 @@ export default function DailyPracticePopup({ dateIso, entries, onClose }: DailyP
           ) : (
             <ul className="flex flex-col gap-2">
               {rows.map((entry) => {
-                const Icon = getSignIcon(entry.target_sign_id)
+                const Icon = getSignIcon(entry.target_sign_id as string)
                 const badge = badgeFor(entry)
                 return (
                   <li
