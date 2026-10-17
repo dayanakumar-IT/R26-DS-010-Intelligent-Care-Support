@@ -9,7 +9,7 @@ For each caregiver:
      and top_factor.feature (SHAP-derived) for that date
 
 Requires:
-  - The backend running locally on port 8000 (BASE_URL below).
+  - The backend running locally on port 8001 (BASE_URL below).
   - An admin JWT, either:
       * set as the ADMIN_JWT environment variable before running, or
       * pasted in when this script prompts for it (input is hidden).
@@ -25,7 +25,7 @@ from collections import Counter
 
 import httpx
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "batch_risk_scores.csv")
 
 # NOTE: these are caregiver_profiles.participant_id values (confirmed against
@@ -66,7 +66,7 @@ def check_backend_reachable(client: httpx.Client) -> None:
     except Exception as exc:
         raise SystemExit(
             f"Cannot reach the backend at {BASE_URL}/health ({exc}). "
-            "Start it first: uvicorn main:app --reload --port 8000"
+            "Start it first: uvicorn main:app --reload --port 8001"
         )
 
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -9,7 +10,9 @@ import {
   YAxis,
 } from 'recharts'
 import Icon from '../../../shared/components/Icon'
+import { RiskHistoryExplanations } from './CaregiverExplanations'
 import { useDeteriorationData } from '../context/useDeteriorationData'
+import { RISK_SERIES_LEGEND, STRESS_SERIES_LEGEND } from '../explanationText'
 import type { CaregiverHistoryResponse, RiskHistoryResponse } from '../services/api'
 import styles from './RiskHistorySection.module.css'
 
@@ -25,6 +28,12 @@ type PeriodValue = '7' | '14' | '30' | 'all'
 // the "Avg HR overlay" toggle is on — hr_mean is undefined (not just null)
 // when the overlay is off, so the chart never draws a phantom second line.
 type ChartPoint = RiskHistoryResponse['history'][number] & { hr_mean?: number | null }
+
+// Series names double as legend labels (which say which axis each series
+// uses — the left axis's 0% and the right axis's rating 1 share a
+// baseline); the tooltip relabels them to plain value names.
+const STRESS_TOOLTIP_LABEL = 'Reported stress (1-5)'
+const RISK_TOOLTIP_LABEL = 'Risk'
 
 function RiskChart({ history, showHrMean }: { history: ChartPoint[]; showHrMean: boolean }) {
   const nonNullCount = history.filter((point) => point.risk_probability !== null).length
@@ -53,6 +62,20 @@ function RiskChart({ history, showHrMean }: { history: ChartPoint[]; showHrMean:
             tickFormatter={(value: number) => `${Math.round(value * 100)}%`}
             width={44}
           />
+          {/* Two series want a right-hand axis (reported stress, Avg HR) but
+              only one is ever visible: the stress axis shows by default and
+              is hidden — while still scaling its dots to 1-5 — whenever the
+              Avg HR overlay takes over the right side. */}
+          <YAxis
+            yAxisId="stress"
+            orientation="right"
+            domain={[1, 5]}
+            ticks={[1, 2, 3, 4, 5]}
+            allowDecimals={false}
+            hide={showHrMean}
+            tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
+            width={32}
+          />
           {showHrMean && (
             <YAxis
               yAxisId="hr"
@@ -69,9 +92,14 @@ function RiskChart({ history, showHrMean }: { history: ChartPoint[]; showHrMean:
                   ? ([`${Math.round(value)} bpm`, 'Avg HR'] as [string, string])
                   : (['No data', 'Avg HR'] as [string, string])
               }
+              if (name === STRESS_SERIES_LEGEND) {
+                return typeof value === 'number'
+                  ? ([`${value}`, STRESS_TOOLTIP_LABEL] as [string, string])
+                  : (['No answer', STRESS_TOOLTIP_LABEL] as [string, string])
+              }
               return typeof value === 'number'
-                ? ([`${(value * 100).toFixed(1)}%`, 'Risk'] as [string, string])
-                : (['No data', 'Risk'] as [string, string])
+                ? ([`${(value * 100).toFixed(1)}%`, RISK_TOOLTIP_LABEL] as [string, string])
+                : (['No data', RISK_TOOLTIP_LABEL] as [string, string])
             }}
             labelFormatter={(label) => `Date: ${String(label)}`}
             contentStyle={{
@@ -86,7 +114,7 @@ function RiskChart({ history, showHrMean }: { history: ChartPoint[]; showHrMean:
             yAxisId="risk"
             type="monotone"
             dataKey="risk_probability"
-            name="Risk"
+            name={RISK_SERIES_LEGEND}
             stroke="var(--brand-blue)"
             strokeWidth={2}
             dot={{ r: 3, fill: 'var(--brand-blue)' }}
@@ -107,6 +135,22 @@ function RiskChart({ history, showHrMean }: { history: ChartPoint[]; showHrMean:
               isAnimationActive={false}
             />
           )}
+          {/* Dots only: strokeWidth={0} hides the connecting line (the
+              stroke colour is kept so the legend swatch still shows), and
+              days with no survey answer (null) simply get no dot. */}
+          <Line
+            yAxisId="stress"
+            type="monotone"
+            dataKey="actual_stress"
+            name={STRESS_SERIES_LEGEND}
+            stroke="var(--brand-purple)"
+            strokeWidth={0}
+            dot={{ r: 4, fill: 'var(--brand-purple)', stroke: 'var(--brand-purple)' }}
+            activeDot={{ r: 6 }}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -125,9 +169,13 @@ function RiskChart({ history, showHrMean }: { history: ChartPoint[]; showHrMean:
 export default function RiskHistorySection({
   history,
   caregiverId,
+  showExplanations = false,
 }: {
   history: RiskHistoryResponse
   caregiverId: string
+  // Caregiver Profiles turns on the plain-English "How to read" / "What the
+  // chart shows" cards; Risk Analysis keeps the chart on its own.
+  showExplanations?: boolean
 }) {
   const { getCachedCaregiverHistory, fetchAndCacheCaregiverHistory } = useDeteriorationData()
 
@@ -205,6 +253,10 @@ export default function RiskHistorySection({
       {overlayError && <p className={styles.status}>HR overlay unavailable: {overlayError}</p>}
 
       <RiskChart history={chartData} showHrMean={showHrMean && overlayData !== null} />
+
+      {/* Built from the same period-filtered points the chart shows, so the
+          sentence always describes what's on screen. */}
+      {showExplanations && <RiskHistoryExplanations points={periodFiltered} />}
     </>
   )
 }

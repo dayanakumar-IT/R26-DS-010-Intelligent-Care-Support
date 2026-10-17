@@ -517,13 +517,16 @@ def caregiver_risk_history(
     # Read-only: pulls the already-populated risk_probability /
     # risk_prediction / top_shap_factor columns straight from
     # daily_features. No model inference, no SHAP computation here.
+    # actual_stress (the caregiver's own 1-5 reported rating for that day)
+    # is returned alongside so the chart can show predicted vs reported —
+    # null on days with no survey answer.
     caregiver = _get_authorized_caregiver(caregiver_id, current_user)
     participant_id = caregiver["participant_id"]
 
     try:
         response = (
             supabase.table("daily_features")
-            .select("feature_date, risk_probability, risk_prediction, top_shap_factor")
+            .select("feature_date, risk_probability, risk_prediction, top_shap_factor, actual_stress")
             .eq("participant_id", participant_id)
             .order("feature_date", desc=False)
             .execute()
@@ -1088,6 +1091,620 @@ def model_performance(current_user: dict = Depends(get_current_user)) -> dict:
         )
 
     return rows[0]
+
+
+# Supabase/PostgREST returns at most 1000 rows per request by default, so
+# model-validation reads daily_features in pages of this size via .range()
+# rather than trusting one request to return everything.
+MODEL_VALIDATION_PAGE_SIZE = 1000
+
+# A reported rating at or above this counts as "really elevated" — the same
+# rule stress_binary was built from (stress_binary = actual_stress >= 3).
+ELEVATED_STRESS_RATING = 3
+
+# Below these, a caregiver's (or a single-caregiver view's) comparison is
+# treated as indicative only: too few days, or too few elevated days, for
+# an average or AUC to mean much.
+MIN_COMPARED_DAYS = 20
+MIN_ELEVATED_DAYS = 3
+
+# From notebook PULSE_Forecast_V0, fitted on train caregivers (124 caregivers, 4453 days);
+# test (26 caregivers): MAE 0.291, RMSE 0.379; 80% range covered 85.3% on test.
+# Forecasts ONE number: the average stress rating (1-5) over the next 7
+# calendar days, from the caregiver's own past daily ratings only. Separate
+# from — and does not change — the two-stage risk model above.
+FORECAST_PARAMS = {
+    "version": "PULSE Forecast V0",
+    "intercept": 0.18996385479925312,
+    "coef_last7_avg": 0.3440736072916285,
+    "coef_person_avg": 0.5262079045288208,
+    "range_low_offset": -0.5308834914290856,
+    "range_high_offset": 0.6041600460749323,
+    "window_days": 7,
+    "min_ratings_last7": 3,
+    "min_ratings_history": 7,
+    "min_ratings_next7": 3,
+    "rating_min": 1.0,
+    "rating_max": 5.0,
+}
+
+# Forecast-validation views with fewer compared days than this are shown as
+# indicative only.
+MIN_FORECAST_VALIDATION_DAYS = 20
+
+# Cap on the forecast-vs-actual scatter points returned (evenly sampled).
+MAX_FORECAST_VALIDATION_POINTS = 1500
+
+# Predicted-risk bands for the "band vs share actually elevated" view. Each
+# band is [low, high) except the last, which also includes 1.0.
+MODEL_VALIDATION_BANDS = (
+    (0.0, 0.30),
+    (0.30, 0.35),
+    (0.35, 0.40),
+    (0.40, 0.50),
+    (0.50, 1.0),
+)
+
+
+def _mean_or_none(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def _rank_auc(probabilities: list[float], labels: list[int]) -> float | None:
+    """Rank-based (Mann-Whitney) ROC-AUC: the probability that a randomly
+    chosen elevated day was given a higher risk score than a randomly chosen
+    non-elevated day, with ties counted as half (pandas rank(method="average")).
+    None when only one class is present, since AUC is undefined then.
+    """
+    positive_count = sum(labels)
+    negative_count = len(labels) - positive_count
+    if positive_count == 0 or negative_count == 0:
+        return None
+
+    ranks = pd.Series(probabilities).rank(method="average")
+    positive_rank_sum = float(ranks[pd.Series(labels) == 1].sum())
+    return (positive_rank_sum - positive_count * (positive_count + 1) / 2) / (
+        positive_count * negative_count
+    )
+
+
+def _fetch_model_validation_rows(caregiver_rows: list[dict]) -> list[dict]:
+    """Every scored-and-rated historical daily_features row for the given
+    caregivers. Pages through each participant's rows with .range() so the
+    1000-row default limit can never silently truncate the data.
+
+    Demo-reveal rows are skipped here in Python rather than with
+    .neq("feature_pipeline_version", ...) in the query — PostgREST's neq
+    also drops rows where the column is NULL, which would silently lose
+    rows instead of only the demo ones.
+    """
+    rows: list[dict] = []
+    for caregiver in caregiver_rows:
+        start = 0
+        while True:
+            try:
+                page_response = (
+                    supabase.table("daily_features")
+                    .select(
+                        "feature_date, risk_probability, actual_stress, "
+                        "stress_binary, feature_pipeline_version"
+                    )
+                    .eq("participant_id", caregiver["participant_id"])
+                    .order("feature_date", desc=False)
+                    .range(start, start + MODEL_VALIDATION_PAGE_SIZE - 1)
+                    .execute()
+                )
+            except PostgrestAPIError as exc:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to query daily_features: {exc}"
+                ) from exc
+
+            page = page_response.data
+            for row in page:
+                if row.get("feature_pipeline_version") == FEATURE_PIPELINE_VERSION_DEMO_REVEAL:
+                    continue
+                if row.get("risk_probability") is None or row.get("actual_stress") is None:
+                    continue
+                rows.append({**row, "caregiver_id": caregiver["id"]})
+
+            if len(page) < MODEL_VALIDATION_PAGE_SIZE:
+                break
+            start += MODEL_VALIDATION_PAGE_SIZE
+
+    return rows
+
+
+def _has_enough_data(compared_days: int, elevated_days: int) -> bool:
+    return compared_days >= MIN_COMPARED_DAYS and elevated_days >= MIN_ELEVATED_DAYS
+
+
+def _compute_caregiver_breakdown(rows: list[dict], caregiver_rows: list[dict]) -> list[dict]:
+    """One item per in-scope caregiver (including caregivers with no
+    compared days), comparing the average predicted risk on that person's
+    calm days (rating < 3) with their elevated days (rating >= 3).
+    """
+    rows_by_caregiver: dict[str, list[dict]] = {}
+    for row in rows:
+        rows_by_caregiver.setdefault(row["caregiver_id"], []).append(row)
+
+    breakdown = []
+    for caregiver in caregiver_rows:
+        caregiver_days = rows_by_caregiver.get(caregiver["id"], [])
+        calm = [
+            float(row["risk_probability"])
+            for row in caregiver_days
+            if float(row["actual_stress"]) < ELEVATED_STRESS_RATING
+        ]
+        elevated = [
+            float(row["risk_probability"])
+            for row in caregiver_days
+            if float(row["actual_stress"]) >= ELEVATED_STRESS_RATING
+        ]
+        avg_pred_calm = _mean_or_none(calm)
+        avg_pred_elevated = _mean_or_none(elevated)
+        breakdown.append({
+            "caregiver_id": caregiver["id"],
+            "display_name": caregiver["display_name"],
+            "ward": caregiver["ward"],
+            "days_compared": len(caregiver_days),
+            "elevated_days": len(elevated),
+            "avg_pred_calm": avg_pred_calm,
+            "avg_pred_elevated": avg_pred_elevated,
+            "gap": (
+                avg_pred_elevated - avg_pred_calm
+                if avg_pred_calm is not None and avg_pred_elevated is not None
+                else None
+            ),
+            "enough_data": _has_enough_data(len(caregiver_days), len(elevated)),
+        })
+
+    breakdown.sort(key=lambda item: item["display_name"])
+    return breakdown
+
+
+def _compute_model_validation(rows: list[dict], breakdown_caregivers: list[dict] | None) -> dict:
+    """Pure calculation behind GET /analytics/model-validation — no
+    database access, so it can be run directly against already-fetched rows.
+    Every input row has non-null risk_probability and actual_stress.
+
+    breakdown_caregivers: the in-scope caregivers to build by_caregiver for
+    (the all-caregivers view), or None for a single-caregiver view — then
+    by_caregiver is empty and the caregiver-count headline fields are null.
+    """
+    probabilities = [float(row["risk_probability"]) for row in rows]
+    ratings = [float(row["actual_stress"]) for row in rows]
+    elevated = [1 if rating >= ELEVATED_STRESS_RATING else 0 for rating in ratings]
+    elevated_days = sum(elevated)
+
+    by_caregiver = (
+        _compute_caregiver_breakdown(rows, breakdown_caregivers)
+        if breakdown_caregivers is not None
+        else []
+    )
+    enough_data_caregivers = [item for item in by_caregiver if item["enough_data"]]
+
+    headline = {
+        "days_scored": len(rows),
+        "compared_days": len(rows),
+        "elevated_days": elevated_days,
+        "caregivers": len({row["caregiver_id"] for row in rows}),
+        "share_elevated": _mean_or_none([float(e) for e in elevated]),
+        "avg_predicted_risk": _mean_or_none(probabilities),
+        "daily_roc_auc": _rank_auc(probabilities, elevated),
+        "enough_data": _has_enough_data(len(rows), elevated_days),
+        # Both counted over enough_data caregivers only, so they read as
+        # "X of Y" together ("scored stressful days higher for X of the Y
+        # caregivers with enough data").
+        "caregivers_with_enough_data": (
+            len(enough_data_caregivers) if breakdown_caregivers is not None else None
+        ),
+        "caregivers_positive_gap": (
+            sum(1 for item in enough_data_caregivers if item["gap"] is not None and item["gap"] > 0)
+            if breakdown_caregivers is not None
+            else None
+        ),
+    }
+
+    by_rating = []
+    for rating in range(1, 6):
+        rating_probabilities = [p for p, r in zip(probabilities, ratings) if round(r) == rating]
+        by_rating.append({
+            "rating": rating,
+            "days": len(rating_probabilities),
+            "avg_predicted_risk": _mean_or_none(rating_probabilities),
+        })
+
+    not_elevated_probabilities = [p for p, e in zip(probabilities, elevated) if e == 0]
+    elevated_probabilities = [p for p, e in zip(probabilities, elevated) if e == 1]
+    by_binary = [
+        {
+            "label": "Not elevated (rating 1-2)",
+            "days": len(not_elevated_probabilities),
+            "avg_predicted_risk": _mean_or_none(not_elevated_probabilities),
+        },
+        {
+            "label": "Elevated (rating 3-5)",
+            "days": len(elevated_probabilities),
+            "avg_predicted_risk": _mean_or_none(elevated_probabilities),
+        },
+    ]
+
+    by_band = []
+    for index, (low, high) in enumerate(MODEL_VALIDATION_BANDS):
+        is_last_band = index == len(MODEL_VALIDATION_BANDS) - 1
+        band_elevated = [
+            float(e)
+            for p, e in zip(probabilities, elevated)
+            if low <= p < high or (is_last_band and p == high)
+        ]
+        by_band.append({
+            "band": f"{low:.2f}-{high:.2f}",
+            "days": len(band_elevated),
+            "share_actually_elevated": _mean_or_none(band_elevated),
+        })
+
+    points = [{"p": p, "elevated": e} for p, e in zip(probabilities, elevated)]
+
+    # Only rows that actually have a stress_binary can be compared — rows
+    # where it's NULL are left out of this share rather than counted as
+    # disagreements.
+    consistency = [
+        1.0 if e == int(row["stress_binary"]) else 0.0
+        for row, e in zip(rows, elevated)
+        if row.get("stress_binary") is not None
+    ]
+
+    return {
+        "headline": headline,
+        "by_rating": by_rating,
+        "by_binary": by_binary,
+        "by_band": by_band,
+        "points": points,
+        "consistency_check": _mean_or_none(consistency),
+        "by_caregiver": by_caregiver,
+    }
+
+
+@app.get("/analytics/model-validation")
+def model_validation(
+    caregiver_id: str | None = Query(default=None),
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    # Read-only: compares the stored risk_probability against the rating
+    # each caregiver actually reported that day (actual_stress), over
+    # historical caregivers only. No model inference here. Demo-reveal rows
+    # are always excluded (see _fetch_model_validation_rows).
+    role = current_user["role"]
+    if role not in ("admin", "supervisor"):
+        raise HTTPException(status_code=403, detail="Admin or supervisor role required.")
+
+    if caregiver_id:
+        # Single-caregiver view: _get_authorized_caregiver enforces the same
+        # access rule as every other per-caregiver endpoint (404 / 403), and
+        # only this caregiver's rows are ever fetched — nothing from anyone
+        # else can reach the response.
+        caregiver = _get_authorized_caregiver(caregiver_id, current_user)
+        if caregiver["data_mode"] != "historical":
+            raise HTTPException(
+                status_code=400,
+                detail="Model check is only available for historical caregivers.",
+            )
+        rows = _fetch_model_validation_rows([caregiver])
+        return _compute_model_validation(rows, breakdown_caregivers=None)
+
+    query = (
+        supabase.table("caregiver_profiles")
+        .select("id, display_name, ward, participant_id, supervisor_id")
+        .eq("data_mode", "historical")
+    )
+
+    if role == "supervisor":
+        # Same scoping as GET /analytics/team-trends — filtered explicitly
+        # here, not left to RLS, since this client uses the service-role key.
+        query = query.eq("supervisor_id", current_user["id"])
+
+    try:
+        caregivers_response = query.execute()
+    except PostgrestAPIError as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to query caregiver_profiles: {exc}"
+        ) from exc
+
+    caregiver_rows = caregivers_response.data
+    rows = _fetch_model_validation_rows(caregiver_rows)
+    return _compute_model_validation(rows, breakdown_caregivers=caregiver_rows)
+
+
+def _load_caregiver_ratings(caregiver: dict) -> list[tuple[str, float]]:
+    """All of one caregiver's daily stress ratings (1-5), ascending by date,
+    as (ISO date, rating) pairs — the only input PULSE Forecast V0 uses.
+
+    Historical caregivers: daily_features.actual_stress, paged with .range(),
+    demo-reveal rows skipped in Python (not .neq, which also drops NULLs).
+    Demo (replay) caregivers: only days already revealed in Demo Control —
+    raw_upload_staging.real_stress where revealed is true — so the forecast
+    never sees a day the demo hasn't reached yet.
+    """
+    if caregiver["data_mode"] == "replay":
+        table, rating_column = "raw_upload_staging", "real_stress"
+        columns = "feature_date, real_stress"
+    else:
+        table, rating_column = "daily_features", "actual_stress"
+        columns = "feature_date, actual_stress, feature_pipeline_version"
+
+    ratings: list[tuple[str, float]] = []
+    start = 0
+    while True:
+        query = supabase.table(table).select(columns)
+        if caregiver["data_mode"] == "replay":
+            query = query.eq("caregiver_id", caregiver["id"]).eq("revealed", True)
+        else:
+            query = query.eq("participant_id", caregiver["participant_id"])
+        try:
+            page_response = (
+                query.order("feature_date", desc=False)
+                .range(start, start + MODEL_VALIDATION_PAGE_SIZE - 1)
+                .execute()
+            )
+        except PostgrestAPIError as exc:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to query {table}: {exc}"
+            ) from exc
+
+        page = page_response.data
+        for row in page:
+            if row.get("feature_pipeline_version") == FEATURE_PIPELINE_VERSION_DEMO_REVEAL:
+                continue
+            if row.get(rating_column) is None:
+                continue
+            ratings.append((row["feature_date"], float(row[rating_column])))
+
+        if len(page) < MODEL_VALIDATION_PAGE_SIZE:
+            break
+        start += MODEL_VALIDATION_PAGE_SIZE
+
+    ratings.sort(key=lambda pair: pair[0])
+    return ratings
+
+
+def _clip_rating(value: float) -> float:
+    return max(FORECAST_PARAMS["rating_min"], min(FORECAST_PARAMS["rating_max"], value))
+
+
+def _compute_forecast_series(ratings: list[tuple[str, float]]) -> list[dict]:
+    """PULSE Forecast V0 for every eligible rated date ("as_of"), ascending.
+
+    For each as_of date that has a rating:
+      last7_avg  = mean rating on calendar days as_of-6 .. as_of (n_last7 of them)
+      person_avg = mean of all ratings up to and including as_of (n_hist of them)
+      eligible only if n_last7 >= 3 and n_hist >= 7 — otherwise no forecast
+      forecast   = intercept + coef_last7_avg*last7_avg + coef_person_avg*person_avg
+      80% range  = forecast + offsets; low/high are clipped to 1..5 for display,
+                   low_unclipped/high_unclipped are kept for coverage
+      actual_next7 = mean rating on as_of+1 .. as_of+7 if >= 3 ratings there, else None
+    """
+    params = FORECAST_PARAMS
+    window = timedelta(days=params["window_days"])
+    dated = [(datetime.strptime(day, "%Y-%m-%d").date(), rating) for day, rating in ratings]
+
+    series = []
+    running_sum = 0.0
+    for index, (as_of, as_of_rating) in enumerate(dated):
+        running_sum += as_of_rating
+        n_hist = index + 1
+        last7 = [rating for day, rating in dated if as_of - window < day <= as_of]
+        if n_hist < params["min_ratings_history"] or len(last7) < params["min_ratings_last7"]:
+            continue
+
+        last7_avg = sum(last7) / len(last7)
+        person_avg = running_sum / n_hist
+        forecast = (
+            params["intercept"]
+            + params["coef_last7_avg"] * last7_avg
+            + params["coef_person_avg"] * person_avg
+        )
+        low_unclipped = forecast + params["range_low_offset"]
+        high_unclipped = forecast + params["range_high_offset"]
+
+        next7 = [rating for day, rating in dated if as_of < day <= as_of + window]
+        actual_next7 = (
+            sum(next7) / len(next7) if len(next7) >= params["min_ratings_next7"] else None
+        )
+
+        series.append({
+            "date": as_of.isoformat(),
+            "forecast": forecast,
+            "low": _clip_rating(low_unclipped),
+            "high": _clip_rating(high_unclipped),
+            "low_unclipped": low_unclipped,
+            "high_unclipped": high_unclipped,
+            "last7_avg": last7_avg,
+            "person_avg": person_avg,
+            "n_last7": len(last7),
+            "n_hist": n_hist,
+            "actual_next7": actual_next7,
+        })
+
+    return series
+
+
+def _forecast_insufficient_reason(caregiver: dict, rating_count: int) -> str:
+    if rating_count == 0:
+        if caregiver["data_mode"] == "replay":
+            return "No revealed ratings yet. Reveal days in Demo Control to build a forecast."
+        return "No stress ratings have been recorded for this caregiver yet."
+    if rating_count < FORECAST_PARAMS["min_ratings_history"]:
+        return (
+            f"Needs at least {FORECAST_PARAMS['min_ratings_history']} ratings so far "
+            f"(this caregiver has {rating_count}) and "
+            f"{FORECAST_PARAMS['min_ratings_last7']} in the last 7 days."
+        )
+    return (
+        f"Needs at least {FORECAST_PARAMS['min_ratings_history']} ratings so far and "
+        f"{FORECAST_PARAMS['min_ratings_last7']} in the last 7 days; no rated date meets both yet."
+    )
+
+
+def _error_metrics(pairs: list[tuple[float, float]]) -> dict:
+    """MAE and RMSE over (predicted, actual) pairs; both None when empty."""
+    if not pairs:
+        return {"mae": None, "rmse": None}
+    errors = [predicted - actual for predicted, actual in pairs]
+    return {
+        "mae": sum(abs(error) for error in errors) / len(errors),
+        "rmse": math.sqrt(sum(error * error for error in errors) / len(errors)),
+    }
+
+
+def _evenly_sample(items: list, limit: int) -> list:
+    if len(items) <= limit:
+        return items
+    step = (len(items) - 1) / (limit - 1)
+    return [items[round(index * step)] for index in range(limit)]
+
+
+def _compute_forecast_validation(
+    series_by_caregiver: list[tuple[dict, list[dict]]], include_breakdown: bool
+) -> dict:
+    """Forecast vs what really happened, over every eligible date that has
+    an actual_next7. Compares the blend forecast with the two simple guesses
+    it is built from (last 7 days' average, person's average so far).
+    """
+    compared: list[tuple[dict, dict]] = [
+        (caregiver, item)
+        for caregiver, series in series_by_caregiver
+        for item in series
+        if item["actual_next7"] is not None
+    ]
+
+    covered = [
+        1.0 if item["low_unclipped"] <= item["actual_next7"] <= item["high_unclipped"] else 0.0
+        for _, item in compared
+    ]
+
+    by_caregiver = []
+    if include_breakdown:
+        for caregiver, series in series_by_caregiver:
+            pairs = [
+                (item["forecast"], item["actual_next7"])
+                for item in series
+                if item["actual_next7"] is not None
+            ]
+            by_caregiver.append({
+                "caregiver_id": caregiver["id"],
+                "display_name": caregiver["display_name"],
+                "ward": caregiver["ward"],
+                "days": len(pairs),
+                "blend_mae": _error_metrics(pairs)["mae"],
+                "enough_data": len(pairs) >= MIN_FORECAST_VALIDATION_DAYS,
+            })
+        by_caregiver.sort(key=lambda entry: entry["display_name"])
+
+    return {
+        "days": len(compared),
+        "caregivers": len({caregiver["id"] for caregiver, _ in compared}),
+        "enough_data": len(compared) >= MIN_FORECAST_VALIDATION_DAYS,
+        "blend": _error_metrics([(item["forecast"], item["actual_next7"]) for _, item in compared]),
+        "last7_guess": _error_metrics([(item["last7_avg"], item["actual_next7"]) for _, item in compared]),
+        "person_avg_guess": _error_metrics(
+            [(item["person_avg"], item["actual_next7"]) for _, item in compared]
+        ),
+        "range_coverage": _mean_or_none(covered),
+        "points": _evenly_sample(
+            [{"forecast": item["forecast"], "actual": item["actual_next7"]} for _, item in compared],
+            MAX_FORECAST_VALIDATION_POINTS,
+        ),
+        "by_caregiver": by_caregiver,
+    }
+
+
+@app.get("/caregivers/{caregiver_id}/forecast")
+def caregiver_forecast(
+    caregiver_id: str, current_user: dict = Depends(get_current_user)
+) -> dict:
+    # Read-only PULSE Forecast V0 for one caregiver: no model artifacts, no
+    # writes — computed on request from their own past ratings.
+    caregiver = _get_authorized_caregiver(caregiver_id, current_user)
+    ratings = _load_caregiver_ratings(caregiver)
+    series = _compute_forecast_series(ratings)
+
+    if series:
+        newest = series[-1]
+        latest = {
+            "as_of": newest["date"],
+            "forecast": newest["forecast"],
+            "low": newest["low"],
+            "high": newest["high"],
+            "last7_avg": newest["last7_avg"],
+            "person_avg": newest["person_avg"],
+            "n_last7": newest["n_last7"],
+            "n_hist": newest["n_hist"],
+        }
+    else:
+        # Never invent a number for a caregiver who isn't eligible.
+        latest = {"insufficient": True, "reason": _forecast_insufficient_reason(caregiver, len(ratings))}
+
+    return {
+        "params_version": FORECAST_PARAMS["version"],
+        "latest": latest,
+        "series": [
+            {
+                "date": item["date"],
+                "forecast": item["forecast"],
+                "low": item["low"],
+                "high": item["high"],
+                "last7_avg": item["last7_avg"],
+                "person_avg": item["person_avg"],
+                "actual_next7": item["actual_next7"],
+            }
+            for item in series
+        ],
+        "daily_ratings": [{"date": day, "rating": rating} for day, rating in ratings],
+    }
+
+
+@app.get("/analytics/forecast-validation")
+def forecast_validation(
+    caregiver_id: str | None = Query(default=None),
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    # Same access rules and scoping as /analytics/model-validation.
+    role = current_user["role"]
+    if role not in ("admin", "supervisor"):
+        raise HTTPException(status_code=403, detail="Admin or supervisor role required.")
+
+    if caregiver_id:
+        # Single-caregiver view: _get_authorized_caregiver enforces access
+        # (404 / 403) and only this caregiver's ratings are loaded. A demo
+        # (replay) caregiver is allowed here too, scored on revealed days
+        # only, so the Forecast tab can show that person's numbers — demo
+        # caregivers never enter the all-caregivers aggregate below.
+        caregiver = _get_authorized_caregiver(caregiver_id, current_user)
+        series = _compute_forecast_series(_load_caregiver_ratings(caregiver))
+        return _compute_forecast_validation([(caregiver, series)], include_breakdown=False)
+
+    query = (
+        supabase.table("caregiver_profiles")
+        .select("id, display_name, ward, participant_id, supervisor_id, data_mode")
+        .eq("data_mode", "historical")
+    )
+    if role == "supervisor":
+        # Filtered explicitly here, not left to RLS — this client uses the
+        # service-role key.
+        query = query.eq("supervisor_id", current_user["id"])
+
+    try:
+        caregivers_response = query.execute()
+    except PostgrestAPIError as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to query caregiver_profiles: {exc}"
+        ) from exc
+
+    series_by_caregiver = [
+        (caregiver, _compute_forecast_series(_load_caregiver_ratings(caregiver)))
+        for caregiver in caregivers_response.data
+    ]
+    return _compute_forecast_validation(series_by_caregiver, include_breakdown=True)
 
 
 # Same split used elsewhere for classifying a single risk_probability

@@ -165,6 +165,9 @@ export interface RiskHistoryPoint {
   risk_probability: number | null
   risk_prediction: 0 | 1 | null
   top_shap_factor: string | null
+  // The caregiver's own reported stress rating (1-5) for that day — null
+  // on days with no survey answer, never fabricated.
+  actual_stress: number | null
 }
 
 export interface RiskHistoryResponse {
@@ -262,6 +265,181 @@ export function simulateCaregiver(id: string, date?: string): Promise<SimulateRe
 
 export function getModelPerformance(): Promise<ModelPerformanceResponse> {
   return authorizedFetch<ModelPerformanceResponse>('/analytics/model-performance')
+}
+
+export interface ModelValidationHeadline {
+  days_scored: number
+  // Same number as days_scored: days with both a risk score and a rating.
+  compared_days: number
+  elevated_days: number
+  caregivers: number
+  // Share of scored days the caregiver actually rated 3-5.
+  share_elevated: number | null
+  avg_predicted_risk: number | null
+  // Rank-based (Mann-Whitney) AUC over one row per day — null when only
+  // one class is present.
+  daily_roc_auc: number | null
+  // compared_days >= 20 and elevated_days >= 3.
+  enough_data: boolean
+  // Both null for a single-caregiver view; otherwise counted over
+  // by_caregiver items with enough_data (positive gap = model scored that
+  // person's stressful days higher).
+  caregivers_with_enough_data: number | null
+  caregivers_positive_gap: number | null
+}
+
+export interface ModelValidationByCaregiver {
+  caregiver_id: string
+  display_name: string
+  ward: string | null
+  days_compared: number
+  elevated_days: number
+  // Mean risk on days rated 1-2 / 3-5 — null when there are no such days.
+  avg_pred_calm: number | null
+  avg_pred_elevated: number | null
+  // avg_pred_elevated - avg_pred_calm, null if either side is null.
+  gap: number | null
+  enough_data: boolean
+}
+
+export interface ModelValidationByRating {
+  rating: number
+  days: number
+  avg_predicted_risk: number | null
+}
+
+export interface ModelValidationByBinary {
+  label: string
+  days: number
+  avg_predicted_risk: number | null
+}
+
+export interface ModelValidationByBand {
+  band: string
+  days: number
+  share_actually_elevated: number | null
+}
+
+export interface ModelValidationPoint {
+  p: number
+  elevated: 0 | 1
+}
+
+export interface ModelValidationResponse {
+  headline: ModelValidationHeadline
+  by_rating: ModelValidationByRating[]
+  by_binary: ModelValidationByBinary[]
+  by_band: ModelValidationByBand[]
+  // One entry per scored-and-rated day, for client-side cutoff analysis.
+  points: ModelValidationPoint[]
+  // Share of rows where (actual_stress >= 3) matches stress_binary.
+  consistency_check: number | null
+  // One item per in-scope historical caregiver; empty for a
+  // single-caregiver view.
+  by_caregiver: ModelValidationByCaregiver[]
+}
+
+// Without caregiverId: all in-scope historical caregivers. With it: only
+// that caregiver's days (the backend enforces access, 404/403).
+export function getModelValidation(caregiverId?: string): Promise<ModelValidationResponse> {
+  const query = caregiverId ? `?caregiver_id=${encodeURIComponent(caregiverId)}` : ''
+  return authorizedFetch<ModelValidationResponse>(`/analytics/model-validation${query}`)
+}
+
+// --- PULSE Forecast V0: expected AVERAGE stress rating (1-5) over the next
+// 7 days, from the caregiver's own past ratings only (separate from the
+// risk model) ---
+
+export interface ForecastLatest {
+  as_of: string
+  forecast: number
+  // 80% range, clipped to 1-5 for display.
+  low: number
+  high: number
+  last7_avg: number
+  person_avg: number
+  n_last7: number
+  n_hist: number
+}
+
+export interface ForecastInsufficient {
+  insufficient: true
+  reason: string
+}
+
+export interface ForecastSeriesItem {
+  date: string
+  forecast: number
+  low: number
+  high: number
+  last7_avg: number
+  person_avg: number
+  // Real average of the next 7 days — null until at least 3 of them are rated.
+  actual_next7: number | null
+}
+
+export interface DailyRating {
+  date: string
+  rating: number
+}
+
+export interface ForecastResponse {
+  params_version: string
+  latest: ForecastLatest | ForecastInsufficient
+  series: ForecastSeriesItem[]
+  daily_ratings: DailyRating[]
+}
+
+export function isForecastInsufficient(
+  latest: ForecastLatest | ForecastInsufficient,
+): latest is ForecastInsufficient {
+  return 'insufficient' in latest
+}
+
+export interface ForecastErrorMetrics {
+  mae: number | null
+  rmse: number | null
+}
+
+export interface ForecastValidationPoint {
+  forecast: number
+  actual: number
+}
+
+export interface ForecastValidationByCaregiver {
+  caregiver_id: string
+  display_name: string
+  ward: string | null
+  days: number
+  blend_mae: number | null
+  enough_data: boolean
+}
+
+export interface ForecastValidationResponse {
+  days: number
+  caregivers: number
+  // days >= 20.
+  enough_data: boolean
+  blend: ForecastErrorMetrics
+  last7_guess: ForecastErrorMetrics
+  person_avg_guess: ForecastErrorMetrics
+  // Share of days whose real next-7 average fell inside the 80% range.
+  range_coverage: number | null
+  // At most 1500, evenly sampled.
+  points: ForecastValidationPoint[]
+  // Empty for a single-caregiver view.
+  by_caregiver: ForecastValidationByCaregiver[]
+}
+
+export function getForecast(caregiverId: string): Promise<ForecastResponse> {
+  return authorizedFetch<ForecastResponse>(`/caregivers/${encodeURIComponent(caregiverId)}/forecast`)
+}
+
+// Without caregiverId: all in-scope historical caregivers. With it: only
+// that caregiver (demo caregivers are scored on revealed days only).
+export function getForecastValidation(caregiverId?: string): Promise<ForecastValidationResponse> {
+  const query = caregiverId ? `?caregiver_id=${encodeURIComponent(caregiverId)}` : ''
+  return authorizedFetch<ForecastValidationResponse>(`/analytics/forecast-validation${query}`)
 }
 
 export function getRiskSummary(): Promise<RiskSummaryResponse> {

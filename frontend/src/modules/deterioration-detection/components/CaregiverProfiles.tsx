@@ -15,10 +15,22 @@ import {
 import Icon from '../../../shared/components/Icon'
 import CaregiverSearchSelect from './CaregiverSearchSelect'
 import CollapsibleSection from './CollapsibleSection'
+import ForecastSection from './ForecastSection'
 import RiskHistorySection from './RiskHistorySection'
-import ShapFactorsList from './ShapFactorsList'
 import WardChip from './WardChip'
+import ExplainCard from './ExplainCard'
+import { BaselineExplanations, FactorExplanations, TodayAtAGlance } from './CaregiverExplanations'
 import { useDeteriorationData } from '../context/useDeteriorationData'
+import {
+  MODEL_USE_LABEL,
+  WORKLOAD_EXPLANATIONS,
+  aboutWorkloadCard,
+  assessmentLine,
+  expectedPhrase,
+  vsUsualText,
+} from '../explanationText'
+import { computeSevenDayTrend } from '../riskTrend'
+import type { SevenDayTrend } from '../riskTrend'
 import type {
   BaselineHistoryPoint,
   CaregiverHistoryResponse,
@@ -123,9 +135,12 @@ function BaselineComparison({ assessment }: { assessment: SimulateResponse }) {
   const deviation = actual - expected
   const absDeviation = Math.abs(deviation)
   const isSmall = absDeviation < SMALL_DEVIATION_BPM
+  // Not "personal": the expected value comes from a model trained across
+  // many people that never sees this person's absolute heart-rate level
+  // (see EXPECTED_HR_EXPLANATION in explanationText.ts).
   const caption = isSmall
-    ? `Within their normal range (${absDeviation.toFixed(1)} bpm difference).`
-    : `${absDeviation.toFixed(1)} bpm ${deviation > 0 ? 'above' : 'below'} their personal expected pattern.`
+    ? `Close to ${expectedPhrase} (${absDeviation.toFixed(1)} bpm difference).`
+    : `${absDeviation.toFixed(1)} bpm ${deviation > 0 ? 'above' : 'below'} ${expectedPhrase}.`
 
   const data = [
     { label: 'Expected', value: expected },
@@ -261,6 +276,10 @@ function PersonalBaselineSubTab({
 
   return (
     <div className={styles.subTabSections}>
+      {/* The usual-gap card is computed client-side from the baseline
+          history already loaded below — it waits for it rather than guess. */}
+      <BaselineExplanations assessment={assessment} baselineHistory={loading || error ? null : history} />
+
       <div>
         <p className={styles.subSectionHeading}>Most recent day</p>
         {assessmentLoading ? (
@@ -299,7 +318,31 @@ const WORKLOAD_FIELDS: {
   { key: 'resting_heart_rate', label: 'Resting heart rate', unit: 'bpm' },
 ]
 
-// Plain factual display only — no interpretation/scoring, per the request.
+// "vs usual" needs at least this many earlier recorded days of a measure.
+const MIN_USUAL_WORKLOAD_DAYS = 7
+
+// This day's value compared with the average of this person's earlier days
+// (the latest day excluded). Null when there isn't enough history, the
+// value is missing, or the average is zero (no meaningful percentage).
+function vsUsual(
+  rows: CaregiverHistoryResponse['daily_features'],
+  key: (typeof WORKLOAD_FIELDS)[number]['key'],
+): { ratio: number; earlierDays: number } | null {
+  const latestValue = rows[rows.length - 1]?.[key]
+  if (typeof latestValue !== 'number') return null
+  const earlier = rows
+    .slice(0, -1)
+    .map((row) => row[key])
+    .filter((value): value is number => typeof value === 'number')
+  if (earlier.length < MIN_USUAL_WORKLOAD_DAYS) return null
+  const average = earlier.reduce((sum, value) => sum + value, 0) / earlier.length
+  if (average === 0) return null
+  return { ratio: (latestValue - average) / average, earlierDays: earlier.length }
+}
+
+// Factual display plus plain-English context: what each measure means, how
+// this day compares with the person's own usual, and whether the risk model
+// uses it at all (verified against the model — see WORKLOAD_EXPLANATIONS).
 function WorkloadSubTab({ history }: { history: CaregiverHistoryResponse }) {
   const rows = history.daily_features
   const latest = rows.length > 0 ? rows[rows.length - 1]! : null
@@ -310,71 +353,59 @@ function WorkloadSubTab({ history }: { history: CaregiverHistoryResponse }) {
 
   return (
     <div>
+      <div className={styles.workloadIntro}>
+        <ExplainCard
+          emoji="⌚"
+          title={aboutWorkloadCard.title}
+          headline={aboutWorkloadCard.headline}
+          meaning={aboutWorkloadCard.meaning}
+          explainMore={
+            <>
+              {aboutWorkloadCard.explainMore.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </>
+          }
+        />
+      </div>
       <p className={styles.captionText}>Most recent recorded day: {latest.feature_date}</p>
       <div className={styles.workloadGrid}>
         {WORKLOAD_FIELDS.map((field) => {
           const value = latest[field.key]
+          const explanation = WORKLOAD_EXPLANATIONS[field.key]
+          const usual = vsUsual(rows, field.key)
           return (
             <div key={field.key} className={styles.workloadCard}>
-              <p className={styles.workloadLabel}>{field.label}</p>
+              <p className={styles.workloadLabel}>
+                {explanation && (
+                  <span className={styles.workloadEmoji} aria-hidden="true">
+                    {explanation.emoji}
+                  </span>
+                )}
+                {field.label}
+              </p>
               <p className={styles.workloadValue}>
                 {typeof value === 'number'
                   ? `${Math.round(value).toLocaleString()}${field.unit ? ` ${field.unit}` : ''}`
                   : '—'}
               </p>
+              {explanation && <p className={styles.workloadMeaning}>{explanation.meaning}</p>}
+              {usual && <p className={styles.workloadUsual}>{vsUsualText(usual.ratio, usual.earlierDays)}</p>}
+              {explanation && (
+                <span
+                  className={`${styles.modelBadge} ${
+                    explanation.modelUse === 'used' ? styles.modelBadgeUsed : styles.modelBadgeUnused
+                  }`}
+                >
+                  {MODEL_USE_LABEL[explanation.modelUse]}
+                </span>
+              )}
             </div>
           )
         })}
       </div>
     </div>
   )
-}
-
-// Percentage-point threshold below which a 7-day-vs-previous-7-day change
-// reads as "Stable" rather than naming a direction — a plain, explicit
-// judgment call (not derived from any research), chosen the same way the
-// backend's own risk-tier thresholds document their reasoning: small
-// enough to catch a genuine shift, large enough not to flag routine
-// day-to-day noise as a trend.
-const TREND_STABLE_THRESHOLD_POINTS = 3
-
-interface SevenDayTrend {
-  // 'not-enough-history': fewer than 7 scored days exist at all.
-  // 'not-enough-comparison': 7+ scored days exist, but fewer than 14, so
-  // there's no full prior 7-day window to compare against.
-  // 'ok': a full comparison was computed.
-  status: 'not-enough-history' | 'not-enough-comparison' | 'ok'
-  direction?: 'increasing' | 'stable' | 'decreasing'
-  pointChange?: number
-  elevatedCount?: number
-}
-
-function computeSevenDayTrend(history: RiskHistoryResponse['history']): SevenDayTrend {
-  const scored = history.filter((point) => point.risk_probability !== null)
-  if (scored.length < 7) {
-    return { status: 'not-enough-history' }
-  }
-
-  const last7 = scored.slice(-7)
-  const elevatedCount = last7.filter((point) => point.risk_prediction === 1).length
-
-  if (scored.length < 14) {
-    return { status: 'not-enough-comparison', elevatedCount }
-  }
-
-  const previous7 = scored.slice(-14, -7)
-  const average = (points: typeof last7) =>
-    points.reduce((sum, point) => sum + point.risk_probability!, 0) / points.length
-  const pointChange = (average(last7) - average(previous7)) * 100
-
-  const direction =
-    pointChange > TREND_STABLE_THRESHOLD_POINTS
-      ? 'increasing'
-      : pointChange < -TREND_STABLE_THRESHOLD_POINTS
-        ? 'decreasing'
-        : 'stable'
-
-  return { status: 'ok', direction, pointChange, elevatedCount }
 }
 
 function trendHeadlineClass(direction: SevenDayTrend['direction']): string {
@@ -406,6 +437,7 @@ function SevenDayTrendCard({ riskHistory }: { riskHistory: RiskHistoryResponse }
 }
 
 function OverviewSubTab({
+  caregiverId,
   history,
   assessment,
   assessmentLoading,
@@ -414,6 +446,7 @@ function OverviewSubTab({
   riskHistoryLoading,
   riskHistoryError,
 }: {
+  caregiverId: string
   history: CaregiverHistoryResponse
   assessment: SimulateResponse | null
   assessmentLoading: boolean
@@ -424,6 +457,8 @@ function OverviewSubTab({
 }) {
   return (
     <div className={styles.subTabSections}>
+      <TodayAtAGlance caregiverId={caregiverId} assessment={assessment} riskHistory={riskHistory} />
+
       <div>
         <p className={styles.subSectionHeading}>Current assessment</p>
         {assessmentLoading ? (
@@ -432,8 +467,7 @@ function OverviewSubTab({
           <p className={styles.status}>Assessment unavailable: {assessmentError}</p>
         ) : assessment ? (
           <p className={styles.captionText}>
-            {assessment.risk_prediction === 1 ? 'Elevated stress predicted' : 'No elevated stress predicted'}{' '}
-            as of {assessment.feature_date}.
+            {assessmentLine(assessment.risk_prediction, assessment.feature_date, assessment.risk_probability)}
           </p>
         ) : null}
         <p className={styles.captionText}>
@@ -624,6 +658,7 @@ function CaregiverDetail({
       <div className={styles.subTabPanel}>
         {subTab === 'overview' ? (
           <OverviewSubTab
+            caregiverId={caregiverId}
             history={history}
             assessment={assessment}
             assessmentLoading={assessmentLoading}
@@ -640,13 +675,18 @@ function CaregiverDetail({
             assessmentError={assessmentError}
           />
         ) : subTab === 'risk-history' ? (
-          riskHistoryLoading ? (
-            <p className={styles.status}>Loading risk history…</p>
-          ) : riskHistoryError ? (
-            <p className={styles.status}>Risk history unavailable: {riskHistoryError}</p>
-          ) : riskHistory ? (
-            <RiskHistorySection history={riskHistory} caregiverId={caregiverId} />
-          ) : null
+          <>
+            {riskHistoryLoading ? (
+              <p className={styles.status}>Loading risk history…</p>
+            ) : riskHistoryError ? (
+              <p className={styles.status}>Risk history unavailable: {riskHistoryError}</p>
+            ) : riskHistory ? (
+              <RiskHistorySection history={riskHistory} caregiverId={caregiverId} showExplanations />
+            ) : null}
+            {/* Independent of the risk history fetch above — the forecast
+                uses only this person's past ratings. */}
+            <ForecastSection caregiverId={caregiverId} />
+          </>
         ) : subTab === 'workload' ? (
           <WorkloadSubTab history={history} />
         ) : assessmentLoading ? (
@@ -654,7 +694,7 @@ function CaregiverDetail({
         ) : assessmentError ? (
           <p className={styles.status}>Assessment unavailable: {assessmentError}</p>
         ) : assessment ? (
-          <ShapFactorsList factors={assessment.all_factors} />
+          <FactorExplanations assessment={assessment} />
         ) : null}
       </div>
     </div>

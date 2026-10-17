@@ -49,6 +49,14 @@ export interface DeteriorationDataContextValue {
   // before that write.
   invalidateCaregiver: (caregiverId: string) => void
 
+  // Forecast views (ForecastSection, ForecastTab) fetch on their own rather
+  // than through the caches above, and list forecastRefreshKey in their
+  // fetch effects' dependencies — so bumping it (Demo Control does, after
+  // each reveal-next-day, since a revealed day adds a new rating) makes any
+  // mounted forecast view fetch fresh data.
+  forecastRefreshKey: number
+  bumpForecastRefresh: () => void
+
   // Keyed by the days-window string ("7" | "14" | "30") rather than fixed,
   // since Team Risk Heatmap now has its own 7/14/30-day range toggle (see
   // TeamRiskHeatmap.tsx) — same getCached/fetchAndCache pattern as the

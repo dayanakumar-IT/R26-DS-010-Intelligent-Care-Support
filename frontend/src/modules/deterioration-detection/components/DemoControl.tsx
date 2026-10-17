@@ -99,7 +99,8 @@ function RevealTooltip({ active, payload, label }: TooltipContentProps) {
 // re-selecting a caregiver re-checks their real staging status from
 // scratch rather than carrying over another caregiver's wizard progress.
 function DemoControlWizard({ caregiverId }: { caregiverId: string }) {
-  const { setActiveTab, setPendingCaregiverId, refetchRiskSummary, invalidateCaregiver } = useDeteriorationData()
+  const { setActiveTab, setPendingCaregiverId, refetchRiskSummary, invalidateCaregiver, bumpForecastRefresh } =
+    useDeteriorationData()
 
   // Single source of truth for "how far along is this caregiver" —
   // fetched once on mount and refreshed after every mutation (upload,
@@ -227,6 +228,9 @@ function DemoControlWizard({ caregiverId }: { caregiverId: string }) {
         // within a session).
         invalidateCaregiver(caregiverId)
         refetchRiskSummary()
+        // A revealed day adds a real rating, which the forecast is built
+        // from — make any forecast view fetch fresh data.
+        bumpForecastRefresh()
         return refreshStatus()
       })
       .catch((err: unknown) => {

@@ -122,6 +122,10 @@ export function DeteriorationDataProvider({ children }: { children: ReactNode })
   const [pendingRiskFilter, setPendingRiskFilter] = useState<string | null>(null)
   const [pendingWardFilter, setPendingWardFilter] = useState<string | null>(null)
 
+  // See forecastRefreshKey in contextDefinition.ts.
+  const [forecastRefreshKey, setForecastRefreshKey] = useState(0)
+  const bumpForecastRefresh = useCallback(() => setForecastRefreshKey((key) => key + 1), [])
+
   // Re-callable version of the risk-summary fetch below, exposed via
   // context for anything that mutates data risk-summary is built from and
   // needs it to reflect that immediately (Demo Control's reveal-next-day).
@@ -250,6 +254,8 @@ export function DeteriorationDataProvider({ children }: { children: ReactNode })
       riskSummaryError,
       refetchRiskSummary,
       invalidateCaregiver,
+      forecastRefreshKey,
+      bumpForecastRefresh,
       getCachedRiskHeatmap: riskHeatmapCache.getCached,
       fetchAndCacheRiskHeatmap: riskHeatmapCache.fetchAndCache,
       getCachedAssessment: assessmentCache.getCached,
@@ -286,6 +292,8 @@ export function DeteriorationDataProvider({ children }: { children: ReactNode })
       riskSummaryError,
       refetchRiskSummary,
       invalidateCaregiver,
+      forecastRefreshKey,
+      bumpForecastRefresh,
       riskHeatmapCache.getCached,
       riskHeatmapCache.fetchAndCache,
       assessmentCache.getCached,

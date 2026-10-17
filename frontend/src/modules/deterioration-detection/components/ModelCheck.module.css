@@ -1,0 +1,316 @@
+/* Model Check tab — reuses the same card/table/status treatment as
+   Trends.module.css, built only from existing tokens (src/index.css and
+   ../styles/tokens.css). */
+
+.status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.errorBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
+}
+
+.caption {
+  margin: 0 2px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.note {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.chartContainer {
+  composes: dd-card from global;
+  padding: 16px;
+  min-width: 0;
+}
+
+/* Chart and its numbers table side by side, stacking on narrow screens. */
+.viewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  white-space: nowrap;
+}
+
+.td {
+  padding: 10px 14px;
+  color: #111827;
+}
+
+.tdValue {
+  padding: 10px 14px;
+  color: #111827;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tableRow:not(:last-child) .td,
+.tableRow:not(:last-child) .tdValue {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* "Choose your alert level" card */
+
+.alertCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.alertTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.alertCard .caption,
+.alertCard .note {
+  margin: 0 2px;
+}
+
+.sliderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.sliderLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.slider {
+  flex: 1;
+  min-width: 160px;
+  accent-color: var(--brand-blue);
+}
+
+.sliderValue {
+  min-width: 44px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.tileRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  composes: dd-card from global;
+  padding: 14px 16px;
+}
+
+.tileLabel {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.tileValue {
+  margin: 6px 0 2px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.tileSub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* "Show:" caregiver filter bar */
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.select {
+  min-width: 240px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: var(--surface);
+  font-size: 13px;
+  color: #111827;
+}
+
+.select:focus {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+}
+
+.linkButton {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--brand-blue);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 160ms ease);
+}
+
+.linkButton:hover {
+  background: rgba(30, 58, 138, 0.06);
+}
+
+/* Previous results stay visible, dimmed, while a new selection loads. */
+.dimmed {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity var(--transition-fast, 160ms ease);
+}
+
+.fewDaysNote {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--risk-moderate-border);
+  background: var(--risk-moderate-bg);
+  font-size: 13px;
+  color: var(--risk-moderate);
+}
+
+/* By caregiver section */
+
+.summaryLine {
+  margin: 0 2px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.tableSpacing {
+  margin-top: 16px;
+}
+
+.tableRowClickable {
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 160ms ease);
+}
+
+.tableRowClickable:hover,
+.tableRowClickable:focus-visible {
+  background: rgba(30, 58, 138, 0.06);
+  outline: none;
+}
+
+.sortButton {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: var(--brand-blue);
+  cursor: pointer;
+}
+
+.directionRight {
+  font-weight: 700;
+  color: var(--risk-low);
+}
+
+.directionWrong {
+  font-weight: 700;
+  color: var(--risk-high);
+}
+
+.directionFew {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.honestNote {
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--risk-neutral-border);
+  background: var(--risk-neutral-bg);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #111827;
+}
