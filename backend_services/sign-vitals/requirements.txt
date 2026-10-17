@@ -12,3 +12,5 @@ dtw-python==1.9.0
 google-genai==2.29.0
 python-dotenv==1.2.3
 tzdata==2026.3          # zoneinfo on Windows: caregiver time zones (monthly badges)
+boto3==1.43.83          # Cloudflare R2 presigned URLs (Reference Video tab, Parkinson's videos)
+requests==2.34.2        # scripts/e2e_test_caregiver.py and the timing / setup checks only

@@ -44,6 +44,10 @@ def test_identical_landmarks():
 
 
 if __name__ == "__main__":
+    if not VIDEOS:
+        # Videos are never committed (.gitignore); a clean clone has none.
+        print("PERSISTENT WORKER TEST SKIPPED: no sample videos (put a few .mp4 clips in test_samples/ to run it)")
+        sys.exit(0)
     try:
         test_identical_landmarks()
         print("PERSISTENT WORKER TEST PASSED")
