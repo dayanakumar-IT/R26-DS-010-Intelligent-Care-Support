@@ -28,6 +28,7 @@ import logging
 import random
 
 from mastery_engine import current_status
+from sign_config import recommendable
 
 logger = logging.getLogger("sign_vitals")
 
@@ -62,11 +63,13 @@ def rank_lessons(sign_ids, mastery_by_sign: dict) -> list[tuple[str, int, str]]:
 
 
 def select_next_lesson(supabase_client, caregiver_profile_id: str) -> str:
-    """Returns a single sign_id — the next lesson to give this caregiver."""
+    """Returns a single sign_id — the next lesson to give this caregiver.
+    Signs in sign_config.NOT_RECOMMENDED are never chosen (they stay in
+    the dictionary); the scoring rule itself is unchanged."""
     active_signs = supabase_client.table("gloss_signs").select("id").eq("is_active", True).execute()
-    sign_ids = [row["id"] for row in active_signs.data or []]
+    sign_ids = recommendable([row["id"] for row in active_signs.data or []])
     if not sign_ids:
-        raise ValueError("No active signs found in gloss_signs — cannot select a lesson")
+        raise ValueError("No active, recommendable signs found in gloss_signs — cannot select a lesson")
 
     mastery_rows = (
         supabase_client.table("gloss_caregiver_mastery")

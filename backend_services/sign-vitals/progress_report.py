@@ -14,10 +14,38 @@ Only ever reads rows belonging to the given caregiver_profile_id.
 
 import logging
 from collections import Counter
+from datetime import datetime, timedelta, timezone
 
-from mastery_engine import current_status
+from execution_evaluator import LOW_CONFIDENCE_CUTOFF
+from mastery_engine import MASTERY_STREAK_REQUIRED, current_status
+from sign_config import is_recommendable
 
 logger = logging.getLogger("sign_vitals")
+
+# Practice days are counted in the caregiver's local day, not UTC — an
+# attempt at 01:00 in Colombo is still "today" there. Sri Lanka has no
+# daylight saving, so a fixed offset is exact.
+LOCAL_TZ = timezone(timedelta(hours=5, minutes=30))
+
+
+def _local_date(ts: str) -> str:
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(LOCAL_TZ).date().isoformat()
+
+
+def _last_result(attempt: dict) -> str:
+    """One attempt, as a learner-facing result key:
+    strong / moderate / weak / different_sign / not_recognised /
+    quiz_correct / quiz_wrong."""
+    if attempt["attempt_type"] == "multiple_choice":
+        return "quiz_correct" if attempt["recognized_sign_id"] == attempt["target_sign_id"] else "quiz_wrong"
+    confidence = attempt["recognition_confidence"]
+    if attempt["recognized_sign_id"] is None or (
+        confidence is not None and float(confidence) < LOW_CONFIDENCE_CUTOFF
+    ):
+        return "not_recognised"
+    if attempt["recognized_sign_id"] != attempt["target_sign_id"]:
+        return "different_sign"
+    return attempt["quality_tier"] or "not_recognised"
 
 # mastery_status values produced by mastery_engine._compute_status.
 # Rows written under the old rules may still hold the retired "weak" /
@@ -34,7 +62,8 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
     mastery_rows = (
         supabase_client.table("gloss_caregiver_mastery")
         .select(
-            "sign_id, mastery_status, attempts, best_score, last_score, last_practiced_at"
+            "sign_id, mastery_status, attempts, consecutive_strong_streak, best_score, "
+            "last_score, last_practiced_at"
         )
         .eq("caregiver_profile_id", caregiver_profile_id)
         .execute()
@@ -43,7 +72,10 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
 
     attempt_rows = (
         supabase_client.table("gloss_attempts")
-        .select("target_sign_id, attempted_at")
+        .select(
+            "target_sign_id, recognized_sign_id, recognition_confidence, quality_tier, "
+            "attempt_type, attempted_at"
+        )
         .eq("caregiver_profile_id", caregiver_profile_id)
         .order("attempted_at", desc=True)
         .execute()
@@ -67,12 +99,27 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
 
     status_counts = Counter(r["mastery_status"] for r in mastery_rows)
 
+    # attempt_rows are newest first, so the first one seen per sign is its
+    # latest result.
+    last_result_by_sign: dict[str, str] = {}
+    camera_attempts_by_sign: Counter = Counter()
+    for a in attempt_rows:
+        last_result_by_sign.setdefault(a["target_sign_id"], _last_result(a))
+        if a["attempt_type"] == "webcam":
+            camera_attempts_by_sign[a["target_sign_id"]] += 1
+    camera_attempts = sum(camera_attempts_by_sign.values())
+
     mastery_summary = [
         {
             "sign_id": r["sign_id"],
             "display_name": display_name_by_id.get(r["sign_id"], r["sign_id"]),
             "mastery_status": r["mastery_status"],
             "attempts": r["attempts"],
+            "camera_attempts": camera_attempts_by_sign[r["sign_id"]],
+            "consecutive_strong_streak": r.get("consecutive_strong_streak") or 0,
+            "last_result": last_result_by_sign.get(r["sign_id"]),
+            # False for dictionary-only signs: never offered in "Continue practising".
+            "recommendable": is_recommendable(r["sign_id"]),
             "best_score": r["best_score"],
             "last_score": r["last_score"],
             "last_practiced_at": r["last_practiced_at"],
@@ -89,7 +136,7 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
     for a in attempt_rows:
         ts = a.get("attempted_at")
         if ts:
-            calendar[ts[:10]] += 1
+            calendar[_local_date(ts)] += 1
     practice_calendar = [
         {"date": d, "attempt_count": c} for d, c in sorted(calendar.items())
     ]
@@ -109,6 +156,9 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
         "improving_count": status_counts[_IMPROVING],
         "learning_count": learning_count,
         "total_attempts": len(attempt_rows),
+        "camera_attempts": camera_attempts,
+        "quiz_answers": len(attempt_rows) - camera_attempts,
+        "strong_needed": MASTERY_STREAK_REQUIRED,
         "mastery_summary": mastery_summary,
         "practice_calendar": practice_calendar,
     }
