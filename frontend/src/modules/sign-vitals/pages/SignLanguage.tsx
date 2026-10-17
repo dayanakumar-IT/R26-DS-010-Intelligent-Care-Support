@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Award,
   BookOpen,
+  Brain,
   CalendarDays,
   CameraOff,
   ChevronLeft,
@@ -10,6 +11,8 @@ import {
   History,
   List,
   LogOut,
+  Route,
+  ScanSearch,
   TrendingUp,
   Video,
 } from 'lucide-react'
@@ -30,8 +33,15 @@ import PracticeSignCard from '../components/gloss/PracticeSignCard'
 import StrongInARowMeter from '../components/gloss/StrongInARowMeter'
 import QualityNote from '../components/gloss/QualityNote'
 import SignPreview from '../components/gloss/SignPreview'
+import WelcomeCard from '../components/gloss/WelcomeCard'
+import Celebration from '../components/gloss/Celebration'
+import CheckMySign from '../components/CheckMySign'
+import RecallChallenge from '../components/RecallChallenge'
+import MyJourney from '../components/journey/MyJourney'
+import ProgressReportPrint from '../components/journey/ProgressReportPrint'
 import { lowHandTip } from '../utils/captureTips'
 import {
+  getGlossProgressSummary,
   getNextGlossLesson,
   submitMultipleChoiceAttempt,
   submitWebcamAttempt,
@@ -44,6 +54,8 @@ import {
 import type {
   GlossAttemptResult,
   GlossMasterySummaryRow,
+  GlossNewMilestone,
+  GlossProgressSummary,
   GlossProgressReport,
   GlossSign,
 } from '../types/gloss'
@@ -67,11 +79,14 @@ type Stage =
   | 'quiz'
   | 'error'
 
-type TabId = 'practice' | 'browse' | 'progress' | 'history'
+type TabId = 'practice' | 'check' | 'recall' | 'browse' | 'journey' | 'progress' | 'history'
 
 const TABS: ReadonlyArray<GlossTab<TabId>> = [
   { id: 'practice', label: 'Practice', icon: Video },
+  { id: 'check', label: 'Check my sign', icon: ScanSearch },
+  { id: 'recall', label: 'Recall', icon: Brain },
   { id: 'browse', label: 'Browse Signs', icon: List },
+  { id: 'journey', label: 'My Journey', icon: Route },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
   { id: 'history', label: 'History', icon: History },
 ]
@@ -132,6 +147,36 @@ export default function SignLanguage() {
     return () => data.subscription.unsubscribe()
   }, [])
 
+  // Levels / badges / My Journey (GET /gloss/progress/summary). null until
+  // loaded, or if unavailable (e.g. migrations not applied): the welcome
+  // card is then hidden and practice is unaffected.
+  const [summary, setSummary] = useState<GlossProgressSummary | null>(null)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [celebrate, setCelebrate] = useState<GlossNewMilestone[]>([])
+  const [showReport, setShowReport] = useState(false)
+  const refreshSummary = useCallback(() => {
+    getGlossProgressSummary()
+      .then((s) => {
+        setSummary(s)
+        setSummaryError(null)
+      })
+      .catch((e: unknown) => setSummaryError(e instanceof Error ? e.message : 'Unavailable'))
+  }, [])
+  useEffect(() => {
+    refreshSummary() // initial async load
+  }, [refreshSummary])
+
+  // After any attempt: refresh progress, and celebrate newly earned
+  // milestones only when the attempt itself succeeded (never on a failed one).
+  const afterAttempt = useCallback(
+    (result: GlossAttemptResult) => {
+      const earned = result.new_milestones ?? []
+      if (earned.length && (result.outcome === 'target_sign' || result.outcome === 'quiz_correct')) setCelebrate(earned)
+      refreshSummary()
+    },
+    [refreshSummary],
+  )
+
   const refreshProgress = useCallback(() => {
     cachedGlossProgress()
       .then((report) => {
@@ -151,6 +196,14 @@ export default function SignLanguage() {
     setRecordedBlob(null)
     setStage('ready')
   }, [])
+
+  const practiseSign = useCallback(
+    (signId: string) => {
+      selectSign(signId)
+      setTab('practice')
+    },
+    [selectSign],
+  )
 
   const loadRecommendedSign = useCallback(async () => {
     setStage('loading')
@@ -212,6 +265,7 @@ export default function SignLanguage() {
       setSessionAttempts((prev) => [...prev, result])
       setAttemptResult(result)
       setStage('feedback')
+      afterAttempt(result)
       // A real attempt just landed — mastery / progress / history may have
       // changed. Drop only those cached reads so the next Progress /
       // History / Practice-landing view refetches fresh. Static sign
@@ -233,6 +287,7 @@ export default function SignLanguage() {
       setSessionAttempts((prev) => [...prev, result])
       setAttemptResult(result)
       setStage('feedback')
+      afterAttempt(result)
       invalidateGlossActivity()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Could not submit your answer.')
@@ -276,6 +331,7 @@ export default function SignLanguage() {
 
       {stage === 'ready' && targetSignId && (
         <div className="flex flex-col gap-8">
+          {summary && <WelcomeCard summary={summary} onContinue={() => setStage('camera-choice')} />}
           {/* Recommended Next hero */}
           <section className="flex flex-col gap-4">
             <h2 className="text-2xl font-bold text-[var(--brand-blue)]">Today&apos;s Practice</h2>
@@ -513,8 +569,36 @@ export default function SignLanguage() {
         )}
       </div>
 
-      <GlossTabBar tabs={TABS} activeId={tab} onChange={setTab}>
+      {celebrate.length > 0 && <Celebration milestones={celebrate} onClose={() => setCelebrate([])} />}
+
+      <GlossTabBar tabs={TABS} activeId={tab} onChange={(t) => { setCelebrate([]); setTab(t) }}>
         {tab === 'practice' && practiceContent}
+
+        {tab === 'check' && (
+          <CheckMySign sessionId={sessionId} onSession={setSessionId} onPractise={practiseSign} />
+        )}
+
+        {tab === 'recall' && (
+          <RecallChallenge
+            allSigns={allSigns}
+            sessionId={sessionId}
+            onSession={setSessionId}
+            onAttempt={(r) => {
+              afterAttempt(r)
+              invalidateGlossActivity()
+            }}
+            onPractise={practiseSign}
+          />
+        )}
+
+        {tab === 'journey' &&
+          (summary ? (
+            <MyJourney summary={summary} onOpenSign={practiseSign} onOpenReport={() => setShowReport(true)} />
+          ) : (
+            <p className="text-sm text-slate-500">
+              {summaryError ? `My Journey is not available yet: ${summaryError}` : 'Loading your journey…'}
+            </p>
+          ))}
 
         {tab === 'browse' && (
           <SignBrowser
@@ -534,6 +618,8 @@ export default function SignLanguage() {
 
         {tab === 'history' && <HistoryList />}
       </GlossTabBar>
+
+      {showReport && summary && <ProgressReportPrint summary={summary} onClose={() => setShowReport(false)} />}
 
       {showSummary && (
         <SessionSummaryModal
