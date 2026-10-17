@@ -8,6 +8,7 @@ import KpiCard from '../../../components/KpiCard'
 import LoadingState from '../../../components/LoadingState'
 import SectionHeader from '../../../components/SectionHeader'
 import StatusBadge from '../../../components/StatusBadge'
+import TableSearchBox from '../../../components/TableSearchBox'
 import { useToast } from '../../../components/Toast'
 import {
   acknowledgeAlert,
@@ -18,7 +19,7 @@ import {
   updateAlertSupervisorAction,
 } from '../../../services/scribeSupabase'
 import type { AdlAlert, Patient } from '../../../types'
-import { formatDateTime } from '../../../utils/format'
+import { formatReadableDateTime } from '../../../utils/format'
 import styles from '../../../styles/dashboard.module.css'
 
 type AlertFilter = 'all' | 'open' | 'acknowledged'
@@ -30,6 +31,7 @@ interface AlertsTabProps {
 export default function AlertsTab({ userId }: AlertsTabProps) {
   const { showSuccess, showError } = useToast()
   const [filter, setFilter] = useState<AlertFilter>('open')
+  const [search, setSearch] = useState('')
   const [alerts, setAlerts] = useState<AdlAlert[]>([])
   const [allAlerts, setAllAlerts] = useState<AdlAlert[]>([])
   const [patients, setPatients] = useState<Map<number, Patient>>(new Map())
@@ -102,6 +104,18 @@ export default function AlertsTab({ userId }: AlertsTabProps) {
     [allAlerts],
   )
 
+  const filteredAlerts = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return alerts
+    return alerts.filter((alert) => {
+      const patientCode = patients.get(alert.patient_id)?.patient_code.toLowerCase() ?? ''
+      const record = alert.adl_record
+      const category = record?.category?.toLowerCase() ?? ''
+      const transcript = (record?.cleaned_transcript ?? record?.raw_transcript ?? '').toLowerCase()
+      return patientCode.includes(query) || category.includes(query) || transcript.includes(query)
+    })
+  }, [alerts, patients, search])
+
   const filterLabel = useMemo(() => {
     switch (filter) {
       case 'open':
@@ -131,8 +145,8 @@ export default function AlertsTab({ userId }: AlertsTabProps) {
   return (
     <div className={styles.page}>
       <SectionHeader
-        title="Symptom alerts"
-        description="Flagged symptom observations requiring supervisor review. Acknowledge alerts, then record what action you took."
+        title="ADL alerts"
+        description="Flagged observations (symptoms, partial/refused meals, abnormal vitals) requiring supervisor review. Acknowledge alerts, then record what action you took."
         action={
           <div className={styles.filterPillGroup} role="group" aria-label="Filter alerts">
             {(['open', 'acknowledged', 'all'] as AlertFilter[]).map((option) => (
@@ -167,18 +181,26 @@ export default function AlertsTab({ userId }: AlertsTabProps) {
         />
         <KpiCard
           label="Showing"
-          value={alerts.length}
+          value={filteredAlerts.length}
           hint={filterLabel.toLowerCase()}
           icon={Bell}
         />
       </div>
 
+      <TableSearchBox
+        value={search}
+        onChange={setSearch}
+        placeholder="Search patient, category or transcript…"
+      />
+
       {alerts.length === 0 ? (
         <EmptyState
           icon={AlertTriangle}
           title={`No ${filterLabel.toLowerCase()} alerts`}
-          description="When the pipeline flags a symptom observation, it will appear here for supervisor review."
+          description="When the pipeline flags an observation, it will appear here for supervisor review."
         />
+      ) : filteredAlerts.length === 0 ? (
+        <p className="text-sm text-[var(--text-secondary)]">No matching records.</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={`${styles.table} ${styles.alertsTable}`}>
@@ -192,12 +214,12 @@ export default function AlertsTab({ userId }: AlertsTabProps) {
               </tr>
             </thead>
             <tbody>
-              {alerts.map((alert) => (
+              {filteredAlerts.map((alert) => (
                 <tr key={alert.id}>
                   <td className={styles.tablePatientCell}>
                     {patients.get(alert.patient_id)?.patient_code ?? `Patient #${alert.patient_id}`}
                   </td>
-                  <td className={styles.timeCell}>{formatDateTime(alert.created_at)}</td>
+                  <td className={styles.timeCell}>{formatReadableDateTime(alert.created_at)}</td>
                   <td className={styles.alertObservationCell}>
                     <AlertObservationCell alert={alert} />
                   </td>

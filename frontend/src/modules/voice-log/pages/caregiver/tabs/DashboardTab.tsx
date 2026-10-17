@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ClipboardList, LayoutDashboard, Mic, Users } from 'lucide-react'
+import { AlertTriangle, ClipboardList, Download, LayoutDashboard, Mic, Users } from 'lucide-react'
 import AvailableDateSelect from '../../../components/AvailableDateSelect'
 import Button from '../../../../../shared/components/Button'
 import CategoryBarChart, { type CategoryChartDatum } from '../../../components/CategoryBarChart'
@@ -12,13 +12,14 @@ import PeriodSummaryView from '../../../components/PeriodSummaryView'
 import ProfileStrip from '../../../components/ProfileStrip'
 import SectionHeader from '../../../components/SectionHeader'
 import StatusBadge from '../../../components/StatusBadge'
+import { useToast } from '../../../components/Toast'
 import { fetchCaregiverRecords } from '../../../services/scribeSupabase'
 import type { AdlRecord, Patient } from '../../../types'
 import type { User } from '../../../../../types/user'
-import { fetchHandoverSummary, fetchPeriodSummary } from '../../../services/scribeApi'
+import { downloadReport, fetchHandoverSummary, fetchPeriodSummary } from '../../../services/scribeApi'
 import { usePatientAvailableDates, usePeriodDateSelection } from '../../../hooks/usePatientAvailableDates'
 import { filterDatesForEnd, filterDatesForStart } from '../../../utils/dateRange'
-import { formatCategory, formatDateTime, startOfTodayIso } from '../../../utils/format'
+import { formatCategory, formatReadableDateTime, startOfTodayIso } from '../../../utils/format'
 import styles from '../../../styles/dashboard.module.css'
 
 interface CaregiverDashboardTabProps {
@@ -38,6 +39,7 @@ export default function CaregiverDashboardTab({
   onPatientChange,
   onStartRecording,
 }: CaregiverDashboardTabProps) {
+  const { showError } = useToast()
   const [todayRecords, setTodayRecords] = useState<AdlRecord[]>([])
   const [recentRecords, setRecentRecords] = useState<AdlRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,6 +48,7 @@ export default function CaregiverDashboardTab({
   const [periodEnd, setPeriodEnd] = useState('')
   const [periodSummary, setPeriodSummary] = useState<string | null>(null)
   const [handoverSummary, setHandoverSummary] = useState<string | null>(null)
+  const [regeneratingPeriod, setRegeneratingPeriod] = useState(false)
 
   const { dates: availableDates, loading: availableDatesLoading } = usePatientAvailableDates({
     patientId: selectedPatientId,
@@ -91,6 +94,34 @@ export default function CaregiverDashboardTab({
       .then((res) => setHandoverSummary(res.summary_text))
       .catch(() => setHandoverSummary(null))
   }, [selectedPatientId, periodStart, periodEnd, caregiverId])
+
+  const handleRegeneratePeriodSummary = async () => {
+    if (selectedPatientId === '' || !periodStart || !periodEnd) return
+    setRegeneratingPeriod(true)
+    try {
+      const res = await fetchPeriodSummary(selectedPatientId, periodStart, periodEnd, true)
+      setPeriodSummary(res.summary_text)
+    } catch {
+      // Leave the previously loaded summary in place on failure.
+    } finally {
+      setRegeneratingPeriod(false)
+    }
+  }
+
+  const handleExportPeriodSummary = async (format: 'pdf' | 'excel') => {
+    if (selectedPatientId === '' || !periodStart || !periodEnd) return
+    try {
+      const blob = await downloadReport(selectedPatientId, periodStart, periodEnd, format)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `report_${periodStart}_${periodEnd}.${format === 'pdf' ? 'pdf' : 'xlsx'}`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Export failed.')
+    }
+  }
 
   const patientTodayRecords = useMemo(
     () =>
@@ -237,7 +268,7 @@ export default function CaregiverDashboardTab({
             records={recentForPatient}
             showPatient
             showAdlDetails={false}
-            formatRecordedAt={formatDateTime}
+            formatRecordedAt={formatReadableDateTime}
             getPatientCode={(patientId) =>
               patients.find((patient) => patient.id === patientId)?.patient_code ?? '—'
             }
@@ -266,6 +297,29 @@ export default function CaregiverDashboardTab({
               onChange={setPeriodEnd}
               disabled={availableDatesLoading}
             />
+            <Button
+              variant="secondary"
+              onClick={() => void handleRegeneratePeriodSummary()}
+              disabled={regeneratingPeriod || !periodStart || !periodEnd}
+            >
+              {regeneratingPeriod ? 'Regenerating…' : 'Regenerate'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void handleExportPeriodSummary('pdf')}
+              disabled={!periodStart || !periodEnd}
+            >
+              <Download size={14} aria-hidden="true" />
+              PDF
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void handleExportPeriodSummary('excel')}
+              disabled={!periodStart || !periodEnd}
+            >
+              <Download size={14} aria-hidden="true" />
+              Excel
+            </Button>
           </div>
           {availableDatesLoading ? (
             <LoadingState message="Loading available dates…" />

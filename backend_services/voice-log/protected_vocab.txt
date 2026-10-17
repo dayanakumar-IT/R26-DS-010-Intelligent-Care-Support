@@ -1,5 +1,6 @@
 # SCRIBE protected vocabulary — medications and facility foods.
 # LanguageTool must not "correct" these terms (see grammar.py).
+# Add new terms under the matching section below; no code changes needed.
 
 # Medications (care home formulary)
 Metformin
@@ -11,16 +12,67 @@ Glyco
 Omez
 Empa
 Sita
-Paracetamol
-Amlodipine
-Omeprazole
-Atorvastatin
+Gliclazide
+Besaprol
+Sodium Valproate
+Clopet
+Gaba
+Dilizam
+Prosazon
+Piriton
+PCM
+Amilab
+Diclo
+Calcium
+Thyroxin
+Sodium Valparade
+Olanz
+Bens
+Sindopa Plus
+Penicillin
+Sperlecton
+HCT
+Sindopa CR
+Ropark
+Qutapin
+Telmizart
+Epnone
+Ivab
+Lasix
+Lithium
+Clonazepam
+Enalapril
+Amlong
+LevaPri
+Fluoxetine
+Prosagone
+Becloten
+Amlung
+Loston
+Rizoni
+Folic Acid
 
-# Sri Lankan / facility foods
+# Foods (Sri Lankan / facility menu)
 Kiribath
-string hoppers
-thosa
-rotty
-pittu
-kadala
-kawpi
+String Hoppers
+Thosa
+Rotty
+Pittu
+Kadala
+Kawpi
+Noodles
+Macaroni
+Plain Tea
+Rice
+Fish
+Egg
+Chicken
+Vegetable Curries
+Fried Rice
+Salad
+Milk Tea
+Biscuits
+Bread
+Red Rice
+Curry
+Juice

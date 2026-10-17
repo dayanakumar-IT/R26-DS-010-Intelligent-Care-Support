@@ -47,12 +47,17 @@ export interface ParsedHandoverSummary {
 
 const SECTION_HEADER = /^──\s*(.+?)\s*──$/
 const TITLE_BANNER = /^═+\s*(.+?)\s*═+$/
+// Time group accepts either the old bare "17:32" or the new readable
+// "29 Aug 2026, 5:32 PM" (date optional, AM/PM optional) so already-cached
+// summaries generated before the date was added still parse correctly.
 const OBSERVATION_LINE =
-  /^\s*•\s*(?:(\d{1,2}:\d{2})\s*)?(?:\[([^\]]+)\]\s*)?(.+?)(\s*\[ALERT\])?\s*$/i
+  /^\s*•\s*(?:((?:\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4},\s*)?\d{1,2}:\d{2}(?:\s*[AP]M)?)\s*)?(?:\[([^\]]+)\]\s*)?(.+?)(\s*\[ALERT\])?\s*$/i
 const CATEGORY_COUNT = /^\s*•\s*([^:]+):\s*(\d+)\s*$/i
 const ALERT_LINE = /^\s*•\s*Alert raised\s+(.+)$/i
+// "caregivers" (plural) is the new all-caregivers-in-period line; "current
+// caregiver" is kept so summaries cached before this change still parse.
 const META_LINE =
-  /^(date range|current caregiver|patient|handover date|previous caregiver|new caregiver|caregiver):/i
+  /^(date range|current caregiver|caregivers|patient|handover date|previous caregiver|new caregiver|caregiver):/i
 
 function isSkippedMetaLine(line: string): boolean {
   const trimmed = line.trim()
@@ -394,7 +399,11 @@ export function parsePeriodSummary(text: string): ParsedPeriodSummary {
       title = line
       continue
     }
-    if (line.startsWith('Date range:') || line.startsWith('Current caregiver:')) {
+    if (
+      line.startsWith('Date range:') ||
+      line.startsWith('Current caregiver:') ||
+      line.startsWith('Caregivers:')
+    ) {
       metaLines.push(line)
     }
   }
@@ -412,7 +421,9 @@ export function parsePeriodSummary(text: string): ParsedPeriodSummary {
   const overviewStats =
     overviewSection?.stats?.filter((stat) => isMetricStat(stat.label)) ?? []
 
-  const caregiverLine = metaLines.find((line) => line.startsWith('Current caregiver:'))
+  const caregiverLine = metaLines.find(
+    (line) => line.startsWith('Current caregiver:') || line.startsWith('Caregivers:'),
+  )
   const caregiver = caregiverLine?.split(':').slice(1).join(':').trim()
 
   return {
@@ -465,6 +476,50 @@ export function parseHandoverSummary(text: string): ParsedHandoverSummary {
     meta,
     sections,
   }
+}
+
+// Matches the new "29 Aug 2026, 5:32 PM" format produced by the backend;
+// captures the date portion separately from the time portion so the date
+// can become a group heading instead of repeating on every row.
+const DATE_TIME_SPLIT_RE = /^(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}),\s*(.+)$/
+
+export function splitDateAndTime(value: string): { date?: string; time: string } {
+  const match = value.match(DATE_TIME_SPLIT_RE)
+  if (match) {
+    return { date: match[1], time: match[2] }
+  }
+  return { time: value }
+}
+
+export interface DateGroupedObservations {
+  date: string
+  items: ParsedObservation[]
+}
+
+/** Groups observations by their embedded date (preserving each date's
+ * existing relative order), falling back to a single "Earlier" bucket for
+ * entries with no date (old cached summaries generated before dates were
+ * added). Each item's `time` is rewritten to the time-only portion since
+ * the date becomes the group heading instead. */
+export function groupObservationsByDate(
+  observations: ParsedObservation[],
+): DateGroupedObservations[] {
+  const order: string[] = []
+  const buckets = new Map<string, ParsedObservation[]>()
+
+  for (const observation of observations) {
+    const { date, time } = observation.time
+      ? splitDateAndTime(observation.time)
+      : { date: undefined, time: observation.time }
+    const key = date ?? 'Earlier'
+    if (!buckets.has(key)) {
+      buckets.set(key, [])
+      order.push(key)
+    }
+    buckets.get(key)!.push({ ...observation, time })
+  }
+
+  return order.map((date) => ({ date, items: buckets.get(date)! }))
 }
 
 export function formatSummaryTimestamp(value: string): string {

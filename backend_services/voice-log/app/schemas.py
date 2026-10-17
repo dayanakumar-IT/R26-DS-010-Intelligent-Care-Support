@@ -41,10 +41,36 @@ class AdlExtraction(BaseModel):
         return row
 
 
+class PipelineRecord(BaseModel):
+    """One detected observation within a recording (Change 1). raw_segment /
+    cleaned_segment are that observation's own sentence/clause text, not the
+    whole recording's transcript."""
+
+    raw_segment: str
+    cleaned_segment: str
+    extraction: AdlExtraction
+
+
 class PipelineResult(BaseModel):
     raw_transcript: str
     cleaned_transcript: str
     extraction: AdlExtraction
+    # All observations detected in this recording, in order. Always has at
+    # least one entry; records[0] is exactly the extraction/cleaned_transcript
+    # above, kept as top-level fields for backward compatibility with the
+    # single-observation response shape.
+    records: list[PipelineRecord] = Field(default_factory=list)
+
+
+class ObservationRecordSummary(BaseModel):
+    """One saved adl_records row, for the ObservationResponse.records list."""
+
+    id: UUID
+    category: str
+    alert_required: bool
+    observation_index: int
+    cleaned_transcript: str | None = None
+    recorded_at: datetime
 
 
 class ObservationResponse(BaseModel):
@@ -57,6 +83,11 @@ class ObservationResponse(BaseModel):
     r2_audio_key: str | None
     recorded_at: datetime
     duplicate: bool = False
+    # Every observation saved from this recording (length >= 1). The
+    # top-level id/category/alert_required above always mirror records[0],
+    # so existing single-observation callers see no change; alert_required
+    # at the top level is true if ANY observation in the recording alerted.
+    records: list[ObservationRecordSummary] = Field(default_factory=list)
 
 
 class PatientSummary(BaseModel):

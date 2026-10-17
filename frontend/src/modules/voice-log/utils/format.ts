@@ -1,5 +1,9 @@
 export function formatCategory(category: string): string {
-  return category.replace(/_/g, ' ')
+  return category
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((word) => (word ? word[0]!.toUpperCase() + word.slice(1) : word))
+    .join(' ')
 }
 
 export function formatTime(iso: string): string {
@@ -11,6 +15,21 @@ export function formatDateTime(iso: string): string {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/** One readable date+time format used everywhere in this module, e.g.
+ * "14 Oct 2026, 4:19 PM" — never a raw ISO timestamp. */
+export function formatReadableDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return String(iso)
+  return date.toLocaleString([], {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
     minute: '2-digit',
   })
 }

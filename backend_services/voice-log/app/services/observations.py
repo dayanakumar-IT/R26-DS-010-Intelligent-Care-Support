@@ -1,4 +1,12 @@
-"""Observation ingestion — pipeline, R2 upload, Supabase writes, idempotency."""
+"""Observation ingestion — pipeline, R2 upload, Supabase writes, idempotency.
+
+A single recording can now yield multiple ADL records (Change 1 — one per
+detected sentence/observation). All records from one recording share
+client_recording_id, recorded_at and r2_audio_key, and are distinguished by
+observation_index (0-based; see migration 0044). A single-observation
+recording still produces exactly one row with observation_index = 0, same
+as before this feature.
+"""
 
 from __future__ import annotations
 
@@ -9,8 +17,8 @@ from uuid import UUID, uuid4
 
 from app import config
 from app.pipeline.runner import get_pipeline
-from app.schemas import ObservationResponse, PipelineResult
-from app.services.supabase_queries import response_first_row, supabase_execute
+from app.schemas import ObservationRecordSummary, ObservationResponse, PipelineResult
+from app.services.supabase_queries import response_rows, supabase_execute
 from r2_storage import audio_object_key, upload_file
 
 logger = logging.getLogger(__name__)
@@ -23,20 +31,22 @@ def _get_patient_code(patient_id: int) -> str:
         .eq("id", patient_id)
         .limit(1)
     )
-    row = response_first_row(result)
-    if not row:
+    rows = response_rows(result)
+    if not rows:
         raise ValueError(f"Patient {patient_id} not found")
-    return row["patient_code"]
+    return rows[0]["patient_code"]
 
 
-def _find_existing_record(client_recording_id: UUID) -> dict | None:
+def _find_existing_records(client_recording_id: UUID) -> list[dict]:
+    """All rows already saved for this recording, ordered by observation_index.
+    A single-observation recording has exactly one row here, same as before."""
     result = supabase_execute(
         lambda sb: sb.table("adl_records")
         .select("*")
         .eq("client_recording_id", str(client_recording_id))
-        .limit(1)
+        .order("observation_index")
     )
-    return response_first_row(result)
+    return response_rows(result)
 
 
 def _write_audit_log(*, actor: str, subject_ref: str, detail: dict) -> None:
@@ -51,12 +61,62 @@ def _write_audit_log(*, actor: str, subject_ref: str, detail: dict) -> None:
             })
         )
     except Exception as exc:
-        # Observation is already persisted — do not fail the API response for audit-only errors.
+        # Observations are already persisted — do not fail the API response for audit-only errors.
         logger.error(
             "audit_log insert failed (observation already saved): %s. "
             "Apply migration 0029_SCRIBE_audit_log_grants.sql if not yet pushed.",
             exc,
         )
+
+
+def _response_from_rows(rows: list[dict], *, duplicate: bool) -> ObservationResponse:
+    """Builds the API response from one recording's adl_records rows.
+    Top-level fields mirror rows[0] (observation_index 0) for backward
+    compatibility with the pre-Change-1 single-record response shape;
+    alert_required at the top level is true if ANY row in the recording
+    alerted, so a caller inspecting only the top-level field never misses
+    an alert buried in a later observation.
+    """
+    primary = rows[0]
+    return ObservationResponse(
+        id=UUID(primary["id"]),
+        patient_id=primary["patient_id"],
+        caregiver_id=UUID(primary["caregiver_id"]),
+        client_recording_id=UUID(primary["client_recording_id"]),
+        category=primary["category"],
+        alert_required=any(row["alert_required"] for row in rows),
+        r2_audio_key=primary.get("r2_audio_key"),
+        recorded_at=datetime.fromisoformat(primary["recorded_at"].replace("Z", "+00:00")),
+        duplicate=duplicate,
+        records=[
+            ObservationRecordSummary(
+                id=UUID(row["id"]),
+                category=row["category"],
+                alert_required=row["alert_required"],
+                observation_index=row.get("observation_index", 0),
+                cleaned_transcript=row.get("cleaned_transcript"),
+                recorded_at=datetime.fromisoformat(row["recorded_at"].replace("Z", "+00:00")),
+            )
+            for row in rows
+        ],
+    )
+
+
+def _create_alerts(rows: list[dict]) -> None:
+    """One adl_alerts row per alerted observation (Change 3c), not one per
+    recording — e.g. a 3-observation recording with one flagged symptom and
+    one flagged meal gets exactly two adl_alerts rows. Only ever called
+    right after a fresh insert (never on a duplicate/raced return), so this
+    can't create duplicate alerts on upload retry."""
+    alerted = [row for row in rows if row["alert_required"]]
+    if not alerted:
+        return
+    supabase_execute(
+        lambda sb: sb.table("adl_alerts").insert([
+            {"adl_record_id": row["id"], "patient_id": row["patient_id"]}
+            for row in alerted
+        ])
+    )
 
 
 def process_observation(
@@ -68,19 +128,9 @@ def process_observation(
     recorded_at: datetime | None = None,
     care_activity_id: UUID | None = None,
 ) -> ObservationResponse:
-    existing = _find_existing_record(client_recording_id)
+    existing = _find_existing_records(client_recording_id)
     if existing:
-        return ObservationResponse(
-            id=UUID(existing["id"]),
-            patient_id=existing["patient_id"],
-            caregiver_id=UUID(existing["caregiver_id"]),
-            client_recording_id=UUID(existing["client_recording_id"]),
-            category=existing["category"],
-            alert_required=existing["alert_required"],
-            r2_audio_key=existing.get("r2_audio_key"),
-            recorded_at=datetime.fromisoformat(existing["recorded_at"].replace("Z", "+00:00")),
-            duplicate=True,
-        )
+        return _response_from_rows(existing, duplicate=True)
 
     pipeline = get_pipeline()
     result: PipelineResult = pipeline.run(audio_path)
@@ -96,75 +146,59 @@ def process_observation(
         if activity["patient_id"] != patient_id or activity["caregiver_id"] != str(caregiver_id):
             raise ValueError("Care activity does not match patient/caregiver.")
 
-    record_id = uuid4()
     patient_code = _get_patient_code(patient_id)
     suffix = audio_path.suffix or ".webm"
-    r2_key = audio_object_key(patient_code, str(record_id), suffix=suffix)
-
+    # One audio file per recording, regardless of how many observations it
+    # yields — keyed by a fresh marker rather than any single record's id.
+    recording_marker = uuid4()
+    r2_key = audio_object_key(patient_code, str(recording_marker), suffix=suffix)
     upload_file(audio_path, r2_key)
 
     timestamp = recorded_at or datetime.now(timezone.utc)
-    row = {
-        "id": str(record_id),
-        "patient_id": patient_id,
-        "caregiver_id": str(caregiver_id),
-        "client_recording_id": str(client_recording_id),
-        "recorded_at": timestamp.isoformat(),
-        "raw_transcript": result.raw_transcript,
-        "cleaned_transcript": result.cleaned_transcript,
-        "r2_audio_key": r2_key,
-        **result.extraction.to_db_row(),
-    }
-    if care_activity_id:
-        row["care_activity_id"] = str(care_activity_id)
+    rows: list[dict] = []
+    for index, pipeline_record in enumerate(result.records):
+        row = {
+            "id": str(uuid4()),
+            "patient_id": patient_id,
+            "caregiver_id": str(caregiver_id),
+            "client_recording_id": str(client_recording_id),
+            "observation_index": index,
+            "recorded_at": timestamp.isoformat(),
+            "raw_transcript": pipeline_record.raw_segment,
+            "cleaned_transcript": pipeline_record.cleaned_segment,
+            "r2_audio_key": r2_key,
+            **pipeline_record.extraction.to_db_row(),
+        }
+        if care_activity_id:
+            row["care_activity_id"] = str(care_activity_id)
+        rows.append(row)
 
     try:
-        supabase_execute(lambda sb: sb.table("adl_records").insert(row))
+        # One batch INSERT for the whole recording — Postgres applies a
+        # multi-row INSERT atomically, so a conflict on any single
+        # observation_index rolls back the entire statement (no partial
+        # writes to race against on retry).
+        insert_result = supabase_execute(lambda sb: sb.table("adl_records").insert(rows))
     except Exception as exc:
-        # Race on duplicate client_recording_id — return existing row
         logger.warning("Insert conflict for client_recording_id=%s: %s", client_recording_id, exc)
-        raced = _find_existing_record(client_recording_id)
+        raced = _find_existing_records(client_recording_id)
         if raced:
-            return ObservationResponse(
-                id=UUID(raced["id"]),
-                patient_id=raced["patient_id"],
-                caregiver_id=UUID(raced["caregiver_id"]),
-                client_recording_id=UUID(raced["client_recording_id"]),
-                category=raced["category"],
-                alert_required=raced["alert_required"],
-                r2_audio_key=raced.get("r2_audio_key"),
-                recorded_at=datetime.fromisoformat(raced["recorded_at"].replace("Z", "+00:00")),
-                duplicate=True,
-            )
+            return _response_from_rows(raced, duplicate=True)
         raise
 
-    if result.extraction.alert_required and result.extraction.category == "symptom":
-        supabase_execute(
-            lambda sb: sb.table("adl_alerts").insert({
-                "adl_record_id": str(record_id),
-                "patient_id": patient_id,
-            })
-        )
+    inserted_rows = response_rows(insert_result) or rows
+    _create_alerts(inserted_rows)
 
     _write_audit_log(
         actor=str(caregiver_id),
-        subject_ref=str(record_id),
+        subject_ref=str(client_recording_id),
         detail={
             "patient_id": patient_id,
             "client_recording_id": str(client_recording_id),
-            "category": result.extraction.category,
-            "alert_required": result.extraction.alert_required,
+            "record_count": len(rows),
+            "categories": [row["category"] for row in rows],
+            "alert_count": sum(1 for row in rows if row["alert_required"]),
         },
     )
 
-    return ObservationResponse(
-        id=record_id,
-        patient_id=patient_id,
-        caregiver_id=caregiver_id,
-        client_recording_id=client_recording_id,
-        category=result.extraction.category,
-        alert_required=result.extraction.alert_required,
-        r2_audio_key=r2_key,
-        recorded_at=timestamp,
-        duplicate=False,
-    )
+    return _response_from_rows(inserted_rows, duplicate=False)

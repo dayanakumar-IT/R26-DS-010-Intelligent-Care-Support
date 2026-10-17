@@ -72,10 +72,11 @@ export async function fetchAllAdlRecords(limit = 500): Promise<AdlRecord[]> {
 }
 
 export async function fetchAlerts(filter: 'all' | 'open' | 'acknowledged'): Promise<AdlAlert[]> {
+  // Alerts now come from any ADL category (symptom, meal, nurse_check — see
+  // adl_rules.py's field-based alert rules), not symptoms only.
   let query = supabase
     .from('adl_alerts')
     .select('*, adl_records!inner(*)')
-    .eq('adl_records.category', 'symptom')
     .order('created_at', { ascending: false })
 
   if (filter === 'open') {
@@ -89,9 +90,7 @@ export async function fetchAlerts(filter: 'all' | 'open' | 'acknowledged'): Prom
     throw new Error(error.message)
   }
 
-  return (data ?? [])
-    .map((row) => normalizeAlertRow(row as Record<string, unknown>))
-    .filter((alert) => alert.adl_record?.category === 'symptom')
+  return (data ?? []).map((row) => normalizeAlertRow(row as Record<string, unknown>))
 }
 
 function normalizeAlertRow(row: Record<string, unknown>): AdlAlert {
