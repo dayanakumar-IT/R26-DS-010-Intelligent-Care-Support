@@ -13,6 +13,8 @@ and returns a plain list, so it is unit-testable.
 
 import logging
 
+from execution_evaluator import LOW_CONFIDENCE_CUTOFF
+
 DEFAULT_LIMIT = 30
 MAX_LIMIT = 100
 
@@ -41,26 +43,37 @@ def build_history(supabase_client, caregiver_profile_id: str, limit: int = DEFAU
     ) or []
     display_name_by_id = {s["id"]: s["display_name"] for s in signs}
 
-    return [
-        {
-            "attempt_id": r["id"],
-            "target_sign_id": r["target_sign_id"],
-            "target_display_name": display_name_by_id.get(r["target_sign_id"], r["target_sign_id"]),
-            "recognized_sign_id": r["recognized_sign_id"],
-            "recognized_display_name": (
-                display_name_by_id.get(r["recognized_sign_id"], r["recognized_sign_id"])
-                if r["recognized_sign_id"]
-                else None
-            ),
-            "is_correct_sign": r["recognized_sign_id"] == r["target_sign_id"],
-            "recognition_confidence": r["recognition_confidence"],
-            "attempt_type": r["attempt_type"],
-            # quality_tier / execution_score are only meaningful for a webcam
-            # attempt whose recognised sign matched the target and went
-            # through DTW — null otherwise, passed straight through as stored.
-            "quality_tier": r["quality_tier"],
-            "execution_score": r["execution_score"],
-            "attempted_at": r["attempted_at"],
-        }
-        for r in rows
-    ]
+    return [_history_entry(r, display_name_by_id) for r in rows]
+
+
+def _is_not_recognised(row: dict) -> bool:
+    """A webcam attempt below the confidence cut-off. New attempts are
+    already stored with recognized_sign_id NULL; this also covers rows
+    written before that rule, which still hold a low-confidence guess."""
+    confidence = row["recognition_confidence"]
+    return row["attempt_type"] == "webcam" and (
+        row["recognized_sign_id"] is None
+        or (confidence is not None and float(confidence) < LOW_CONFIDENCE_CUTOFF)
+    )
+
+
+def _history_entry(r: dict, display_name_by_id: dict) -> dict:
+    not_recognised = _is_not_recognised(r)
+    recognized = None if not_recognised else r["recognized_sign_id"]
+    return {
+        "attempt_id": r["id"],
+        "target_sign_id": r["target_sign_id"],
+        "target_display_name": display_name_by_id.get(r["target_sign_id"], r["target_sign_id"]),
+        "recognized_sign_id": recognized,
+        "recognized_display_name": display_name_by_id.get(recognized, recognized) if recognized else None,
+        "is_correct_sign": recognized is not None and recognized == r["target_sign_id"],
+        "not_recognised": not_recognised,
+        "recognition_confidence": r["recognition_confidence"],
+        "attempt_type": r["attempt_type"],
+        # quality_tier / execution_score are only meaningful for a webcam
+        # attempt whose recognised sign matched the target and went
+        # through DTW — null otherwise, passed straight through as stored.
+        "quality_tier": None if not_recognised else r["quality_tier"],
+        "execution_score": None if not_recognised else r["execution_score"],
+        "attempted_at": r["attempted_at"],
+    }

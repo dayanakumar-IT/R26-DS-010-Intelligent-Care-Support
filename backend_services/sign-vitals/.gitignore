@@ -9,3 +9,12 @@ test_samples/
 # endpoints need, so it's tracked.
 models/*
 !models/class_names.json
+
+# GLOSS avatar motion pipeline: its own venv, downloaded models, source
+# videos and bulky intermediates stay local (derived research data)
+scripts/avatar/.venv_avatar/
+scripts/avatar/node_modules/
+scripts/avatar/models/
+scripts/avatar/videos/
+scripts/avatar/extracted/
+scripts/avatar/contact_sheets/

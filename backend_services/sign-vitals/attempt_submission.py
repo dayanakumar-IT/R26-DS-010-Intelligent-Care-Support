@@ -24,14 +24,38 @@ from contextlib import contextmanager
 
 import numpy as np
 
-from execution_evaluator import evaluate_execution
+from capture_gates import check_capture
+from execution_evaluator import LOW_CONFIDENCE_CUTOFF, evaluate_execution
 from extract_landmarks_bridge import NoLandmarksExtractedError, extract_landmarks_via_subprocess
 from gemini_feedback import feedback_text
 from lesson_selector import select_next_lesson
-from mastery_engine import compute_execution_score, update_mastery
+from mastery_engine import compute_execution_score, get_mastery, update_mastery
 from preprocessing import normalize_raw_landmarks
+from stage_timing import TimedDb, db_summary, instrument_grading, start_detail, take_detail
 
 logger = logging.getLogger("sign_vitals")
+
+# Splits recognition + DTW into sub-stages, only if GLOSS_TIMING_DETAIL=1.
+instrument_grading()
+
+# Every attempt response carries one of these, so the UI never has to
+# infer the result from is_correct_sign / recognized_sign_id:
+#   capture_rejected — a capture gate stopped the clip before the model
+#                      ran (hands not visible / no movement). Nothing is
+#                      stored and mastery is unchanged.
+#   not_recognised   — the model ran but top-1 confidence was below
+#                      LOW_CONFIDENCE_CUTOFF. No sign is named, nothing is
+#                      graded, mastery is unchanged; the attempt is stored
+#                      with recognized_sign_id NULL.
+#   different_sign   — confidently recognised as another sign.
+#   target_sign      — recognised as the target sign, then DTW-graded.
+#   quiz_correct / quiz_wrong — multiple_choice answers.
+OUTCOME_CAPTURE_REJECTED = "capture_rejected"
+OUTCOME_NOT_RECOGNISED = "not_recognised"
+OUTCOME_DIFFERENT_SIGN = "different_sign"
+OUTCOME_TARGET_SIGN = "target_sign"
+OUTCOME_QUIZ_CORRECT = "quiz_correct"
+OUTCOME_QUIZ_WRONG = "quiz_wrong"
 
 
 class _Timings:
@@ -43,6 +67,8 @@ class _Timings:
     def __init__(self):
         self._marks: dict[str, float] = {}
         self._t0 = time.perf_counter()
+        # Sub-stage breakdowns (extraction, grading detail, Supabase calls).
+        self.extra: dict = {}
 
     @contextmanager
     def stage(self, name: str):
@@ -59,6 +85,7 @@ class _Timings:
 
     def as_dict(self) -> dict:
         out = dict(self._marks)
+        out.update(self.extra)
         out["total_ms"] = round((time.perf_counter() - self._t0) * 1000, 1)
         return out
 
@@ -74,6 +101,11 @@ class AttemptError(Exception):
 
 
 def _resolve_session(supabase_client, caregiver_profile_id: str, session_id: str | None) -> str:
+    """Returns the session this attempt belongs to. A session id that is
+    missing, expired or not this caregiver's never blocks practice: a new
+    session is started instead (the attempt is never added to someone
+    else's session). The response's session_id tells the client which
+    one was used."""
     if session_id:
         result = (
             supabase_client.table("gloss_learning_sessions")
@@ -82,12 +114,14 @@ def _resolve_session(supabase_client, caregiver_profile_id: str, session_id: str
             .limit(1)
             .execute()
         )
-        if not result.data:
-            raise AttemptError(403, f"session_id {session_id!r} not found")
-        if result.data[0]["caregiver_profile_id"] != caregiver_profile_id:
-            raise AttemptError(403, "session_id does not belong to this caregiver")
-        logger.info("[GLOSS][DB] session verified | session=%s", str(session_id)[:8])
-        return session_id
+        if result.data and result.data[0]["caregiver_profile_id"] == caregiver_profile_id:
+            logger.info("[GLOSS][DB] session verified | session=%s", str(session_id)[:8])
+            return session_id
+        logger.warning(
+            "[GLOSS][DB][WARNING] session %s | session=%s — starting a new session",
+            "belongs to another caregiver" if result.data else "not found",
+            str(session_id)[:8],
+        )
 
     created = (
         supabase_client.table("gloss_learning_sessions")
@@ -115,8 +149,9 @@ def submit_attempt(
     caregiver_profile_id: server-derived (never client-supplied).
     target_sign_id: the sign the caregiver was asked to perform.
     attempt_type: "webcam" or "multiple_choice".
-    session_id: optional existing gloss_learning_sessions id — verified
-      to belong to this caregiver, or a new session is created.
+    session_id: optional existing gloss_learning_sessions id — used if it
+      exists and belongs to this caregiver; otherwise (missing, expired,
+      someone else's) a new session is created and practice carries on.
     video_path: path to the attempt clip — required for "webcam",
       forbidden for "multiple_choice".
     selected_sign_id: the sign the caregiver picked in the MC UI —
@@ -128,7 +163,7 @@ def submit_attempt(
     Returns the response dict described in the Phase 8 design (see
     main.py's POST /gloss/attempts docstring).
 
-    Raises: AttemptError for any 400/403 business-logic failure.
+    Raises: AttemptError for any 400 business-logic failure.
     """
     logger.info(
         "[GLOSS][ATTEMPT] processing | caregiver=%s | target=%s | type=%s",
@@ -136,6 +171,10 @@ def submit_attempt(
     )
 
     timings = _Timings()
+    # Time every Supabase round trip (main.py passes one that already
+    # holds the auth calls).
+    if not isinstance(supabase_client, TimedDb):
+        supabase_client = TimedDb(supabase_client)
 
     if attempt_type not in ("webcam", "multiple_choice"):
         raise AttemptError(400, f"attempt_type must be 'webcam' or 'multiple_choice', got {attempt_type!r}")
@@ -182,11 +221,13 @@ def submit_attempt(
         # same `normalized` sequence feeds both recognition and DTW
         # grading (grading.grade_learner_attempt, the notebook pipeline).
         # No second decode, no second extraction, no second normalization.
+        extraction_detail: dict = {}
         with timings.stage("landmark_extraction"):
             try:
-                raw = extract_landmarks_via_subprocess(video_path)
+                raw = extract_landmarks_via_subprocess(video_path, timings=extraction_detail)
             except NoLandmarksExtractedError:
                 raise AttemptError(400, "Could not extract usable landmarks from video")
+        timings.extra["extraction_detail"] = extraction_detail
         logger.info(
             "[GLOSS][INFERENCE] landmark extraction completed | frames=%d | extract_ms=%s",
             int(raw.shape[0]), timings.last("landmark_extraction"),
@@ -201,7 +242,27 @@ def submit_attempt(
             tuple(normalized.shape), timings.last("preprocessing"),
         )
 
+        # Capture gates — before the model, so an empty frame or hands
+        # out of view gets a camera message instead of a wrong sign name.
+        capture = check_capture(raw, normalized)
+        diagnostics["capture_check"] = capture
+        if not capture["passed"]:
+            logger.info(
+                "[GLOSS][GATE] clip rejected before inference | reason=%s | hand_presence=%.3f "
+                "| motion_extent=%.3f — not stored, mastery unchanged",
+                capture["reason"], capture["hand_presence"], capture["motion_extent"],
+            )
+            return {
+                "outcome": OUTCOME_CAPTURE_REJECTED,
+                "session_id": session_id,
+                "capture_check": capture,
+                "message": capture["message"],
+                "timings": {**timings.as_dict(), **db_summary(supabase_client.calls)},
+                "diagnostics": diagnostics,
+            }
+
         logger.info("[GLOSS][INFERENCE] recognition + DTW grading started")
+        start_detail()
         with timings.stage("recognition_and_grading"):
             eval_result = evaluate_execution(normalized, target_sign_id, model)
             grading_result = eval_result["result"]
@@ -250,7 +311,18 @@ def submit_attempt(
                 target_sign_id, missing_landmark_fraction, fully_undetected_frames, raw_frame_count,
             )
 
-        is_correct_sign = eval_result["is_correct_sign"]
+        # Below the cut-off the notebook's own feedback never names a sign
+        # ("couldn't confidently identify"), so neither does the stored
+        # attempt nor the response — even when top-1 happens to equal the
+        # target. Such an attempt is not graded and does not touch mastery.
+        not_recognised = recognition_confidence < LOW_CONFIDENCE_CUTOFF
+        if not_recognised:
+            recognized_sign_id = None
+            is_correct_sign = False
+            outcome = OUTCOME_NOT_RECOGNISED
+        else:
+            is_correct_sign = eval_result["is_correct_sign"]
+            outcome = OUTCOME_TARGET_SIGN if is_correct_sign else OUTCOME_DIFFERENT_SIGN
         corrective_feedback = eval_result["corrective_feedback"]
 
         if is_correct_sign:
@@ -264,6 +336,11 @@ def submit_attempt(
                 "[GLOSS][DTW] execution scored | distance=%.4f | quality=%s | score=%.4f",
                 eval_result["distance"], quality_tier, execution_score,
             )
+        elif not_recognised:
+            logger.info(
+                "[GLOSS][DTW] execution scoring skipped | confidence %.4f < %.2f — not recognised",
+                recognition_confidence, LOW_CONFIDENCE_CUTOFF,
+            )
         else:
             logger.info("[GLOSS][DTW] execution scoring skipped | predicted sign != target")
 
@@ -275,10 +352,15 @@ def submit_attempt(
         if eval_result["rewordable"]:
             with timings.stage("feedback_rewording"):
                 corrective_feedback["summary"] = feedback_text(grading_result, eval_result["base"])
+        grading_detail = take_detail()
+        if grading_detail:
+            timings.extra["grading_detail"] = grading_detail
 
     else:  # multiple_choice
+        not_recognised = False
         recognized_sign_id = selected_sign_id
         is_correct_sign = selected_sign_id == target_sign_id
+        outcome = OUTCOME_QUIZ_CORRECT if is_correct_sign else OUTCOME_QUIZ_WRONG
         if is_correct_sign:
             corrective_feedback = {"summary": "Correct!", "top_deviating_groups": []}
         else:
@@ -315,17 +397,21 @@ def submit_attempt(
     logger.info("[GLOSS][DB] attempt persisted | attempt_id=%s", str(attempt_id)[:8])
 
     with timings.stage("mastery_update"):
-        mastery_row = update_mastery(
-            supabase_client,
-            caregiver_profile_id,
-            target_sign_id,
-            attempt_type=attempt_type,
-            is_correct_sign=is_correct_sign,
-            quality_tier=quality_tier,
-            execution_score=execution_score,
-        )
+        if not_recognised:
+            mastery_row = get_mastery(supabase_client, caregiver_profile_id, target_sign_id)
+        else:
+            mastery_row = update_mastery(
+                supabase_client,
+                caregiver_profile_id,
+                target_sign_id,
+                attempt_type=attempt_type,
+                is_correct_sign=is_correct_sign,
+                quality_tier=quality_tier,
+                execution_score=execution_score,
+            )
     logger.info(
-        "[GLOSS][MASTERY] updated | sign=%s | status=%s | strong_streak=%s",
+        "[GLOSS][MASTERY] %s | sign=%s | status=%s | strong_streak=%s",
+        "unchanged (not recognised)" if not_recognised else "updated",
         target_sign_id, mastery_row["mastery_status"], mastery_row["consecutive_strong_streak"],
     )
 
@@ -333,13 +419,18 @@ def submit_attempt(
         next_sign = select_next_lesson(supabase_client, caregiver_profile_id)
     logger.info("[GLOSS][RECOMMENDATION] next sign selected | sign=%s", next_sign)
 
-    stage_timings = timings.as_dict()
+    stage_timings = {**timings.as_dict(), **db_summary(supabase_client.calls)}
     logger.info(
         "[GLOSS][ATTEMPT] pipeline timings (ms) | %s",
-        " | ".join(f"{k}={v}" for k, v in stage_timings.items()),
+        " | ".join(f"{k}={v}" for k, v in stage_timings.items() if k != "supabase_calls"),
+    )
+    logger.info(
+        "[GLOSS][ATTEMPT] supabase calls (ms) | %s",
+        " | ".join(f"{c['call']}={c['ms']}" for c in stage_timings["supabase_calls"]),
     )
 
     return {
+        "outcome": outcome,
         "attempt_id": attempt_id,
         "session_id": session_id,
         "is_correct_sign": is_correct_sign,

@@ -145,6 +145,15 @@ def _fetch_existing_row(supabase_client, caregiver_profile_id, sign_id) -> dict:
     return new_mastery_state()
 
 
+def get_mastery(supabase_client, caregiver_profile_id: str, sign_id: str) -> dict:
+    """Read-only: the current gloss_caregiver_mastery row for
+    (caregiver_profile_id, sign_id), or a fresh all-zero state if there
+    is none. Used when an attempt must not change mastery (a
+    not-recognised attempt) but the response still reports it."""
+    row = _fetch_existing_row(supabase_client, caregiver_profile_id, sign_id)
+    return {"caregiver_profile_id": caregiver_profile_id, "sign_id": sign_id, **row}
+
+
 def _compute_status(attempts, streak) -> str:
     if attempts == 0:
         return NOTEBOOK_TO_STORED_STATUS["not_started"]

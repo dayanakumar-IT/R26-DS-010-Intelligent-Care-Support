@@ -8,6 +8,8 @@ their status via GET /health. Also exposes POST
 pipeline in isolation.
 """
 
+import hashlib
+import json
 import logging
 import os
 import tempfile
@@ -16,8 +18,10 @@ from contextlib import asynccontextmanager
 
 import numpy as np
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from supabase import create_client
 
@@ -45,7 +49,9 @@ from r2_presign import DEFAULT_EXPIRES_IN as PRESIGN_EXPIRES_IN
 from r2_presign import get_reference_video_url
 from pdedu_mastery_engine import update_mastery as pdedu_update_mastery
 from preprocessing import normalize_raw_landmarks
-from recogniser import MODEL_PATH, load_ensemble
+from recogniser import ASSETS_DIR, MODEL_FILENAME, MODEL_PATH, load_ensemble
+from sign_config import annotate_sign
+from stage_timing import TimedDb
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -125,14 +131,45 @@ def _check_supabase() -> dict:
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     supabase = create_client(url, key)
     result = supabase.table("gloss_signs").select("*", count="exact").limit(1).execute()
-    state["supabase"] = supabase
+    state.update(supabase=supabase)
     return {
         "connected": True,
         "gloss_signs_row_count": result.count,
     }
 
 
+def _fingerprint(path: str) -> str:
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()[:12]
+
+
+def _check_fingerprints() -> dict:
+    """Every gloss_assets/ file listed in manifest.json must match its
+    SHA-256 fingerprint (first 12 hex chars) — the same check as
+    tests/test_parity.py, run at startup so a wrong model / scaler /
+    threshold file can't be served silently. Files the manifest lists
+    but the bundle doesn't ship (the two ensemble members) are skipped."""
+    with open(os.path.join(ASSETS_DIR, "manifest.json")) as f:
+        manifest = json.load(f)
+    checked, mismatched = 0, []
+    for name, entry in manifest.items():
+        path = os.path.join(ASSETS_DIR, name)
+        if not os.path.exists(path):
+            continue
+        checked += 1
+        if _fingerprint(path) != entry["fingerprint"]:
+            mismatched.append(name)
+    if mismatched:
+        raise ValueError(f"fingerprint mismatch vs manifest.json: {', '.join(mismatched)}")
+    return {
+        "loaded": True,
+        "files_checked": checked,
+        "model_fingerprint": manifest[MODEL_FILENAME]["fingerprint"],
+    }
+
+
 _STARTUP_LABELS = {
+    "fingerprints": "asset fingerprints (manifest.json)",
     "model": "recognition model (GLOSS_ensemble.keras)",
     "feature_scaler": "standardization parameters",
     "class_thresholds": "class thresholds",
@@ -142,11 +179,31 @@ _STARTUP_LABELS = {
 }
 
 
+def _db():
+    """The Supabase client. If the startup connection failed (e.g. a
+    network blip during boot), connect now instead of failing every
+    request until the server is restarted."""
+    client = state.get("supabase")
+    if client is not None:
+        return client
+    logger.warning("[SIGN_VITALS][DB] no startup Supabase connection — reconnecting")
+    try:
+        client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    except Exception as e:
+        logger.error("[SIGN_VITALS][DB][ERROR] reconnect failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=503, detail="The database is unreachable right now. Please try again shortly.")
+    state.update(supabase=client)
+    state["checks"]["supabase"] = {"connected": True, "reconnected_after_startup": True}
+    logger.info("[SIGN_VITALS][DB] Supabase reconnected")
+    return client
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     checks = {}
     failed = []
     for name, fn in (
+        ("fingerprints", _check_fingerprints),
         ("model", _check_model),
         ("feature_scaler", _check_feature_scaler),
         ("class_thresholds", _check_class_thresholds),
@@ -179,6 +236,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="sign-vitals", lifespan=lifespan)
 
+
+# Registered BEFORE the CORS middleware so it sits inside it: an
+# unhandled exception becomes a JSON 500 that still carries CORS headers.
+# Without this, Starlette's outermost error handler answers without them
+# and the browser reports a bare "Failed to fetch" instead of the error.
+@app.middleware("http")
+async def json_errors(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.exception("[SIGN_VITALS][ERROR] unhandled error | %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "Something went wrong on the server. Please try again."})
+
 # Local dev only: the Vite dev server (localhost:5173 by default, though Vite
 # will pick the next free port if that's taken) runs on a different origin
 # than this API (localhost:8000), so the browser blocks fetch() calls here
@@ -203,6 +273,54 @@ def health():
     return state["checks"]
 
 
+# Upload limits for attempt clips. A recorded sign is a few seconds of
+# webcam video — a few MB at most — so 50 MB leaves a wide margin while
+# stopping someone filling the server's disk.
+MAX_VIDEO_BYTES = 50 * 1024 * 1024
+ALLOWED_VIDEO_EXTENSIONS = {".webm", ".mp4", ".mov", ".mkv"}
+_UPLOAD_CHUNK = 1024 * 1024
+
+
+async def _save_upload(video: UploadFile) -> tuple[str, int]:
+    """Streams an uploaded clip to a temp file, enforcing type and size.
+    Returns (tmp_path, size_bytes). The caller deletes the file."""
+    suffix = os.path.splitext(video.filename or "")[1].lower()
+    content_type = (video.content_type or "").lower()
+    if not content_type.startswith("video/") and suffix not in ALLOWED_VIDEO_EXTENSIONS:
+        raise HTTPException(status_code=415, detail="Please upload a video clip (WebM or MP4).")
+    if suffix not in ALLOWED_VIDEO_EXTENSIONS:
+        suffix = ".mp4"
+
+    fd, tmp_path = tempfile.mkstemp(suffix=suffix, prefix="gloss_attempt_")
+    size = 0
+    try:
+        with os.fdopen(fd, "wb") as f:
+            while chunk := await video.read(_UPLOAD_CHUNK):
+                size += len(chunk)
+                if size > MAX_VIDEO_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"The video is too large (limit {MAX_VIDEO_BYTES // (1024 * 1024)} MB). "
+                        "Record a shorter clip of just the sign.",
+                    )
+                f.write(chunk)
+    except BaseException:
+        os.remove(tmp_path)
+        raise
+    if size == 0:
+        os.remove(tmp_path)
+        raise HTTPException(status_code=400, detail="The uploaded video is empty.")
+    return tmp_path, size
+
+
+def _require_debug_endpoints():
+    """The two /gloss/attempts/{recognize,evaluate} utilities take no
+    login, so they only exist when GLOSS_ENABLE_DEBUG_ENDPOINTS=1 is set
+    (local diagnostics, e.g. scripts/diagnose_attempt_stability.py)."""
+    if os.environ.get("GLOSS_ENABLE_DEBUG_ENDPOINTS") != "1":
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
 @app.post("/gloss/attempts/recognize")
 async def recognize(video: UploadFile = File(...)):
     """Run a caregiver attempt clip through the recognition pipeline
@@ -216,15 +334,11 @@ async def recognize(video: UploadFile = File(...)):
     the frontend orchestrating multiple requests itself. Don't mistake
     this endpoint for that final integration point.
     """
-    contents = await video.read()
-    logger.info("video received: filename=%s size_bytes=%d", video.filename, len(contents))
+    _require_debug_endpoints()
+    tmp_path, size = await _save_upload(video)
+    logger.info("video received: filename=%s size_bytes=%d", video.filename, size)
 
-    suffix = os.path.splitext(video.filename or "")[1] or ".mp4"
-    fd, tmp_path = tempfile.mkstemp(suffix=suffix, prefix="gloss_attempt_")
     try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(contents)
-
         try:
             raw = extract_landmarks_via_subprocess(tmp_path)
         except NoLandmarksExtractedError:
@@ -301,18 +415,14 @@ async def evaluate(video: UploadFile = File(...), target_sign_id: str = Form(...
     requests itself. Don't mistake this endpoint for that final
     integration point.
     """
-    contents = await video.read()
+    _require_debug_endpoints()
+    tmp_path, size = await _save_upload(video)
     logger.info(
         "video received: filename=%s size_bytes=%d target_sign_id=%s",
-        video.filename, len(contents), target_sign_id,
+        video.filename, size, target_sign_id,
     )
 
-    suffix = os.path.splitext(video.filename or "")[1] or ".mp4"
-    fd, tmp_path = tempfile.mkstemp(suffix=suffix, prefix="gloss_attempt_")
     try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(contents)
-
         try:
             raw = extract_landmarks_via_subprocess(tmp_path)
         except NoLandmarksExtractedError:
@@ -380,31 +490,36 @@ async def create_attempt(
     logger.info(
         "[GLOSS][ATTEMPT] request received | target=%s | type=%s", target_sign_id, attempt_type
     )
+    # One timed client per request: every Supabase round trip (auth
+    # included) ends up in result["timings"]["supabase_calls"].
+    db = TimedDb(_db())
+    auth_t0 = time.perf_counter()
     try:
-        caregiver_profile_id = get_authenticated_caregiver(
-            state["supabase"], authorization, context="GLOSS"
+        caregiver_profile_id = await run_in_threadpool(
+            get_authenticated_caregiver, db, authorization, context="GLOSS"
         )
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
+    auth_ms = _ms(auth_t0)
 
     tmp_path = None
     file_save_ms = 0.0
     try:
         if video is not None:
             file_save_t0 = time.perf_counter()
-            contents = await video.read()
-            suffix = os.path.splitext(video.filename or "")[1] or ".mp4"
-            fd, tmp_path = tempfile.mkstemp(suffix=suffix, prefix="gloss_attempt_")
-            with os.fdopen(fd, "wb") as f:
-                f.write(contents)
+            tmp_path, size = await _save_upload(video)
             file_save_ms = round((time.perf_counter() - file_save_t0) * 1000, 1)
             logger.info(
                 "[GLOSS][ATTEMPT] video received | file=%s | size_kb=%d | file_save_ms=%.1f",
-                video.filename, len(contents) // 1024, file_save_ms,
+                video.filename, size // 1024, file_save_ms,
             )
 
-        result = submit_attempt(
-            state["supabase"],
+        # MediaPipe subprocess, model inference, DTW and the Supabase
+        # calls all block — run them on a worker thread so one attempt
+        # doesn't stall every other request on the event loop.
+        result = await run_in_threadpool(
+            submit_attempt,
+            db,
             caregiver_profile_id,
             target_sign_id=target_sign_id,
             attempt_type=attempt_type,
@@ -420,6 +535,7 @@ async def create_attempt(
         # submit_attempt already returns. Additive; existing fields unchanged.
         if isinstance(result, dict):
             timings = dict(result.get("timings") or {})
+            timings["auth_ms"] = auth_ms
             timings["file_save_ms"] = file_save_ms
             timings["request_total_ms"] = round((time.perf_counter() - request_t0) * 1000, 1)
             result["timings"] = timings
@@ -455,7 +571,7 @@ async def create_attempt(
 
 
 @app.get("/gloss/next-lesson")
-async def next_lesson(authorization: str | None = Header(None)):
+def next_lesson(authorization: str | None = Header(None)):
     """Lesson recommendation before any attempt has been submitted yet
     (e.g. right after login). Same auth requirement as POST
     /gloss/attempts — reuses get_authenticated_caregiver() and
@@ -465,12 +581,12 @@ async def next_lesson(authorization: str | None = Header(None)):
     logger.info("[GLOSS][NEXT_LESSON] request received")
     try:
         caregiver_profile_id = get_authenticated_caregiver(
-            state["supabase"], authorization, context="GLOSS"
+            _db(), authorization, context="GLOSS"
         )
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
-    next_sign = select_next_lesson(state["supabase"], caregiver_profile_id)
+    next_sign = select_next_lesson(_db(), caregiver_profile_id)
     logger.info("[GLOSS][RECOMMENDATION] next sign selected | sign=%s", next_sign)
     logger.info(
         "[GLOSS][NEXT_LESSON] request completed | status=200 | duration_ms=%s", _ms(t0)
@@ -479,7 +595,7 @@ async def next_lesson(authorization: str | None = Header(None)):
 
 
 @app.get("/gloss/signs")
-async def list_signs(authorization: str | None = Header(None)):
+def list_signs(authorization: str | None = Header(None)):
     """Lists active signs (id + display_name) — the GLOSS sign catalogue.
     Needed by the frontend for free browsing and for building
     multiple_choice fallback options; not part of the recognition/DTW
@@ -488,12 +604,12 @@ async def list_signs(authorization: str | None = Header(None)):
     t0 = time.perf_counter()
     logger.info("[GLOSS][SIGNS] request received")
     try:
-        get_authenticated_caregiver(state["supabase"], authorization, context="GLOSS")
+        get_authenticated_caregiver(_db(), authorization, context="GLOSS")
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     result = (
-        state["supabase"]
+        _db()
         .table("gloss_signs")
         .select("id, display_name")
         .eq("is_active", True)
@@ -502,11 +618,12 @@ async def list_signs(authorization: str | None = Header(None)):
     )
     logger.info("[GLOSS][DB] sign catalogue loaded | rows=%d", len(result.data or []))
     logger.info("[GLOSS][SIGNS] request completed | status=200 | duration_ms=%s", _ms(t0))
-    return {"signs": result.data}
+    # Every active sign stays in the dictionary; dictionary-only ones carry a quality note.
+    return {"signs": [annotate_sign(row) for row in result.data or []]}
 
 
 @app.get("/gloss/signs/{sign_id}/reference")
-async def get_sign_reference(sign_id: str, authorization: str | None = Header(None)):
+def get_sign_reference(sign_id: str, authorization: str | None = Header(None)):
     """Returns one sign's reference landmark sequence, reshaped into a
     frontend-friendly per-frame/per-landmark structure, for the 3D
     signing avatar. Read-only relative to the ML pipeline — this does
@@ -521,12 +638,12 @@ async def get_sign_reference(sign_id: str, authorization: str | None = Header(No
     t0 = time.perf_counter()
     logger.info("[GLOSS][REFERENCE] request received | sign=%s", sign_id)
     try:
-        get_authenticated_caregiver(state["supabase"], authorization, context="GLOSS")
+        get_authenticated_caregiver(_db(), authorization, context="GLOSS")
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     sign_result = (
-        state["supabase"]
+        _db()
         .table("gloss_signs")
         .select("id, display_name, is_active")
         .eq("id", sign_id)
@@ -537,7 +654,7 @@ async def get_sign_reference(sign_id: str, authorization: str | None = Header(No
         raise HTTPException(status_code=404, detail=f"Unknown or inactive sign_id: {sign_id!r}")
 
     reference_result = (
-        state["supabase"]
+        _db()
         .table("gloss_sign_references")
         .select("frame_count, landmark_sequence")
         .eq("sign_id", sign_id)
@@ -574,7 +691,7 @@ async def get_sign_reference(sign_id: str, authorization: str | None = Header(No
 
 
 @app.get("/gloss/signs/{sign_id}/demo-video")
-async def get_sign_demo_video(sign_id: str, authorization: str | None = Header(None)):
+def get_sign_demo_video(sign_id: str, authorization: str | None = Header(None)):
     """Returns a ready-to-play URL for a sign's validated human reference
     video. The video binary lives in Cloudflare R2; this endpoint reads
     only the gloss_sign_demo_videos metadata row and returns a URL —
@@ -597,12 +714,12 @@ async def get_sign_demo_video(sign_id: str, authorization: str | None = Header(N
     t0 = time.perf_counter()
     logger.info("[GLOSS][VIDEO] request received | sign=%s", sign_id)
     try:
-        get_authenticated_caregiver(state["supabase"], authorization, context="GLOSS")
+        get_authenticated_caregiver(_db(), authorization, context="GLOSS")
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     result = (
-        state["supabase"]
+        _db()
         .table("gloss_sign_demo_videos")
         .select("sign_id, video_object_key, video_url, duration_seconds, is_active")
         .eq("sign_id", sign_id)
@@ -642,7 +759,7 @@ async def get_sign_demo_video(sign_id: str, authorization: str | None = Header(N
 
 
 @app.get("/gloss/progress")
-async def gloss_progress(authorization: str | None = Header(None)):
+def gloss_progress(authorization: str | None = Header(None)):
     """Caregiver learning-progress report for the Progress tab — counts,
     per-sign mastery summary, and a practice calendar. Read-only
     aggregation of the caller's own gloss_caregiver_mastery /
@@ -652,18 +769,18 @@ async def gloss_progress(authorization: str | None = Header(None)):
     logger.info("[GLOSS][PROGRESS] request received")
     try:
         caregiver_profile_id = get_authenticated_caregiver(
-            state["supabase"], authorization, context="GLOSS"
+            _db(), authorization, context="GLOSS"
         )
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
-    report = build_progress_report(state["supabase"], caregiver_profile_id)
+    report = build_progress_report(_db(), caregiver_profile_id)
     logger.info("[GLOSS][PROGRESS] request completed | status=200 | duration_ms=%s", _ms(t0))
     return report
 
 
 @app.get("/gloss/history")
-async def gloss_history(limit: int = 30, authorization: str | None = Header(None)):
+def gloss_history(limit: int = 30, authorization: str | None = Header(None)):
     """The caller's most recent attempts (newest first) for the History
     tab. Read-only; returns only per-attempt summary fields — never raw
     landmarks, video, or auth data.
@@ -672,12 +789,12 @@ async def gloss_history(limit: int = 30, authorization: str | None = Header(None
     logger.info("[GLOSS][HISTORY] request received | limit=%d", limit)
     try:
         caregiver_profile_id = get_authenticated_caregiver(
-            state["supabase"], authorization, context="GLOSS"
+            _db(), authorization, context="GLOSS"
         )
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
-    attempts = build_history(state["supabase"], caregiver_profile_id, limit)
+    attempts = build_history(_db(), caregiver_profile_id, limit)
     logger.info("[GLOSS][HISTORY] response prepared | rows=%d", len(attempts))
     logger.info("[GLOSS][HISTORY] request completed | status=200 | duration_ms=%s", _ms(t0))
     return {"attempts": attempts}
@@ -708,7 +825,7 @@ def _serialize_pdedu_question(question: dict, symptom: dict) -> dict:
 
 
 @app.get("/pdedu/next-question")
-async def pdedu_next_question(authorization: str | None = Header(None)):
+def pdedu_next_question(authorization: str | None = Header(None)):
     """Returns the next adaptively-selected Parkinson's education quiz
     question. Never reveals the correct answer, a correct-choice flag,
     or an answer index — only the question content itself.
@@ -717,13 +834,13 @@ async def pdedu_next_question(authorization: str | None = Header(None)):
     logger.info("[PDEDU][NEXT_QUESTION] request received")
     try:
         caregiver_profile_id = get_authenticated_caregiver(
-            state["supabase"], authorization, context="PDEDU"
+            _db(), authorization, context="PDEDU"
         )
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     try:
-        question_id = select_next_question(state["supabase"], caregiver_profile_id)
+        question_id = select_next_question(_db(), caregiver_profile_id)
     except ValueError as e:
         logger.exception(
             "[PDEDU][NEXT_QUESTION][ERROR] question selection failed | caregiver=%s",
@@ -732,7 +849,7 @@ async def pdedu_next_question(authorization: str | None = Header(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
     question_result = (
-        state["supabase"]
+        _db()
         .table("pdedu_questions")
         .select("id, symptom_id, question_type, prompt, choices")
         .eq("id", question_id)
@@ -742,7 +859,7 @@ async def pdedu_next_question(authorization: str | None = Header(None)):
     question = question_result.data[0]
 
     symptom_result = (
-        state["supabase"]
+        _db()
         .table("pdedu_symptoms")
         .select("display_name, definition")
         .eq("id", question["symptom_id"])
@@ -762,7 +879,7 @@ async def pdedu_next_question(authorization: str | None = Header(None)):
 
 
 @app.post("/pdedu/responses")
-async def pdedu_submit_response(body: PdeduResponseRequest, authorization: str | None = Header(None)):
+def pdedu_submit_response(body: PdeduResponseRequest, authorization: str | None = Header(None)):
     """Records one Parkinson's education quiz answer, updates mastery
     for the symptom being tested (not the incorrectly selected one),
     and returns the next adaptively-selected question.
@@ -771,7 +888,7 @@ async def pdedu_submit_response(body: PdeduResponseRequest, authorization: str |
     logger.info("[PDEDU][RESPONSE] request received")
     try:
         caregiver_profile_id = get_authenticated_caregiver(
-            state["supabase"], authorization, context="PDEDU"
+            _db(), authorization, context="PDEDU"
         )
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
@@ -782,7 +899,7 @@ async def pdedu_submit_response(body: PdeduResponseRequest, authorization: str |
     )
 
     question_result = (
-        state["supabase"]
+        _db()
         .table("pdedu_questions")
         .select("id, symptom_id, choices, extra_fact")
         .eq("id", body.question_id)
@@ -803,7 +920,7 @@ async def pdedu_submit_response(body: PdeduResponseRequest, authorization: str |
 
     is_correct = body.selected_symptom_id == correct_symptom_id
 
-    state["supabase"].table("pdedu_responses").insert(
+    _db().table("pdedu_responses").insert(
         {
             "caregiver_profile_id": caregiver_profile_id,
             "question_id": body.question_id,
@@ -813,13 +930,13 @@ async def pdedu_submit_response(body: PdeduResponseRequest, authorization: str |
     ).execute()
     logger.info("[PDEDU][QUIZ] answer evaluated | is_correct=%s", is_correct)
 
-    mastery_row = pdedu_update_mastery(state["supabase"], caregiver_profile_id, correct_symptom_id, is_correct)
+    mastery_row = pdedu_update_mastery(_db(), caregiver_profile_id, correct_symptom_id, is_correct)
     logger.info(
         "[PDEDU][MASTERY] updated | symptom=%s | mastery_score=%s",
         correct_symptom_id, mastery_row["mastery_score"],
     )
 
-    next_question_id = select_next_question(state["supabase"], caregiver_profile_id)
+    next_question_id = select_next_question(_db(), caregiver_profile_id)
     logger.info("[PDEDU][QUIZ] next question selected | question=%s", _short(next_question_id))
     logger.info("[PDEDU][RESPONSE] request completed | status=200 | duration_ms=%s", _ms(t0))
 
@@ -853,13 +970,13 @@ class PdeduQuizAnswerRequest(BaseModel):
 
 def _pdedu_caregiver(authorization: str | None) -> str:
     try:
-        return get_authenticated_caregiver(state["supabase"], authorization, context="PDEDU")
+        return get_authenticated_caregiver(_db(), authorization, context="PDEDU")
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @app.get("/pdedu/symptoms")
-async def pdedu_list_symptoms(authorization: str | None = Header(None)):
+def pdedu_list_symptoms(authorization: str | None = Header(None)):
     """The symptom education catalogue for the Explore Symptoms section:
     definition, learning tip, memory trick, and whether a demo video is
     available. Read-only reference data."""
@@ -868,7 +985,7 @@ async def pdedu_list_symptoms(authorization: str | None = Header(None)):
     _pdedu_caregiver(authorization)
 
     symptoms = (
-        state["supabase"]
+        _db()
         .table("pdedu_symptoms")
         .select("id, display_name, definition, learning_tip, memory_trick, display_order")
         .eq("is_active", True)
@@ -877,7 +994,7 @@ async def pdedu_list_symptoms(authorization: str | None = Header(None)):
     ).data or []
 
     videos = (
-        state["supabase"]
+        _db()
         .table("pdedu_symptom_demo_videos")
         .select("symptom_id")
         .execute()
@@ -906,7 +1023,7 @@ async def pdedu_list_symptoms(authorization: str | None = Header(None)):
 
 
 @app.get("/pdedu/symptoms/{symptom_id}/demo-video")
-async def pdedu_symptom_demo_video(symptom_id: str, authorization: str | None = Header(None)):
+def pdedu_symptom_demo_video(symptom_id: str, authorization: str | None = Header(None)):
     """A ready-to-play URL for a symptom's educational movement-pattern
     clip (Explore Symptoms -> Watch Example). The binary lives in
     Cloudflare R2; only a short-lived URL is returned — never R2
@@ -915,7 +1032,7 @@ async def pdedu_symptom_demo_video(symptom_id: str, authorization: str | None = 
     logger.info("[PDEDU][VIDEO] request received | symptom=%s", symptom_id)
     _pdedu_caregiver(authorization)
     try:
-        resolved = resolve_symptom_demo_video(state["supabase"], symptom_id)
+        resolved = resolve_symptom_demo_video(_db(), symptom_id)
     except DemoVideoUnavailable as e:
         logger.warning("[PDEDU][VIDEO][WARNING] no usable clip | symptom=%s", symptom_id)
         raise HTTPException(status_code=404, detail=str(e))
@@ -924,7 +1041,7 @@ async def pdedu_symptom_demo_video(symptom_id: str, authorization: str | None = 
 
 
 @app.post("/pdedu/quiz/start")
-async def pdedu_quiz_start(authorization: str | None = Header(None)):
+def pdedu_quiz_start(authorization: str | None = Header(None)):
     """Starts a Symptom Trainer quiz: creates a session and returns
     ~10 questions in random order (video + text, adapting to which
     symptoms actually have a video). Correct answers are never
@@ -933,7 +1050,7 @@ async def pdedu_quiz_start(authorization: str | None = Header(None)):
     logger.info("[PDEDU][QUIZ] start request received")
     caregiver_profile_id = _pdedu_caregiver(authorization)
     try:
-        result = pdedu_start_session(state["supabase"], caregiver_profile_id)
+        result = pdedu_start_session(_db(), caregiver_profile_id)
     except QuizError as e:
         logger.warning("[PDEDU][QUIZ][WARNING] start rejected | status=%d | reason=%s", e.status_code, e.detail)
         raise HTTPException(status_code=e.status_code, detail=e.detail)
@@ -945,7 +1062,7 @@ async def pdedu_quiz_start(authorization: str | None = Header(None)):
 
 
 @app.get("/pdedu/quiz/questions/{question_id}/demo-video")
-async def pdedu_quiz_question_video(question_id: str, authorization: str | None = Header(None)):
+def pdedu_quiz_question_video(question_id: str, authorization: str | None = Header(None)):
     """The clip for a video quiz question. Resolved by question id and
     the response deliberately omits the symptom_id, so watching the
     clip never reveals the answer. 404 when the question is not a video
@@ -955,7 +1072,7 @@ async def pdedu_quiz_question_video(question_id: str, authorization: str | None 
     _pdedu_caregiver(authorization)
 
     result = (
-        state["supabase"]
+        _db()
         .table("pdedu_questions")
         .select("id, symptom_id, format, is_active")
         .eq("id", question_id)
@@ -967,7 +1084,7 @@ async def pdedu_quiz_question_video(question_id: str, authorization: str | None 
         raise HTTPException(status_code=404, detail="No video for this question")
 
     try:
-        resolved = resolve_symptom_demo_video(state["supabase"], result.data[0]["symptom_id"])
+        resolved = resolve_symptom_demo_video(_db(), result.data[0]["symptom_id"])
     except DemoVideoUnavailable as e:
         logger.warning("[PDEDU][VIDEO][WARNING] no usable clip for quiz question | question=%s", _short(question_id))
         raise HTTPException(status_code=404, detail=str(e))
@@ -977,7 +1094,7 @@ async def pdedu_quiz_question_video(question_id: str, authorization: str | None 
 
 
 @app.post("/pdedu/quiz/answer")
-async def pdedu_quiz_answer(body: PdeduQuizAnswerRequest, authorization: str | None = Header(None)):
+def pdedu_quiz_answer(body: PdeduQuizAnswerRequest, authorization: str | None = Header(None)):
     """Grades one answer server-side, persists the attempt, updates
     mastery + session totals, and returns correctness, the correct
     answer, explanation, tip, XP awarded and the current streak."""
@@ -989,7 +1106,7 @@ async def pdedu_quiz_answer(body: PdeduQuizAnswerRequest, authorization: str | N
     caregiver_profile_id = _pdedu_caregiver(authorization)
     try:
         result = pdedu_record_answer(
-            state["supabase"],
+            _db(),
             caregiver_profile_id,
             body.session_id,
             body.question_id,
@@ -1006,7 +1123,7 @@ async def pdedu_quiz_answer(body: PdeduQuizAnswerRequest, authorization: str | N
 
 
 @app.post("/pdedu/quiz/{session_id}/complete")
-async def pdedu_quiz_complete(session_id: str, authorization: str | None = Header(None)):
+def pdedu_quiz_complete(session_id: str, authorization: str | None = Header(None)):
     """Finalises a session and returns the end-of-quiz summary: score,
     XP, best streak, per-symptom breakdown, strongest / needs-review
     symptoms, milestone badges, and the list of incorrect answers for
@@ -1015,7 +1132,7 @@ async def pdedu_quiz_complete(session_id: str, authorization: str | None = Heade
     logger.info("[PDEDU][QUIZ] complete request received | session=%s", _short(session_id))
     caregiver_profile_id = _pdedu_caregiver(authorization)
     try:
-        result = pdedu_complete_session(state["supabase"], caregiver_profile_id, session_id)
+        result = pdedu_complete_session(_db(), caregiver_profile_id, session_id)
     except QuizError as e:
         logger.warning("[PDEDU][QUIZ][WARNING] complete rejected | status=%d | reason=%s", e.status_code, e.detail)
         raise HTTPException(status_code=e.status_code, detail=e.detail)
@@ -1028,26 +1145,26 @@ async def pdedu_quiz_complete(session_id: str, authorization: str | None = Heade
 
 
 @app.get("/pdedu/progress")
-async def pdedu_progress(authorization: str | None = Header(None)):
+def pdedu_progress(authorization: str | None = Header(None)):
     """The caller's Parkinson's learning progress: overall quiz score,
     totals, XP, best streak, and recognition accuracy in training per
     symptom. Read-only aggregation of the caller's own rows."""
     t0 = time.perf_counter()
     logger.info("[PDEDU][PROGRESS] request received")
     caregiver_profile_id = _pdedu_caregiver(authorization)
-    report = build_pdedu_progress(state["supabase"], caregiver_profile_id)
+    report = build_pdedu_progress(_db(), caregiver_profile_id)
     logger.info("[PDEDU][PROGRESS] request completed | status=200 | duration_ms=%s", _ms(t0))
     return report
 
 
 @app.get("/pdedu/history")
-async def pdedu_history(limit: int = 20, authorization: str | None = Header(None)):
+def pdedu_history(limit: int = 20, authorization: str | None = Header(None)):
     """The caller's most recent completed Symptom Trainer quizzes
     (newest first)."""
     t0 = time.perf_counter()
     logger.info("[PDEDU][HISTORY] request received | limit=%d", limit)
     caregiver_profile_id = _pdedu_caregiver(authorization)
-    sessions = build_pdedu_history(state["supabase"], caregiver_profile_id, limit)
+    sessions = build_pdedu_history(_db(), caregiver_profile_id, limit)
     logger.info(
         "[PDEDU][HISTORY] request completed | status=200 | rows=%d | duration_ms=%s",
         len(sessions), _ms(t0),
