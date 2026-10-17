@@ -323,6 +323,13 @@ async def _broadcast_loop(room_id: str):
         last_frame = np.array(result.skeleton, dtype=np.float32)
         ctx_result = ctx.update(last_frame, result.timestamp)
 
+        # Reset postprocessor EMA the first time the engine's buffer is fully warm.
+        # Warmup inference (partial buffer) can score high on static standing poses;
+        # resetting here ensures those scores don't carry into real inference.
+        if getattr(eng, '_buffer_warmed', False) and not getattr(proc, '_warmed', False):
+            proc.reset()
+            proc._warmed = True  # type: ignore[attr-defined]
+
         # Feed raw model score directly to postprocessor — no zone modifier.
         # Zone modifier was causing false HIGHs: harmless posture jitter (TRANSITION)
         # in a configured BED/CHAIR zone added +0.12–+0.15 to the score, pushing
@@ -339,7 +346,13 @@ async def _broadcast_loop(room_id: str):
         # those. False positives while standing are a threshold/EMA issue, not
         # a posture-rule issue.
         from dataclasses import replace as _dc_replace
+        # SITTING confirmed → cap at MODERATE (seated person is not mid-fall)
         if ctx_result.posture == "SITTING" and state.level == "HIGH":
+            state = _dc_replace(state, level="MODERATE", alert=False)
+        # STANDING confirmed → cap at MODERATE (upright stable posture is not a fall)
+        # Only fires when posture classifier has settled on STANDING (not TRANSITION),
+        # so genuine fall-while-standing-up transitions still pass through.
+        if ctx_result.posture == "STANDING" and state.level == "HIGH":
             state = _dc_replace(state, level="MODERATE", alert=False)
 
         # 5-second replay buffer (~150 frames at 30fps → keep last 150)

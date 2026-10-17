@@ -105,6 +105,7 @@ class InferenceEngine:
         self._running = False
         self._thread:  Optional[threading.Thread] = None
         self._frame_count = 0
+        self._buffer_warmed = False  # True after first full buffer — EMA reset once
 
         # MJPEG stream state — updated every frame
         self._latest_frame_bytes: Optional[bytes] = None
@@ -252,6 +253,14 @@ class InferenceEngine:
                     self._disp_buffering = True
                     self._disp_level = "NORMAL"
                     self._disp_score = 0.0
+
+                # First time buffer becomes full: reset EMA so warmup junk doesn't
+                # carry into real inference. Any spurious high scores accumulated
+                # while filling the 90-frame buffer are discarded here.
+                if not self._buffer_warmed and len(self._buffer) >= TARGET_FRAMES:
+                    self._buffer_warmed = True
+                    self._disp_score = 0.0
+                    self._disp_level = "NORMAL"
 
                 if (self._frame_count % INFER_EVERY_N == 0
                         and len(self._buffer) >= int(TARGET_FRAMES * MIN_BUFFER_FILL)):
