@@ -9,7 +9,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { GlossMasterySummaryRow, GlossSign } from '../types/gloss'
+import { PROGRESS_LABEL, progressState, type ProgressState } from '../utils/progressLabels'
 import { getSignIcon } from './gloss/signIcons'
+import QualityNote from './gloss/QualityNote'
 
 // UI-only enhancement of the sign catalogue. Search + selection behave
 // exactly as before; the state grouping / sort are pure client-side
@@ -24,24 +26,21 @@ interface SignBrowserProps {
   mastery?: GlossMasterySummaryRow[]
 }
 
-type LearnState = 'not_practiced' | 'needs_practice' | 'mastered'
+// Same three states as every other GLOSS screen (utils/progressLabels).
+type LearnState = ProgressState
 type FilterId = 'all' | LearnState
 type SortDir = 'az' | 'za'
 
 const STATE_STYLE: Record<LearnState, { leftBorder: string; circleBg: string; icon: string }> = {
-  not_practiced: { leftBorder: '#93B4FF', circleBg: '#EEF4FF', icon: '#2563EB' },
-  needs_practice: { leftBorder: '#FFB867', circleBg: '#FFF4E5', icon: '#F59E0B' },
-  mastered: { leftBorder: '#69D995', circleBg: '#EAF9EF', icon: '#16A34A' },
+  not_started: { leftBorder: '#93B4FF', circleBg: '#EEF4FF', icon: '#2563EB' },
+  practising: { leftBorder: '#FFB867', circleBg: '#FFF4E5', icon: '#B45309' },
+  demonstrated: { leftBorder: '#69D995', circleBg: '#EAF9EF', icon: '#16A34A' },
 }
 
 const STATE_STATUS_ICON: Record<LearnState, LucideIcon> = {
-  not_practiced: Circle,
-  needs_practice: TrendingUp,
-  mastered: CheckCircle2,
-}
-
-function pct(score: number | null | undefined): number | null {
-  return score == null ? null : Math.round(score * 100)
+  not_started: Circle,
+  practising: TrendingUp,
+  demonstrated: CheckCircle2,
 }
 
 function FilterPill({
@@ -93,8 +92,7 @@ export default function SignBrowser({ signs, onSelect, mastery = [] }: SignBrows
 
   const stateOf = (signId: string): LearnState => {
     const row = masteryById.get(signId)
-    if (!row) return 'not_practiced'
-    return row.mastery_status === 'mastered' ? 'mastered' : 'needs_practice'
+    return progressState(row?.mastery_status, row?.attempts ?? 0)
   }
 
   const q = query.trim().toLowerCase()
@@ -142,28 +140,28 @@ export default function SignBrowser({ signs, onSelect, mastery = [] }: SignBrows
           All
         </FilterPill>
         <FilterPill
-          active={filter === 'needs_practice'}
-          onClick={() => setFilter('needs_practice')}
+          active={filter === 'practising'}
+          onClick={() => setFilter('practising')}
           icon={TrendingUp}
-          iconColor="#F59E0B"
+          iconColor="#B45309"
         >
-          Needs Practice
+          {PROGRESS_LABEL.practising}
         </FilterPill>
         <FilterPill
-          active={filter === 'mastered'}
-          onClick={() => setFilter('mastered')}
+          active={filter === 'demonstrated'}
+          onClick={() => setFilter('demonstrated')}
           icon={CheckCircle2}
           iconColor="#16A34A"
         >
-          Mastered
+          {PROGRESS_LABEL.demonstrated}
         </FilterPill>
         <FilterPill
-          active={filter === 'not_practiced'}
-          onClick={() => setFilter('not_practiced')}
+          active={filter === 'not_started'}
+          onClick={() => setFilter('not_started')}
           icon={Circle}
           iconColor="#2563EB"
         >
-          Not Practiced
+          {PROGRESS_LABEL.not_started}
         </FilterPill>
 
         <button
@@ -189,17 +187,13 @@ export default function SignBrowser({ signs, onSelect, mastery = [] }: SignBrows
             const Icon = getSignIcon(sign.id)
             const StatusIcon = STATE_STATUS_ICON[state]
             const row = masteryById.get(sign.id)
-            const masteryPct = row ? pct(row.last_score ?? row.best_score) : null
-
+            // A sign answered only in the quiz hasn't been practised with
+            // the camera — say so rather than mixing the two.
             const statusText =
-              state === 'mastered'
-                ? masteryPct == null
-                  ? 'Mastered'
-                  : `Mastery ${masteryPct}%`
-                : state === 'needs_practice'
-                  ? 'Needs practice'
-                  : 'Not practiced'
-            const actionText = state === 'mastered' ? 'Review' : 'Practice'
+              state === 'practising' && row?.camera_attempts === 0
+                ? `${PROGRESS_LABEL.practising} · quiz only`
+                : PROGRESS_LABEL[state]
+            const actionText = state === 'demonstrated' ? 'Review' : 'Practice'
 
             return (
               <button
@@ -226,6 +220,7 @@ export default function SignBrowser({ signs, onSelect, mastery = [] }: SignBrows
                     <StatusIcon size={13} aria-hidden="true" style={{ color: style.icon }} />
                     {statusText}
                   </span>
+                  {sign.quality_note && <QualityNote text={sign.quality_note} compact />}
                   <span className="text-[13px] font-medium text-[var(--brand-blue)]">
                     {actionText} &rarr;
                   </span>

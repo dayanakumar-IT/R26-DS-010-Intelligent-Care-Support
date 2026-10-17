@@ -1,30 +1,35 @@
 import { ChevronRight, Hand, RotateCcw } from 'lucide-react'
+import type { GlossMasterySummaryRow } from '../../types/gloss'
+import { LAST_RESULT_LABEL, PROGRESS_LABEL, progressState } from '../../utils/progressLabels'
+import StrongInARowMeter from './StrongInARowMeter'
 
 const ACCENTS = [
-  { border: '#D7DEFF', bar: '#2563EB', preview: '#EEF3FF', icon: '#2563EB' },
-  { border: '#CFE8F8', bar: '#0EA5E9', preview: '#ECF7FD', icon: '#0EA5E9' },
-  { border: '#D7EBD9', bar: '#16A34A', preview: '#EDF7EE', icon: '#16A34A' },
+  { border: '#D7DEFF', preview: '#EEF3FF', icon: '#2563EB' },
+  { border: '#CFE8F8', preview: '#ECF7FD', icon: '#0EA5E9' },
+  { border: '#D7EBD9', preview: '#EDF7EE', icon: '#16A34A' },
 ]
 
 interface PracticeSignCardProps {
-  displayName: string
-  /** 0–100, or null when the sign has no score yet. */
-  masteryPct: number | null
+  row: GlossMasterySummaryRow
+  strongNeeded: number
   accentIndex: number
   /** Runs the caller's existing sign-selection behaviour. */
   onPracticeAgain: () => void
 }
 
-// Presentational only. The "Practice again" action is entirely the
-// caller's — this component adds no selection/practice logic.
+// Presentational only. Shows the sign's progress state, its last result
+// and "strong in a row" — never a percentage. The "Practice again"
+// action is entirely the caller's.
 export default function PracticeSignCard({
-  displayName,
-  masteryPct,
+  row,
+  strongNeeded,
   accentIndex,
   onPracticeAgain,
 }: PracticeSignCardProps) {
   const a = ACCENTS[accentIndex % ACCENTS.length]
-  const pct = masteryPct == null ? null : Math.max(0, Math.min(100, Math.round(masteryPct)))
+  const quizOnly = row.camera_attempts === 0
+  const state = PROGRESS_LABEL[progressState(row.mastery_status, row.attempts)]
+  const lastResult = row.last_result ? LAST_RESULT_LABEL[row.last_result] : null
 
   return (
     <div
@@ -33,36 +38,28 @@ export default function PracticeSignCard({
     >
       <div className="flex items-center gap-4">
         <span
-          className="grid h-20 w-20 shrink-0 place-items-center rounded-xl"
+          className="grid h-16 w-16 shrink-0 place-items-center rounded-xl"
           style={{ background: a.preview, color: a.icon }}
           aria-hidden="true"
         >
-          <Hand size={32} />
+          <Hand size={28} />
         </span>
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-lg font-semibold capitalize text-slate-900">
-            {displayName}
+            {row.display_name}
           </span>
-          <span className="text-[13px] text-slate-400">
-            Mastery {pct == null ? '—' : `${pct}%`}
+          <span className="text-sm text-slate-600">
+            {state} · {row.attempts} attempt{row.attempts === 1 ? '' : 's'}
           </span>
+          {lastResult && <span className="text-sm text-slate-500">Last result: {lastResult}</span>}
         </span>
       </div>
 
-      <div
-        className="h-2 w-full overflow-hidden rounded-full"
-        style={{ background: '#E7EAF0' }}
-        role="progressbar"
-        aria-valuenow={pct ?? 0}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${displayName} mastery`}
-      >
-        <div
-          className="h-full rounded-full transition-[width] duration-500"
-          style={{ width: `${pct ?? 0}%`, background: a.bar }}
-        />
-      </div>
+      {quizOnly ? (
+        <p className="text-sm text-slate-600">Quiz only so far — try it with the camera.</p>
+      ) : (
+        <StrongInARowMeter streak={row.consecutive_strong_streak} needed={strongNeeded} />
+      )}
 
       <button
         type="button"

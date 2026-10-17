@@ -1,5 +1,6 @@
-import { CalendarDays, Heart, Sparkles, Trophy, X } from 'lucide-react'
+import { CalendarDays, Sparkles, Trophy, X } from 'lucide-react'
 import type { GlossHistoryEntry } from '../../types/gloss'
+import { TIER_LABEL } from '../../utils/progressLabels'
 import { getSignIcon } from './signIcons'
 
 // Presentational only. Receives the day's entries (already filtered
@@ -7,18 +8,23 @@ import { getSignIcon } from './signIcons'
 // scoring, no new categories. Badges reuse the existing quality_tier /
 // is_correct_sign values verbatim.
 
+// Same words as the result screen and History (utils/progressLabels).
 const TIER_BADGE: Record<string, { label: string; bg: string; fg: string }> = {
-  strong: { label: 'Excellent', bg: '#EAF3FF', fg: '#2E6AD8' },
-  moderate: { label: 'Good', bg: '#EAF8EF', fg: '#2F9E57' },
-  weak: { label: 'Fair', bg: '#FFF2E8', fg: '#E9792D' },
+  strong: { label: TIER_LABEL.strong, bg: '#EAF8EF', fg: '#2F9E57' },
+  moderate: { label: TIER_LABEL.moderate, bg: '#EAF3FF', fg: '#2E6AD8' },
+  weak: { label: TIER_LABEL.weak, bg: '#FFF2E8', fg: '#C2410C' },
 }
 const TIER_RANK: Record<string, number> = { strong: 3, moderate: 2, weak: 1 }
 
 function badgeFor(entry: GlossHistoryEntry): { label: string; bg: string; fg: string } {
   if (entry.quality_tier && TIER_BADGE[entry.quality_tier]) return TIER_BADGE[entry.quality_tier]
-  return entry.is_correct_sign
-    ? { label: 'Correct', bg: '#EAF8EF', fg: '#2F9E57' }
-    : { label: 'Keep trying', bg: '#F1F4FA', fg: '#73809A' }
+  if (entry.attempt_type === 'multiple_choice') {
+    return entry.is_correct_sign
+      ? { label: 'Quiz: correct', bg: '#EAF3FF', fg: '#2E6AD8' }
+      : { label: 'Quiz: wrong', bg: '#F1F4FA', fg: '#475569' }
+  }
+  if (entry.not_recognised) return { label: 'Not recognised', bg: '#F1F4FA', fg: '#475569' }
+  return { label: 'Different sign', bg: '#F1F4FA', fg: '#475569' }
 }
 
 function rankOf(entry: GlossHistoryEntry): number {
@@ -135,9 +141,10 @@ export default function DailyPracticePopup({ dateIso, entries, onClose }: DailyP
         </div>
 
         {rows.length > 0 && (
-          <div className="flex items-center justify-center gap-1.5 border-t border-[#EEF1F6] bg-[#FBFAFF] px-5 py-3 text-[12px] font-medium text-[#73809A]">
-            <Heart size={13} className="text-[#EE7A32]" aria-hidden="true" />
-            Great job — keep practising daily.
+          <div className="border-t border-[#EEF1F6] bg-[#FBFAFF] px-5 py-3 text-center text-[13px] text-[#4B5873]">
+            {rows.some((r) => r.quality_tier === 'strong')
+              ? 'You had a strong attempt this day.'
+              : 'Each row shows that sign’s best result this day. Watch the reference again before your next try.'}
           </div>
         )}
       </div>

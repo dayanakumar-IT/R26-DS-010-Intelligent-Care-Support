@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Award, BookOpen, ClipboardList, RotateCcw, TrendingUp } from 'lucide-react'
+import { Award, BookOpen, ClipboardList, ListChecks, RotateCcw, Video } from 'lucide-react'
 // eslint config runs the React Compiler rules; keep derived values that
 // depend on plain locals as inline consts, not useMemo.
 import {
@@ -14,6 +14,13 @@ import type {
   GlossMasterySummaryRow,
   GlossProgressReport,
 } from '../types/gloss'
+import {
+  LAST_RESULT_LABEL,
+  PROGRESS_LABEL,
+  STRONG_NEEDED,
+  progressState,
+  strongInARow,
+} from '../utils/progressLabels'
 import ProgressStatCard from './gloss/ProgressStatCard'
 import PracticeCalendar from './gloss/PracticeCalendar'
 import DailyPracticePopup from './gloss/DailyPracticePopup'
@@ -65,42 +72,43 @@ const STATUS_DOT: Record<GlossMasteryStatus, string> = {
   needs_revision: '#E9792D',
 }
 
-function MasteredChip({ row }: { row: GlossMasterySummaryRow }) {
+function DemonstratedChip({ row }: { row: GlossMasterySummaryRow }) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-[12px] border border-[#CDEEDB] bg-white px-3 py-2.5">
       <span className="flex min-w-0 flex-col">
         <span className="truncate text-sm font-semibold capitalize text-[#17223E]">
           {row.display_name}
         </span>
-        <span className="text-[11px] text-[#73809A]">
+        <span className="text-xs text-[#4B5873]">
           Last practised {formatDate(row.last_practiced_at)} · {row.attempts} attempt
           {row.attempts === 1 ? '' : 's'}
-          {row.best_score != null && ` · best ${Math.round(row.best_score * 100)}%`}
         </span>
       </span>
-      <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#EDF9F1] px-2 py-0.5 text-[11px] font-semibold text-[#2F9E57]">
-        <Award size={11} />
-        Mastered
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#EDF9F1] px-2 py-0.5 text-xs font-semibold text-[#2F9E57]">
+        <Award size={12} />
+        {PROGRESS_LABEL.demonstrated}
       </span>
     </li>
   )
 }
 
-function ImprovingCard({ row }: { row: GlossMasterySummaryRow }) {
+function InProgressCard({ row, strongNeeded }: { row: GlossMasterySummaryRow; strongNeeded: number }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[12px] border border-[#FFDCC7] bg-white px-4 py-3 shadow-[0_3px_12px_rgba(20,39,80,0.05)]">
-      <span className="flex min-w-0 flex-col">
+    <div className="flex items-center justify-between gap-3 rounded-[12px] border border-[#E1E7F0] bg-white px-4 py-3 shadow-[0_3px_12px_rgba(20,39,80,0.05)]">
+      <span className="flex min-w-0 flex-col gap-0.5">
         <span className="truncate text-sm font-semibold capitalize text-[#17223E]">
           {row.display_name}
         </span>
-        <span className="text-[11px] text-[#73809A]">
+        <span className="text-xs text-[#4B5873]">
           Last practice: {formatDate(row.last_practiced_at)} · {row.attempts} attempt
           {row.attempts === 1 ? '' : 's'}
+          {row.last_result && ` · Last result: ${LAST_RESULT_LABEL[row.last_result]}`}
         </span>
       </span>
-      <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#FFF3EA] px-2.5 py-0.5 text-[11px] font-semibold text-[#EE7A32]">
-        <TrendingUp size={11} />
-        Improving
+      <span className="shrink-0 rounded-full bg-[#F1F4FA] px-2.5 py-0.5 text-xs font-semibold text-[#334155]">
+        {row.camera_attempts === 0
+          ? 'Quiz only'
+          : `Strong in a row: ${strongInARow(row.consecutive_strong_streak, strongNeeded)}`}
       </span>
     </div>
   )
@@ -170,8 +178,12 @@ export default function ProgressReport() {
     () => (report?.mastery_summary ?? []).filter((r) => r.mastery_status === 'mastered'),
     [report],
   )
-  const improving = useMemo(
-    () => (report?.mastery_summary ?? []).filter((r) => r.mastery_status === 'improving'),
+  // Every attempted, not-yet-demonstrated sign, most recently practised first.
+  const inProgress = useMemo(
+    () =>
+      (report?.mastery_summary ?? [])
+        .filter((r) => progressState(r.mastery_status, r.attempts) === 'practising')
+        .sort((a, b) => (b.last_practiced_at ?? '').localeCompare(a.last_practiced_at ?? '')),
     [report],
   )
   const recent = useMemo(
@@ -182,6 +194,8 @@ export default function ProgressReport() {
         .slice(0, 6),
     [report],
   )
+
+  const strongNeeded = report?.strong_needed ?? STRONG_NEEDED
 
   if (status === 'loading') {
     return <p className="text-sm text-slate-500">Loading your progress…</p>
@@ -225,27 +239,27 @@ export default function ProgressReport() {
         />
         <ProgressStatCard
           icon={Award}
-          label="Mastered"
+          label="Demonstrated"
           value={report.mastered_count}
           border="#CDEEDB"
           tileBg="#EDF9F1"
           tileFg="#32A862"
         />
         <ProgressStatCard
-          icon={TrendingUp}
-          label="Improving"
-          value={report.improving_count}
-          border="#FFDCC7"
-          tileBg="#FFF3EA"
-          tileFg="#EE7A32"
-        />
-        <ProgressStatCard
-          icon={Activity}
-          label="Total Attempts"
-          value={report.total_attempts}
+          icon={Video}
+          label="Camera Attempts"
+          value={report.camera_attempts}
           border="#D2E2FF"
           tileBg="#EEF5FF"
           tileFg="#365FD9"
+        />
+        <ProgressStatCard
+          icon={ListChecks}
+          label="Quiz Answers"
+          value={report.quiz_answers}
+          border="#FFDCC7"
+          tileBg="#FFF3EA"
+          tileFg="#EE7A32"
         />
       </div>
 
@@ -259,21 +273,21 @@ export default function ProgressReport() {
         </div>
 
         <section className="flex flex-1 flex-col gap-3 lg:w-[60%]">
-          <h3 className="text-sm font-bold text-[#17223E]">Words Learnt</h3>
+          <h3 className="text-sm font-bold text-[#17223E]">Demonstrated Signs</h3>
           {mastered.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-[16px] border border-dashed border-[#D9D5FF] bg-[#FBFAFF] px-4 py-10 text-center">
               <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#F2EFFF] text-[#6E5AE6]">
                 <ClipboardList size={22} aria-hidden="true" />
               </span>
-              <p className="text-sm font-semibold text-[#17223E]">No signs mastered yet</p>
-              <p className="max-w-xs text-xs text-[#73809A]">
-                Keep practising with the camera — mastered signs will appear here.
+              <p className="text-sm font-semibold text-[#17223E]">No signs demonstrated yet</p>
+              <p className="max-w-xs text-sm text-[#4B5873]">
+                A sign is demonstrated after {strongNeeded} strong camera attempts in a row.
               </p>
             </div>
           ) : (
             <ul className="flex flex-col gap-2">
               {mastered.map((row) => (
-                <MasteredChip key={row.sign_id} row={row} />
+                <DemonstratedChip key={row.sign_id} row={row} />
               ))}
             </ul>
           )}
@@ -281,15 +295,15 @@ export default function ProgressReport() {
       </div>
 
       <section className="flex flex-col gap-3">
-        <h3 className="text-sm font-bold text-[#17223E]">Currently Improving</h3>
-        {improving.length === 0 ? (
-          <p className="rounded-[14px] border border-dashed border-[#E1E7F0] bg-white px-4 py-5 text-sm text-[#73809A]">
+        <h3 className="text-sm font-bold text-[#17223E]">In Progress</h3>
+        {inProgress.length === 0 ? (
+          <p className="rounded-[14px] border border-dashed border-[#E1E7F0] bg-white px-4 py-5 text-sm text-[#4B5873]">
             Nothing in progress right now.
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {improving.map((row) => (
-              <ImprovingCard key={row.sign_id} row={row} />
+            {inProgress.map((row) => (
+              <InProgressCard key={row.sign_id} row={row} strongNeeded={strongNeeded} />
             ))}
           </div>
         )}
@@ -313,8 +327,8 @@ export default function ProgressReport() {
               <span className="min-w-0 flex-1 truncate font-medium capitalize text-[#17223E]">
                 {row.display_name}
               </span>
-              <span className="shrink-0 text-[11px] capitalize text-[#73809A]">
-                {row.mastery_status.replace(/_/g, ' ')}
+              <span className="shrink-0 text-xs text-[#4B5873]">
+                {PROGRESS_LABEL[progressState(row.mastery_status, row.attempts)]}
               </span>
               <span className="w-[128px] shrink-0 text-right text-[11px] text-[#73809A]">
                 {formatDateTime(row.last_practiced_at)}

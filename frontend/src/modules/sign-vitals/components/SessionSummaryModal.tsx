@@ -1,6 +1,7 @@
 import { Award, Sparkles, TrendingUp, X } from 'lucide-react'
 import Button from '../../../shared/components/Button'
 import type { GlossAttemptResult, GlossMasterySummaryRow } from '../types/gloss'
+import { STRONG_NEEDED } from '../utils/progressLabels'
 
 interface SessionSummaryModalProps {
   attempts: GlossAttemptResult[]
@@ -39,15 +40,10 @@ export default function SessionSummaryModal({
   onClose,
 }: SessionSummaryModalProps) {
   const latestBySign = new Map<string, GlossAttemptResult>()
-  // quality_tier is only set on a graded attempt (webcam, correct sign).
-  const latestGradedTierBySign = new Map<string, string>()
   const sessionBestBySign = new Map<string, number>()
   for (const attempt of attempts) {
     const signId = attempt.mastery.sign_id
     latestBySign.set(signId, attempt)
-    if (attempt.quality_tier) {
-      latestGradedTierBySign.set(signId, attempt.quality_tier)
-    }
     if (attempt.execution_score !== null) {
       sessionBestBySign.set(
         signId,
@@ -73,14 +69,12 @@ export default function SessionSummaryModal({
       sessionBest !== undefined && (previousBest === null || sessionBest > previousBest)
     return becameMastered || beatPreviousBest
   })
-  // "weak" / "needs_revision" are no longer produced by the backend. Signs
-  // still being practised ("improving"), and brand-new ("learning") signs
-  // whose latest graded attempt was weak, are the ones to keep practising.
+  // Keep practising = every sign tried this session that isn't demonstrated
+  // yet and whose latest attempt wasn't strong. (The old filter keyed on
+  // the "improving" status only, so a sign tried once — status "learning"
+  // — never appeared and the list was usually empty.)
   const needsPracticeSigns = uniqueSigns.filter(
-    (a) =>
-      a.mastery.mastery_status === 'improving' ||
-      (a.mastery.mastery_status === 'learning' &&
-        latestGradedTierBySign.get(a.mastery.sign_id) === 'weak'),
+    (a) => a.mastery.mastery_status !== 'mastered' && a.quality_tier !== 'strong',
   )
 
   const strongest = uniqueSigns
@@ -117,7 +111,7 @@ export default function SessionSummaryModal({
           <SummaryStat label="Signs practised" value={uniqueSigns.length} />
           <SummaryStat label="Attempts made" value={attempts.length} />
           <SummaryStat label="Signs improved" value={improvedSigns.length} />
-          <SummaryStat label="Signs mastered" value={masteredSigns.length} />
+          <SummaryStat label="Signs demonstrated" value={masteredSigns.length} />
         </div>
 
         {strongest && (
@@ -163,7 +157,9 @@ export default function SessionSummaryModal({
 
         <div className="flex items-center gap-2 rounded-[var(--radius-md)] bg-blue-50 px-4 py-3 text-sm text-blue-900">
           <TrendingUp size={18} />
-          Nice progress today — come back soon to keep building your streaks.
+          {masteredSigns.length > 0
+            ? `You demonstrated ${masteredSigns.length} sign${masteredSigns.length === 1 ? '' : 's'} this session.`
+            : `A sign is demonstrated after ${STRONG_NEEDED} strong camera attempts in a row.`}
         </div>
 
         <Button onClick={onClose} className="self-end">

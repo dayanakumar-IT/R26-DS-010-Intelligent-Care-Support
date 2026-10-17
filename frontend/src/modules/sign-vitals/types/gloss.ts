@@ -13,6 +13,10 @@ export type GlossMasteryStatus =
 export interface GlossSign {
   id: string
   display_name: string
+  // false for dictionary-only signs (weak reference demonstration): never
+  // recommended automatically, but practisable from Browse.
+  recommendable?: boolean
+  quality_note?: string | null
 }
 
 export interface GlossLandmark {
@@ -65,7 +69,36 @@ export interface GlossMastery {
   has_verified_strong_execution: boolean
 }
 
+// How an attempt ended — set by the backend on every response, so the UI
+// never infers it. 'not_recognised' = model confidence below 35%: no sign
+// is named and mastery is unchanged. 'capture_rejected' never reaches
+// GlossAttemptResult (see GlossCaptureRejection).
+export type GlossAttemptOutcome =
+  | 'target_sign'
+  | 'different_sign'
+  | 'not_recognised'
+  | 'quiz_correct'
+  | 'quiz_wrong'
+
+export interface GlossCaptureCheck {
+  passed: boolean
+  reason: 'hands_not_visible' | 'no_movement' | null
+  message: string | null
+  hand_presence: number
+  motion_extent: number
+}
+
+// POST /gloss/attempts when a capture gate stopped the clip before the
+// model ran (hands not visible / no movement). Nothing was stored.
+export interface GlossCaptureRejection {
+  outcome: 'capture_rejected'
+  session_id: string
+  message: string
+  capture_check: GlossCaptureCheck
+}
+
 export interface GlossAttemptResult {
+  outcome: GlossAttemptOutcome
   attempt_id: string
   session_id: string
   is_correct_sign: boolean
@@ -103,6 +136,7 @@ export interface GlossAttemptDiagnostics {
   model_name?: string | null
   model_input_shape?: number[] | null
   class_count?: number
+  capture_check?: GlossCaptureCheck
 }
 
 // GET /gloss/signs/{sign_id}/demo-video — validated human reference
@@ -118,11 +152,23 @@ export interface GlossDemoVideo {
   url_expires_in?: number
 }
 
+// The latest attempt on a sign, as a learner-facing result.
+export type GlossLastResult =
+  | GlossQualityTier
+  | 'different_sign'
+  | 'not_recognised'
+  | 'quiz_correct'
+  | 'quiz_wrong'
+
 export interface GlossMasterySummaryRow {
   sign_id: string
   display_name: string
   mastery_status: GlossMasteryStatus
   attempts: number
+  camera_attempts: number
+  consecutive_strong_streak: number
+  last_result: GlossLastResult | null
+  recommendable?: boolean
   best_score: number | null
   last_score: number | null
   last_practiced_at: string | null
@@ -140,6 +186,10 @@ export interface GlossProgressReport {
   improving_count: number
   learning_count: number
   total_attempts: number
+  camera_attempts: number
+  quiz_answers: number
+  // Strong attempts in a row needed for a sign to count as demonstrated.
+  strong_needed: number
   mastery_summary: GlossMasterySummaryRow[]
   practice_calendar: GlossPracticeCalendarDay[]
 }
@@ -152,6 +202,8 @@ export interface GlossHistoryEntry {
   recognized_sign_id: string | null
   recognized_display_name: string | null
   is_correct_sign: boolean
+  // Webcam attempt below the confidence cut-off — never shown with a sign name.
+  not_recognised?: boolean
   recognition_confidence: number | null
   attempt_type: GlossAttemptType
   quality_tier: GlossQualityTier | null

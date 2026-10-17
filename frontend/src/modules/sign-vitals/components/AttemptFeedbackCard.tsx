@@ -1,6 +1,45 @@
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, HelpCircle, XCircle } from 'lucide-react'
 import Button from '../../../shared/components/Button'
 import type { GlossAttemptResult } from '../types/gloss'
+import {
+  PROGRESS_LABEL,
+  STRONG_NEEDED,
+  TIER_LABEL,
+  TIER_SENTENCE,
+  progressState,
+  strongInARow,
+} from '../utils/progressLabels'
+
+function signLabel(signId: string): string {
+  return signId.replace(/_/g, ' ')
+}
+
+// The result banner. Below the confidence cut-off ('not_recognised') no
+// sign is ever named and the colour is neutral — the learner is asked to
+// repeat, not told they signed something else.
+function resultBanner(result: GlossAttemptResult, targetSignId: string) {
+  switch (result.outcome) {
+    case 'target_sign':
+    case 'quiz_correct':
+      return {
+        tone: 'bg-emerald-50 text-emerald-700',
+        icon: <CheckCircle2 size={18} />,
+        text: `Recognized as "${signLabel(targetSignId)}" — correct!`,
+      }
+    case 'not_recognised':
+      return {
+        tone: 'bg-slate-100 text-slate-700',
+        icon: <HelpCircle size={18} />,
+        text: "I couldn't recognise that sign clearly. Please try it again.",
+      }
+    default:
+      return {
+        tone: 'bg-rose-50 text-rose-700',
+        icon: <XCircle size={18} />,
+        text: `Recognized as "${signLabel(result.recognized_sign_id ?? '')}", not "${signLabel(targetSignId)}".`,
+      }
+  }
+}
 
 interface AttemptFeedbackCardProps {
   result: GlossAttemptResult
@@ -12,8 +51,8 @@ interface AttemptFeedbackCardProps {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 rounded-[var(--radius-md)] bg-slate-50 px-3 py-2">
-      <span className="text-[10px] uppercase tracking-wide text-slate-400">{label}</span>
-      <span className="text-sm font-semibold capitalize text-slate-800">{value}</span>
+      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="text-base font-semibold text-slate-800">{value}</span>
     </div>
   )
 }
@@ -24,31 +63,38 @@ export default function AttemptFeedbackCard({
   onPracticeAgain,
   onNextSign,
 }: AttemptFeedbackCardProps) {
+  const banner = resultBanner(result, targetSignId)
+  const isCamera = result.outcome !== 'quiz_correct' && result.outcome !== 'quiz_wrong'
   return (
     <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-slate-200 bg-white p-6 shadow-[var(--shadow-sm)]">
       <div
-        className={`flex items-center gap-2 rounded-[var(--radius-md)] px-4 py-3 text-sm font-medium ${
-          result.is_correct_sign ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-        }`}
+        className={`flex items-center gap-2 rounded-[var(--radius-md)] px-4 py-3 text-sm font-medium ${banner.tone}`}
       >
-        {result.is_correct_sign ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-        {result.is_correct_sign
-          ? `Recognized as "${result.recognized_sign_id}" — correct!`
-          : `Recognized as "${result.recognized_sign_id ?? 'unclear'}", not "${targetSignId}".`}
+        {banner.icon}
+        {banner.text}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        {result.recognition_confidence !== null && (
-          <Stat label="Confidence" value={`${Math.round(result.recognition_confidence * 100)}%`} />
+      <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+        {result.quality_tier && (
+          <Stat label="Movement" value={TIER_LABEL[result.quality_tier]} />
         )}
-        {result.quality_tier && <Stat label="Quality" value={result.quality_tier} />}
-        {result.execution_score !== null && (
-          <Stat label="Execution score" value={`${Math.round(result.execution_score * 100)}%`} />
+        {isCamera && (
+          <Stat
+            label="Strong in a row"
+            value={strongInARow(result.mastery.consecutive_strong_streak)}
+          />
         )}
-        <Stat label="Streak" value={String(result.mastery.consecutive_strong_streak)} />
+        <Stat
+          label="This sign"
+          value={PROGRESS_LABEL[progressState(result.mastery.mastery_status, result.mastery.attempts)]}
+        />
       </div>
 
-      <div className="rounded-[var(--radius-md)] bg-blue-50 px-4 py-3 text-sm text-blue-900">
+      {result.quality_tier && (
+        <p className="text-sm text-slate-600">{TIER_SENTENCE[result.quality_tier]}</p>
+      )}
+
+      <div className="rounded-[var(--radius-md)] bg-blue-50 px-4 py-3 text-base text-blue-900">
         {result.corrective_feedback.summary}
       </div>
 
@@ -67,17 +113,17 @@ export default function AttemptFeedbackCard({
         </div>
       )}
 
-      <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-slate-200 px-4 py-2 text-xs text-slate-500">
-        <span>
-          Mastery status: <strong className="text-slate-700">{result.mastery.mastery_status}</strong>
-        </span>
-        <span>{result.mastery.attempts} attempts on this sign</span>
-      </div>
+      <p className="text-sm text-slate-500">
+        {result.outcome === 'not_recognised'
+          ? 'This attempt was not counted towards your progress.'
+          : `${result.mastery.attempts} counted attempt${result.mastery.attempts === 1 ? '' : 's'} on this sign. ` +
+            `${STRONG_NEEDED} strong camera attempts in a row = demonstrated.`}
+      </p>
 
       {result.diagnostics && (
         <details className="rounded-[var(--radius-md)] border border-slate-200 text-xs text-slate-600">
           <summary className="cursor-pointer select-none px-4 py-2 font-medium text-slate-500">
-            Attempt details
+            Technical details
           </summary>
           <dl className="grid grid-cols-1 gap-x-6 gap-y-1 border-t border-slate-100 px-4 py-3 sm:grid-cols-2">
             <div className="flex justify-between gap-3">

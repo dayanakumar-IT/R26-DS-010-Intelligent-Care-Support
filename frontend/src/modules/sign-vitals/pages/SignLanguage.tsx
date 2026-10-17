@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  Award,
   BookOpen,
+  CalendarDays,
+  CameraOff,
   ChevronLeft,
   ChevronRight,
-  Flame,
   Hand,
   History,
   List,
@@ -13,6 +15,7 @@ import {
   Video,
 } from 'lucide-react'
 import Button from '../../../shared/components/Button'
+import { supabase } from '../../../services/supabaseClient'
 import WebcamCapture from '../components/WebcamCapture'
 import SignDemoPanel from '../components/SignDemoPanel'
 import AttemptFeedbackCard from '../components/AttemptFeedbackCard'
@@ -23,9 +26,10 @@ import GlossTabBar, { type GlossTab } from '../components/GlossTabBar'
 import CameraPermissionPrompt from '../components/CameraPermissionPrompt'
 import ProgressReport from '../components/ProgressReport'
 import HistoryList from '../components/HistoryList'
-import MasteryRing from '../components/gloss/MasteryRing'
 import GlossStatCard from '../components/gloss/GlossStatCard'
 import PracticeSignCard from '../components/gloss/PracticeSignCard'
+import StrongInARowMeter from '../components/gloss/StrongInARowMeter'
+import QualityNote from '../components/gloss/QualityNote'
 import glossHero from '../assets/images/practise.jpg'
 import {
   getNextGlossLesson,
@@ -39,12 +43,16 @@ import {
 } from '../services/glossCache'
 import type {
   GlossAttemptResult,
-  GlossMasteryStatus,
   GlossMasterySummaryRow,
-  GlossPracticeCalendarDay,
   GlossProgressReport,
   GlossSign,
 } from '../types/gloss'
+import {
+  PROGRESS_LABEL,
+  STRONG_NEEDED,
+  activeDaysThisWeek,
+  progressState,
+} from '../utils/progressLabels'
 
 // Practice-flow sub-state (lives entirely inside the Practice tab).
 type Stage =
@@ -54,6 +62,7 @@ type Stage =
   | 'practicing'
   | 'camera-denied'
   | 'submitting'
+  | 'retake'
   | 'feedback'
   | 'quiz'
   | 'error'
@@ -71,48 +80,26 @@ function signLabel(signId: string): string {
   return signId.replace(/_/g, ' ')
 }
 
-// ---- Practice-landing display helpers (presentation only; no metric
-// is invented — values come straight from GET /gloss/progress) --------
+// Practice-landing display values come straight from GET /gloss/progress;
+// wording comes from utils/progressLabels (one vocabulary on every screen).
 
-function scoreToPct(score: number | null | undefined): number | null {
-  return score == null ? null : Math.round(score * 100)
-}
-
-const MASTERY_CAPTION: Record<GlossMasteryStatus, string> = {
-  new: 'New sign',
-  learning: 'Getting started',
-  weak: 'Needs practice',
-  improving: 'Good progress!',
-  mastered: 'Mastered',
-  needs_revision: 'Time to revise',
-}
-
-function isoDay(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-// Consecutive days (ending today or yesterday) that have at least one
-// attempt, derived from the practice_calendar the progress endpoint
-// already returns.
-function computePracticeStreak(calendar: GlossPracticeCalendarDay[]): number {
-  const practised = new Set(calendar.filter((d) => d.attempt_count > 0).map((d) => d.date))
-  const cursor = new Date()
-  if (!practised.has(isoDay(cursor))) {
-    cursor.setDate(cursor.getDate() - 1)
-    if (!practised.has(isoDay(cursor))) return 0
-  }
-  let days = 0
-  while (practised.has(isoDay(cursor))) {
-    days += 1
-    cursor.setDate(cursor.getDate() - 1)
-  }
-  return days
+// Why this sign was recommended, from its own record — never invented.
+function recommendationReason(row: GlossMasterySummaryRow | null): string {
+  if (!row || row.attempts === 0) return "You haven't tried this sign yet."
+  if (row.camera_attempts === 0) return "You've answered quiz questions on this sign — try it with the camera."
+  const attempts = `${row.attempts} attempt${row.attempts === 1 ? '' : 's'}`
+  return row.consecutive_strong_streak > 0
+    ? `You're part-way there — ${attempts} so far.`
+    : `You've tried this sign (${attempts}) and haven't had a strong attempt in a row yet.`
 }
 
 export default function SignLanguage() {
   const [tab, setTab] = useState<TabId>('practice')
   const [stage, setStage] = useState<Stage>('loading')
   const [targetSignId, setTargetSignId] = useState<string | null>(null)
+  // True when the caregiver chose the sign (Browse / Continue practising),
+  // false when the selector recommended it.
+  const [pickedByUser, setPickedByUser] = useState(false)
   const [allSigns, setAllSigns] = useState<GlossSign[]>([])
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [sessionId, setSessionId] = useState<string | undefined>(undefined)
@@ -120,6 +107,9 @@ export default function SignLanguage() {
   const [sessionAttempts, setSessionAttempts] = useState<GlossAttemptResult[]>([])
   const [showSummary, setShowSummary] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // Camera message when the backend stopped a clip before recognition
+  // (hands not visible / no movement). Nothing was stored for it.
+  const [retakeMessage, setRetakeMessage] = useState<string | null>(null)
   // Practice-landing widgets only. Read-only snapshot of GET /gloss/progress
   // (the same endpoint the Progress tab uses). A failed fetch just hides
   // those widgets — it never blocks the practice flow.
@@ -128,6 +118,19 @@ export default function SignLanguage() {
   // snapshot, taken before any attempt) — the "before" the session summary
   // compares against. Never overwritten by later refreshes.
   const [sessionBaseline, setSessionBaseline] = useState<GlossMasterySummaryRow[] | null>(null)
+
+  // A practice session belongs to one login: forget it when the user signs
+  // out or a different user signs in, so a stale id is never sent. (The
+  // backend also starts a new session if an id is missing or not theirs.)
+  const sessionUserRef = useRef<string | null>(null)
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const userId = session?.user.id ?? null
+      if (event === 'SIGNED_OUT' || userId !== sessionUserRef.current) setSessionId(undefined)
+      sessionUserRef.current = userId
+    })
+    return () => data.subscription.unsubscribe()
+  }, [])
 
   const refreshProgress = useCallback(() => {
     cachedGlossProgress()
@@ -144,6 +147,7 @@ export default function SignLanguage() {
   // Browse tab's onSelect — no new practice logic.
   const selectSign = useCallback((signId: string) => {
     setTargetSignId(signId)
+    setPickedByUser(true)
     setRecordedBlob(null)
     setStage('ready')
   }, [])
@@ -154,6 +158,7 @@ export default function SignLanguage() {
     try {
       const { next_recommended_sign_id: signId } = await getNextGlossLesson()
       setTargetSignId(signId)
+      setPickedByUser(false)
       setRecordedBlob(null)
       setStage('ready')
     } catch (error) {
@@ -198,6 +203,12 @@ export default function SignLanguage() {
     try {
       const result = await submitWebcamAttempt(targetSignId, recordedBlob, sessionId)
       setSessionId(result.session_id)
+      if (result.outcome === 'capture_rejected') {
+        setRecordedBlob(null)
+        setRetakeMessage(result.message)
+        setStage('retake')
+        return
+      }
       setSessionAttempts((prev) => [...prev, result])
       setAttemptResult(result)
       setStage('feedback')
@@ -236,22 +247,14 @@ export default function SignLanguage() {
     progress && targetSignId
       ? (progress.mastery_summary.find((r) => r.sign_id === targetSignId) ?? null)
       : null
-  const recommendedMasteryPct = recRow ? scoreToPct(recRow.last_score ?? recRow.best_score) : null
-  const masteryCaption = recRow ? MASTERY_CAPTION[recRow.mastery_status] : 'New sign'
-  const practiceStreakDays = progress ? computePracticeStreak(progress.practice_calendar) : 0
-  const scoredRows = (progress?.mastery_summary ?? []).filter(
-    (r) => (r.last_score ?? r.best_score) != null,
-  )
-  const averageMasteryPct =
-    scoredRows.length > 0
-      ? Math.round(
-          (scoredRows.reduce((sum, r) => sum + (r.last_score ?? r.best_score ?? 0), 0) /
-            scoredRows.length) *
-            100,
-        )
-      : null
+  const strongNeeded = progress?.strong_needed ?? STRONG_NEEDED
+  const recState = progressState(recRow?.mastery_status, recRow?.attempts ?? 0)
+  const activeDays = progress ? activeDaysThisWeek(progress.practice_calendar) : 0
+  const demonstratedCount = progress?.mastered_count ?? 0
+  const qualityNote = allSigns.find((s) => s.id === targetSignId)?.quality_note ?? null
+  // Dictionary-only signs are never offered here, even if already practised.
   const recentSigns = (progress?.mastery_summary ?? [])
-    .filter((r) => r.last_practiced_at)
+    .filter((r) => r.last_practiced_at && r.recommendable !== false)
     .slice()
     .sort((a, b) => (b.last_practiced_at ?? '').localeCompare(a.last_practiced_at ?? ''))
     .slice(0, 3)
@@ -284,14 +287,13 @@ export default function SignLanguage() {
               <div className="grid gap-8 lg:grid-cols-[1.6fr_0.55fr_0.85fr] lg:items-center">
                 <div className="flex flex-col gap-4">
                   <span className="text-sm font-bold uppercase tracking-wider text-[#2563EB]">
-                    Recommended next
+                    {pickedByUser ? 'Selected sign' : 'Recommended next'}
                   </span>
                   <h3 className="text-[2.75rem] font-bold capitalize leading-[1.05] text-slate-900 sm:text-[3.25rem]">
                     {signLabel(targetSignId)}
                   </h3>
-                  <p className="text-base text-slate-500">
-                    Recommended based on your recent practice.
-                  </p>
+                  <p className="text-base text-slate-600">{recommendationReason(recRow)}</p>
+                  {qualityNote && <QualityNote text={qualityNote} />}
                   <div className="mt-2 flex flex-wrap gap-3">
                     <Button
                       onClick={() => setStage('camera-choice')}
@@ -311,10 +313,18 @@ export default function SignLanguage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-sm font-medium text-slate-500">Mastery</span>
-                  <MasteryRing value={recommendedMasteryPct ?? 0} size={128} />
-                  <span className="text-sm text-slate-400">{masteryCaption}</span>
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-[var(--brand-blue)] shadow-sm">
+                    {PROGRESS_LABEL[recState]}
+                  </span>
+                  <StrongInARowMeter
+                    streak={recRow?.consecutive_strong_streak ?? 0}
+                    needed={strongNeeded}
+                    size="lg"
+                  />
+                  <span className="text-sm text-slate-500">
+                    {strongNeeded} strong camera attempts in a row = demonstrated
+                  </span>
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border border-[#D5E2F6] bg-white shadow-[var(--shadow-sm)]">
@@ -344,19 +354,17 @@ export default function SignLanguage() {
                 />
                 <GlossStatCard
                   accent="green"
-                  icon={Flame}
-                  label="Practice Streak"
-                  value={`${practiceStreakDays} day${practiceStreakDays === 1 ? '' : 's'}`}
-                  caption={
-                    practiceStreakDays > 0 ? 'Keep it going!' : 'Practise today to start a streak'
-                  }
+                  icon={CalendarDays}
+                  label="Active Days"
+                  value={`${activeDays} of 7`}
+                  caption="Days with practice in the last week"
                 />
                 <GlossStatCard
                   accent="purple"
-                  icon={TrendingUp}
-                  label="Average Mastery"
-                  value={averageMasteryPct == null ? '—' : `${averageMasteryPct}%`}
-                  caption="Across practised signs"
+                  icon={Award}
+                  label="Demonstrated"
+                  value={`${demonstratedCount} of ${allSigns.length || 59}`}
+                  caption={`Signs with ${strongNeeded} strong attempts in a row`}
                 />
               </div>
             </section>
@@ -380,8 +388,8 @@ export default function SignLanguage() {
                 {recentSigns.map((row, index) => (
                   <PracticeSignCard
                     key={row.sign_id}
-                    displayName={row.display_name}
-                    masteryPct={scoreToPct(row.last_score ?? row.best_score)}
+                    row={row}
+                    strongNeeded={strongNeeded}
                     accentIndex={index}
                     onPracticeAgain={() => selectSign(row.sign_id)}
                   />
@@ -402,6 +410,7 @@ export default function SignLanguage() {
 
       {stage === 'practicing' && targetSignId && (
         <div className="flex flex-col gap-4">
+          {qualityNote && <QualityNote text={qualityNote} />}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SignDemoPanel key={targetSignId} signId={targetSignId} />
             <WebcamCapture onRecorded={setRecordedBlob} onCameraError={() => setStage('camera-denied')} />
@@ -420,6 +429,7 @@ export default function SignLanguage() {
             We couldn&apos;t access your camera. You can still learn this sign below with the reference
             demonstration and a short quiz — or try the camera again.
           </div>
+          {qualityNote && <QualityNote text={qualityNote} />}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SignDemoPanel key={targetSignId} signId={targetSignId} />
             <div className="flex flex-col justify-center gap-3">
@@ -445,6 +455,31 @@ export default function SignLanguage() {
         <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[var(--brand-blue)]" />
           Analysing your attempt…
+        </div>
+      )}
+
+      {stage === 'retake' && targetSignId && (
+        <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50 p-6">
+          <div className="flex items-start gap-3 text-amber-900">
+            <CameraOff size={22} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-semibold">Let&apos;s try that recording again</p>
+              <p className="text-base">{retakeMessage}</p>
+              <p className="text-sm text-amber-800">
+                This attempt wasn&apos;t counted, so your progress on &ldquo;{signLabel(targetSignId)}&rdquo; is
+                unchanged.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => setStage('practicing')}>
+              <Video size={16} />
+              Record Again
+            </Button>
+            <Button variant="secondary" onClick={loadRecommendedSign}>
+              Next Recommended Sign
+            </Button>
+          </div>
         </div>
       )}
 
@@ -490,6 +525,7 @@ export default function SignLanguage() {
             mastery={progress?.mastery_summary ?? []}
             onSelect={(signId) => {
               setTargetSignId(signId)
+              setPickedByUser(true)
               setRecordedBlob(null)
               setStage('ready')
               setTab('practice')

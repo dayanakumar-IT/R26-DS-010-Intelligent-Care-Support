@@ -1,6 +1,7 @@
 import { apiGet, apiPostFormData } from './apiClient'
 import type {
   GlossAttemptResult,
+  GlossCaptureRejection,
   GlossDemoVideo,
   GlossHistoryEntry,
   GlossProgressReport,
@@ -84,13 +85,13 @@ export function submitWebcamAttempt(
   targetSignId: string,
   videoBlob: Blob,
   sessionId?: string,
-): Promise<GlossAttemptResult> {
+): Promise<GlossAttemptResult | GlossCaptureRejection> {
   const formData = new FormData()
   formData.append('target_sign_id', targetSignId)
   formData.append('attempt_type', 'webcam')
   formData.append('video', videoBlob, `attempt.${extensionForMimeType(videoBlob.type)}`)
   if (sessionId) formData.append('session_id', sessionId)
-  return apiPostFormData<GlossAttemptResult>('/gloss/attempts', formData)
+  return apiPostFormData<GlossAttemptResult | GlossCaptureRejection>('/gloss/attempts', formData)
 }
 
 export function submitMultipleChoiceAttempt(
