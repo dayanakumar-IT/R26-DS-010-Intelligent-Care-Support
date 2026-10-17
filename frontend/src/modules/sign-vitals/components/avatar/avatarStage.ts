@@ -5,15 +5,14 @@ import type { AvatarRig } from './rig/AvatarRig.ts'
  * avatarStage.ts
  * GLOSS component — renderer, camera and lights for the 3D signer.
  *
- * The camera looks at the signer from the front (the character faces +Z),
- * framed head to waist and turned a little so both hands stay visible.
+ * The camera looks at the signer straight on (the character faces +Z),
+ * framed head to waist.
  * The viewer can turn the view a limited amount; nothing else moves.
  */
 
-// A little toward the character's right (-X), where most one-handed signs happen.
-const TARGET = new THREE.Vector3(-0.06, 1.38, 0.12)
+const TARGET = new THREE.Vector3(0, 1.38, 0.12)
 const DISTANCE = 1.75
-export const DEFAULT_VIEW = { yaw: 0.17, pitch: 0.06 } // radians: slightly to the side, slightly above
+export const DEFAULT_VIEW = { yaw: 0, pitch: 0.04 } // radians: straight on, eye level
 export const VIEW_LIMITS = { yaw: 0.6, pitch: 0.3 }
 
 export class AvatarStage {

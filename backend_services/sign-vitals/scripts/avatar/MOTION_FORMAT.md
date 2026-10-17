@@ -85,12 +85,21 @@ Frame `i` plays at `i / fps` seconds. Values are rounded to 4 decimals.
 
 | type | meaning |
 |---|---|
-| `hand_never_detected` | no landmarks for that hand in any frame; wrist and fingers stay at the rest pose |
-| `hand_gap_held` | hand missing for more than 5 frames (or at a clip edge); nearest rotation held |
+| `hand_never_detected` | no landmarks for that hand in any frame; fingers rest; the arm follows the video where visible |
+| `hand_gap_held` | hand missing for more than 5 frames in the middle of the clip; nearest rotation held |
+| `arm_rested` | hand not detected AND wrist out of view at the clip start / end: the arm eases (over 12 frames) into a relaxed rest pose (`lib/restPose.mjs`) instead of holding a guessed rotation |
 | `head_gap_held` | no face transformation matrix; nearest head rotation held |
 | `arm_out_of_frame` | wrist visibility low (below frame); the arm follows MediaPipe's estimate |
 | `joint_limit_applied` | the measured rotation was outside the anatomical range for that joint group (torso, head, elbow, wrist, fingers) and was clamped |
 | `trimmed` | an approved trim was applied; the note gives the source frame range |
+
+### Posture
+
+The signers are seated and their hips are not in the videos, so `hips` and
+`spine` are always identity (upright). The chest follows the shoulder line
+but turns at most 10° (shared by `chest` and `upperChest`), and the head
+at most 20° from upright. Arms are solved relative to that torso, so their
+world directions (and the hand / finger errors) are unaffected.
 
 ### Joint limits
 
@@ -126,10 +135,17 @@ midpoint of its neighbours, before and after smoothing (see each sign's
   `samplePose` (slerp between frames, normalised). `rig/FbxAvatarRig.ts`
   is a documented stub for a Mixamo character.
 - `SigningAvatar3D.tsx` plays a file at its own fps (0.5× / 0.75× / 1×,
-  loop, mirror, limited view turning), applies approved trims, and calls
+  loop, limited view turning), applies approved trims, and calls
   `onUnavailable` (the panel shows the 2D guide) if WebGL or loading fails.
+- View side: one shared setting (`components/mirrorView.ts`) for the 2D
+  guide, 3D Signer and reference video, mirror view by default (the
+  signer's right hand on the learner's right), remembered per user.
+  Display only: the 3D canvas and the video are flipped with CSS; the 2D
+  guide's normalized data is already a mirror view and is flipped for the
+  real view. Landmarks used for recognition and grading are never mirrored.
 - `motionCatalog.ts` decides when it is offered: the default only for signs
-  approved in `motion_qa.json`; never for the not-recommended signs;
+  approved in `motion_qa.json`; never for the not-recommended signs or
+  signs rejected on the review page;
   `?preview3d=1` shows it for every sign in development builds only.
 
 Checks: `npm test` here includes `tests/avatar_fk.test.mjs` (avatar joint

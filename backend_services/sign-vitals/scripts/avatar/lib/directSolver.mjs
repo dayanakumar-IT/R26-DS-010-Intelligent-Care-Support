@@ -53,6 +53,16 @@ const FINGER_LM = {
 };
 const SEGMENTS = (f) => (f === "Thumb" ? ["Metacarpal", "Proximal", "Distal"] : ["Proximal", "Intermediate", "Distal"]);
 
+// Largest turn allowed from upright, in degrees (world rotation).
+export const MAX_CHEST_DEG = 10;
+export const MAX_HEAD_DEG = 20;
+
+// The same rotation, scaled back towards identity if it turns more than maxDeg.
+function limitAngle(q, maxDeg) {
+  const deg = (2 * Math.acos(Math.min(1, Math.abs(q[3]))) * 180) / Math.PI;
+  return deg <= maxDeg ? q : slerp(IDENTITY, q, maxDeg / deg);
+}
+
 export function makeDirectSolver(skeleton) {
   const offset = Object.fromEntries(skeleton.bones.map(([n, , o]) => [n, o]));
   const childOf = {};
@@ -65,15 +75,16 @@ export function makeDirectSolver(skeleton) {
     const rot = Object.fromEntries(BONES.map((b) => [b, IDENTITY]));
     const P = frame.pose_world.map(mpToVrm);
 
-    // Torso: hips from the hip line, upper chest from the shoulder line; the
-    // twist between them is shared by spine, chest and upperChest.
-    const up = unit(sub(scale(add(P[11], P[12]), 0.5), scale(add(P[23], P[24]), 0.5)));
-    const hipsW = frameRotation([1, 0, 0], [0, 1, 0], sub(P[23], P[24]), up);
-    const chestW = frameRotation([1, 0, 0], [0, 1, 0], sub(P[11], P[12]), up);
-    rot.hips = hipsW;
-    const part = slerp(IDENTITY, mul(conj(hipsW), chestW), 1 / 3);
-    rot.spine = rot.chest = rot.upperChest = part;
-    const torsoW = mul(mul(mul(hipsW, part), part), part);   // upperChest world; shoulders/neck are identity
+    // Torso: the signers are seated and their hips are not in the videos
+    // (MediaPipe only guesses them), so the hips and lower spine stay
+    // upright. Only the chest follows the shoulder line, limited to a small
+    // turn and shared by chest and upperChest. Arms are solved relative to
+    // this torso, so their world directions are unaffected.
+    const chestFull = frameRotation([1, 0, 0], [0, 1, 0], sub(P[11], P[12]), [0, 1, 0]);
+    const half = slerp(IDENTITY, limitAngle(chestFull, MAX_CHEST_DEG), 0.5);
+    rot.hips = rot.spine = IDENTITY;
+    rot.chest = rot.upperChest = half;
+    const torsoW = mul(half, half);   // upperChest world; shoulders/neck are identity
 
     for (const [side, c] of Object.entries(SIDE)) {
       const dU = sub(P[c.el], P[c.sh]);
@@ -118,7 +129,8 @@ export function makeDirectSolver(skeleton) {
 
     if (frame.face_matrix) {
       const m = frame.face_matrix;
-      rot.head = mul(conj(torsoW), fromMatrix([m[0], m[1], m[2], m[4], m[5], m[6], m[8], m[9], m[10]]));
+      const headW = limitAngle(fromMatrix([m[0], m[1], m[2], m[4], m[5], m[6], m[8], m[9], m[10]]), MAX_HEAD_DEG);
+      rot.head = mul(conj(torsoW), headW);
     } else {
       rot.head = null;
     }

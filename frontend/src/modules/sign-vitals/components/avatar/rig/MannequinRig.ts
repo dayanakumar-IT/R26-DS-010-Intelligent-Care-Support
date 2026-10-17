@@ -27,6 +27,7 @@ const COLOURS = {
   brow: '#78716c',
   lip: '#a8a29e',
   mouth: '#57534e',
+  hair: '#3f3a36', // neutral dark brown-grey
 }
 
 const UP = new THREE.Vector3(0, 1, 0)
@@ -201,6 +202,11 @@ export class MannequinRig implements AvatarRig {
     const R = new THREE.Vector3(0.085, 0.114, 0.099)
     const head = this.add('head', new THREE.SphereGeometry(1, 40, 30), mannequin, C)
     head?.scale.copy(R)
+    // Short hair: a cap on the same egg shape, slightly larger. Tilted back so
+    // the hairline sits high on the forehead and low at the nape, above the
+    // ears. (Rotated before scaling so it follows the head exactly.)
+    const hairGeo = new THREE.SphereGeometry(1, 40, 20, 0, Math.PI * 2, 0, (75 * Math.PI) / 180).rotateX((-25 * Math.PI) / 180)
+    this.add('head', hairGeo, this.mats.hair, C)?.scale.copy(R).multiplyScalar(1.05)
     // A point on the face surface at (x, y) in head-bone space.
     const surface = (x: number, y: number, sink = 0.001) => {
       const k = 1 - (x / R.x) ** 2 - ((y - C.y) / R.y) ** 2

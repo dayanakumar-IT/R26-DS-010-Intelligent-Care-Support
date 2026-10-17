@@ -16,6 +16,7 @@ import { BONES, HAND_BONES, forwardKinematics, mpToVrm, solveFrame } from "./lib
 import { makeDirectSolver } from "./lib/directSolver.mjs";
 import { makeJointLimiter } from "./lib/jointLimits.mjs";
 import { MAX_SLERP_GAP, fillGaps, runs } from "./lib/gaps.mjs";
+import { easeArmToRest } from "./lib/restPose.mjs";
 import { jitterDeg, makeContinuous, round4, smoothZeroPhase } from "./lib/quat.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -141,13 +142,21 @@ function bake(sign, solver) {
       filled[b] = r.seq;
       report ??= r;
     }
+    // Hand missing and wrist out of view at the start / end: ease that arm
+    // into a relaxed rest pose instead of holding a guessed rotation.
+    const seen = raw[`${side}Hand`].map((q) => q !== null);
+    const rested = easeArmToRest(filled, side, seen, armOff[side]);
     if (report.never) {
       flags.push({ type: "hand_never_detected", part: `${side}Hand`, frames: [0, T - 1],
-        note: "no hand landmarks in any frame; wrist and fingers kept at the rest pose" });
+        note: "no hand landmarks in any frame; fingers at rest; the arm follows the video where visible, else rests" });
     } else {
-      for (const range of report.held) {
+      for (const range of rested) {
+        flags.push({ type: "arm_rested", part: `${side}Arm`, frames: range,
+          note: `hand not detected and wrist out of view at the clip ${range[0] === 0 ? "start" : "end"}; arm eased to a relaxed rest pose` });
+      }
+      for (const range of report.held.filter(([a, b]) => a > 0 && b < T - 1)) {
         flags.push({ type: "hand_gap_held", part: `${side}Hand`, frames: range,
-          note: `hand not detected for more than ${MAX_SLERP_GAP} frames (or at the clip edge); nearest rotation held` });
+          note: `hand not detected for more than ${MAX_SLERP_GAP} frames; nearest rotation held` });
       }
     }
   }
