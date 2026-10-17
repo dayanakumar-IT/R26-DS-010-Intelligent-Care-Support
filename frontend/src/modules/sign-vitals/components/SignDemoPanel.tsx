@@ -16,8 +16,8 @@ const SigningAvatar3D = lazy(() => import('./avatar/SigningAvatar3D'))
 // and it supports play/pause/replay/speed/mirror. 'video' is an
 // optional teaching-only mode showing a validated human reference video
 // from Cloudflare R2. '3d' is the 3D Signer: a mannequin playing the
-// baked motion of the same reference video; it is the default only for
-// signs approved on the motion review page (motionCatalog.default3D)
+// baked motion of the same reference video; it is the default for every
+// sign except the not-recommended and rejected ones (motionCatalog.default3D)
 // and falls back to the 2D guide if it cannot run. All modes represent
 // the SAME target sign and none affects scoring.
 type ReferenceMode = '2d' | 'video' | '3d'

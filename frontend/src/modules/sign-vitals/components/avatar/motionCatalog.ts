@@ -56,11 +56,15 @@ export function offer3D(sign: string): boolean {
   return devPreviewAll() || (!KEEP_2D.has(sign) && QA[sign]?.verdict !== 'rejected')
 }
 
-/** Whether the 3D Signer is the default view: only signs approved on the review page. */
+/**
+ * Whether the 3D Signer is the default view: every sign with a motion file,
+ * except the not-recommended signs (2D guide) and any sign rejected on the
+ * review page, which falls back to the 2D guide.
+ */
 export function default3D(sign: string): boolean {
   if (!hasMotion(sign)) return false
   if (devPreviewAll()) return true
-  return QA[sign]?.verdict === 'approved' && !KEEP_2D.has(sign)
+  return !KEEP_2D.has(sign) && QA[sign]?.verdict !== 'rejected'
 }
 
 export async function loadMotion(sign: string): Promise<MotionFile> {

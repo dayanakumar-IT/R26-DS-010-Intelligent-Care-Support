@@ -1,6 +1,7 @@
-import { ChevronRight, Hand, RotateCcw } from 'lucide-react'
+import { ChevronRight, RotateCcw } from 'lucide-react'
 import type { GlossMasterySummaryRow } from '../../types/gloss'
 import { LAST_RESULT_LABEL, PROGRESS_LABEL, progressState } from '../../utils/progressLabels'
+import SignPreview from './SignPreview'
 import StrongInARowMeter from './StrongInARowMeter'
 
 const ACCENTS = [
@@ -17,9 +18,10 @@ interface PracticeSignCardProps {
   onPracticeAgain: () => void
 }
 
-// Presentational only. Shows the sign's progress state, its last result
-// and "strong in a row" — never a percentage. The "Practice again"
-// action is entirely the caller's.
+// Presentational only. Shows the sign playing (3D Signer, or the 2D guide
+// for signs that keep it), its progress state, its last result and
+// "strong in a row" — never a percentage. The "Practice again" action is
+// entirely the caller's.
 export default function PracticeSignCard({
   row,
   strongNeeded,
@@ -36,14 +38,10 @@ export default function PracticeSignCard({
       className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-[0_4px_14px_rgba(15,35,70,0.06)]"
       style={{ borderColor: a.border }}
     >
+      <div className="h-40 overflow-hidden rounded-xl" style={{ background: a.preview }}>
+        <SignPreview signId={row.sign_id} signName={row.display_name} />
+      </div>
       <div className="flex items-center gap-4">
-        <span
-          className="grid h-16 w-16 shrink-0 place-items-center rounded-xl"
-          style={{ background: a.preview, color: a.icon }}
-          aria-hidden="true"
-        >
-          <Hand size={28} />
-        </span>
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-lg font-semibold capitalize text-slate-900">
             {row.display_name}
