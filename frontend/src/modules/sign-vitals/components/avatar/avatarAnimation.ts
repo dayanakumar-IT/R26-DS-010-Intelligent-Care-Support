@@ -2,7 +2,7 @@ import type { GlossReferenceFrame } from '../../types/gloss'
 
 /**
  * avatarAnimation.ts
- * GLOSS component — reference-sequence playback timing + interpolation.
+ * GLOSS component — 2D sign guide playback timing + interpolation.
  *
  * gloss_sign_references stores no duration/fps metadata (checked in
  * Phase 0 — the schema only has frame_count), so there is no "true"
@@ -10,11 +10,8 @@ import type { GlossReferenceFrame } from '../../types/gloss'
  * choice for a watchable teaching pace, not a discovered fact.
  *
  * Interpolation happens on LANDMARK POSITIONS between the two nearest
- * reference frames (P = P0 + (P1-P0)*t) — never on already-solved bone
- * rotations — so avatarRigMapper.computeRigPose() is always fed a
- * single, coherent interpolated frame and solves quaternions fresh
- * from it. This avoids the "SLERP between unrelated Euler angles"
- * problem entirely, per the project's stated interpolation approach.
+ * reference frames (P = P0 + (P1-P0)*t). The 3D Signer does not use
+ * this file: its motion files carry their own fps (motionPlayback.ts).
  */
 
 export const DEFAULT_FPS = 24

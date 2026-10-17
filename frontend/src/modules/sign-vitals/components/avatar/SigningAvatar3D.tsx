@@ -1,223 +1,301 @@
 import { useEffect, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { FlipHorizontal2, Pause, Play, RotateCcw } from 'lucide-react'
-import type { GlossReferenceFrame } from '../../types/gloss'
-import { computePlaybackPosition, interpolateFrame } from './avatarAnimation'
-import { applyRigPose, computeRigPose, type RefMap } from './avatarRigMapper'
-import ProceduralAvatar from './ProceduralAvatar'
+import { FlipHorizontal2, LocateFixed, Pause, Play, RotateCcw } from 'lucide-react'
+import * as THREE from 'three'
+import skeletonJson from '../../assets/motion/standard_skeleton.json'
+import { AvatarStage } from './avatarStage'
+import { loadMotion, signPlayRange } from './motionCatalog'
+import { frameAtTime, type MotionFile } from './motionPlayback'
+import { samplePose, type BoneDef, type PoseSample } from './rig/AvatarRig'
+import { MannequinRig } from './rig/MannequinRig'
 
 /**
  * SigningAvatar3D.tsx
- * GLOSS component — rendering/scene layer. Owns the React Three Fiber
- * Canvas, the fixed teaching camera, playback state, and the per-frame
- * animation loop, plus the Play/Pause/Replay/speed/Mirror controls
- * (self-contained — SignDemoPanel only needs to fetch the reference
- * and render this component, wrapped in its own loading/error states).
+ * GLOSS component — the 3D Signer: a code-built mannequin playing a
+ * sign's baked motion file (display only; grading never reads it).
  *
- * Delegates all geometry to ProceduralAvatar (the one layer meant to
- * be replaced by a licensed GLB later) and all landmark/rig math to
- * avatarAnimation.ts + avatarRigMapper.ts.
+ * This file pulls in three.js, so callers load it with React.lazy and
+ * pages without the 3D Signer never download three.js. If WebGL is
+ * missing or anything fails to load, onUnavailable() fires and the
+ * caller shows the 2D guide instead.
+ *
+ * Timing: frames are slerped using the motion file's own fps, so the
+ * signer moves at the speed of the reference video (times the chosen
+ * speed). Approved trims are applied (motionCatalog.signPlayRange).
  */
 
 export interface SigningAvatar3DProps {
-  frames: GlossReferenceFrame[]
+  signId: string
   signName: string
   autoplay?: boolean
   loop?: boolean
-  playbackRate?: number
-  mirrored?: boolean
+  onUnavailable?: (reason: string) => void
+  /**
+   * Review page: show this already-loaded motion at this frame (the video
+   * is the clock). No player controls and no trim.
+   */
+  review?: { motion: MotionFile; frame: number }
 }
 
 const SPEED_OPTIONS = [0.5, 0.75, 1] as const
+const SKELETON = skeletonJson.bones as BoneDef[]
+const TURN_STEP = 0.08 // radians per arrow-key press
 
-function AnimatedAvatar({
-  frames,
-  playing,
-  loop,
-  playbackRate,
-  onFinished,
-  resetToken,
-}: {
-  frames: GlossReferenceFrame[]
-  playing: boolean
-  loop: boolean
-  playbackRate: number
-  onFinished: () => void
-  resetToken: number
-}) {
-  const refsBox = useRef<RefMap | null>(null)
-  const elapsedRef = useRef(0)
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-  useEffect(() => {
-    elapsedRef.current = 0
-  }, [resetToken])
-
-  useFrame((_state, delta) => {
-    if (frames.length < 2 || !refsBox.current) return
-
-    if (playing) {
-      elapsedRef.current += delta
-    }
-
-    const position = computePlaybackPosition(elapsedRef.current, frames.length, playbackRate, loop)
-    const frameA = frames[position.frameIndexA]!
-    const frameB = frames[position.frameIndexB]!
-    const interpolated = interpolateFrame(frameA, frameB, position.t)
-    const pose = computeRigPose(interpolated)
-    applyRigPose(refsBox.current, pose)
-
-    if (position.finished && playing) {
-      onFinished()
-    }
-  })
-
-  return (
-    <ProceduralAvatar
-      onReady={(refs) => {
-        refsBox.current = refs
-      }}
-    />
-  )
-}
-
-function hasWebGL(): boolean {
-  try {
-    const canvas = document.createElement('canvas')
-    return Boolean(
-      window.WebGLRenderingContext &&
-        (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')),
-    )
-  } catch {
-    return false
-  }
-}
+const btn = 'flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-blue)]'
 
 export default function SigningAvatar3D({
-  frames,
+  signId,
   signName,
   autoplay = true,
   loop = true,
-  playbackRate: initialPlaybackRate = 1,
-  mirrored: initialMirrored = false,
+  onUnavailable,
+  review,
 }: SigningAvatar3DProps) {
-  const [playing, setPlaying] = useState(autoplay)
-  const [playbackRate, setPlaybackRate] = useState<number>(initialPlaybackRate)
-  const [mirrored, setMirrored] = useState(initialMirrored)
-  const [resetToken, setResetToken] = useState(0)
-  const [webglOk] = useState(() => hasWebGL())
+  const hostRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<AvatarStage | null>(null)
+  const poseRef = useRef<PoseSample>({ bones: {}, hips: new THREE.Vector3(), face: {} })
+  const elapsedRef = useRef(0) // seconds of the clip already played (speed applied)
+  const dragRef = useRef<{ x: number; y: number } | null>(null)
+  const unavailableRef = useRef(onUnavailable)
+  useEffect(() => {
+    unavailableRef.current = onUnavailable
+  }, [onUnavailable])
 
-  if (!webglOk) {
-    return (
-      <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500">
-        3D demonstration is not supported on this device/browser.
-      </div>
-    )
+  const [loaded, setLoaded] = useState<MotionFile | null>(null)
+  const [failure, setFailure] = useState<string | null>(null)
+  const [playing, setPlaying] = useState(() => autoplay && !prefersReducedMotion())
+  const [rate, setRate] = useState<number>(1)
+  const [mirrored, setMirrored] = useState(false)
+  const [replayToken, setReplayToken] = useState(0)
+
+  const reviewMotion = review?.motion
+  const reviewFrame = review?.frame
+  const motion = reviewMotion ?? loaded
+
+  const fail = (reason: string) => {
+    setFailure(reason)
+    unavailableRef.current?.(reason)
   }
+  const failRef = useRef(fail)
+  useEffect(() => {
+    failRef.current = fail
+  })
 
-  if (frames.length < 2) {
-    return (
-      <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500">
-        Not enough reference frames to animate this sign.
-      </div>
-    )
+  // Renderer + mannequin, once per mount; GPU memory freed on unmount.
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    let stage: AvatarStage
+    try {
+      stage = new AvatarStage(host, new MannequinRig(SKELETON))
+    } catch {
+      failRef.current('WebGL is not available')
+      return
+    }
+    stageRef.current = stage
+    const lost = (e: Event) => {
+      e.preventDefault()
+      failRef.current('The 3D view stopped working')
+    }
+    stage.renderer.domElement.addEventListener('webglcontextlost', lost)
+    return () => {
+      stage.renderer.domElement.removeEventListener('webglcontextlost', lost)
+      stage.dispose()
+      stageRef.current = null
+    }
+  }, [])
+
+  // Load this sign's motion file (its own lazy chunk).
+  useEffect(() => {
+    if (reviewMotion) return
+    let live = true
+    loadMotion(signId)
+      .then((m) => live && setLoaded(m))
+      .catch(() => live && failRef.current('The 3D demonstration could not be loaded'))
+    return () => {
+      live = false
+    }
+  }, [signId, reviewMotion])
+
+  const show = (m: MotionFile, frame: number, last: number) => {
+    const stage = stageRef.current
+    if (!stage) return
+    stage.rig.applyPose(samplePose(m, frame, last, poseRef.current))
+    stage.render()
   }
+  const showRef = useRef(show)
+  useEffect(() => {
+    showRef.current = show
+  })
 
-  const handleReplay = () => {
-    setResetToken((n) => n + 1)
+  // Review page: follow the external frame.
+  useEffect(() => {
+    if (reviewMotion && reviewFrame !== undefined) showRef.current(reviewMotion, reviewFrame, reviewMotion.frames - 1)
+  }, [reviewMotion, reviewFrame])
+
+  // Built-in player.
+  useEffect(() => {
+    if (!loaded || reviewMotion) return
+    const range = signPlayRange(signId, loaded)
+    const draw = () => {
+      const { frame, finished } = frameAtTime(elapsedRef.current, loaded.fps, range, loop)
+      showRef.current(loaded, frame, range[1])
+      return finished
+    }
+    if (!playing) {
+      draw()
+      return
+    }
+    let raf = 0
+    let last: number | null = null
+    const tick = (ts: number) => {
+      if (last !== null) elapsedRef.current += ((ts - last) / 1000) * rate
+      last = ts
+      if (draw()) {
+        setPlaying(false)
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [loaded, reviewMotion, signId, playing, rate, loop, replayToken])
+
+  const togglePlay = () => {
+    if (!playing && loaded && !loop) {
+      const range = signPlayRange(signId, loaded)
+      if (frameAtTime(elapsedRef.current, loaded.fps, range, false).finished) elapsedRef.current = 0
+    }
+    setPlaying((p) => !p)
+  }
+  const replay = () => {
+    elapsedRef.current = 0
+    setReplayToken((n) => n + 1)
     setPlaying(true)
   }
+
+  // Limited view turning: drag, or arrow keys when the view has focus.
+  // The mirror is a CSS flip, so horizontal drags are flipped back.
+  const turn = (dx: number, dy: number) => stageRef.current?.turn(mirrored ? dx : -dx, dy)
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { x: e.clientX, y: e.clientY }
+  }
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current
+    if (!d) return
+    turn((e.clientX - d.x) * 0.008, (e.clientY - d.y) * 0.006)
+    dragRef.current = { x: e.clientX, y: e.clientY }
+  }
+  const onPointerUp = () => {
+    dragRef.current = null
+  }
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step: Record<string, [number, number]> = {
+      ArrowLeft: [-TURN_STEP, 0],
+      ArrowRight: [TURN_STEP, 0],
+      ArrowUp: [0, -TURN_STEP],
+      ArrowDown: [0, TURN_STEP],
+    }
+    const s = step[e.key]
+    if (!s) return
+    e.preventDefault()
+    turn(s[0], s[1])
+  }
+
+  if (failure && onUnavailable) return null
 
   return (
     <div className="flex flex-col gap-2">
       <div
-        className="relative aspect-video w-full overflow-hidden rounded-[var(--radius-md)] bg-slate-100"
-        style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
+        className="relative w-full overflow-hidden rounded-[var(--radius-md)] bg-[#eef2f6]"
+        style={{ aspectRatio: '4 / 3', maxHeight: 420 }}
       >
-        {/* Camera framing (fixed here — root cause of "arms/hands not
-            rendering" after the shoulder-offset fix): the avatar's
-            vertical extent runs from the head top (~y=0.35) down through
-            shoulders (~y=0), elbows (~y=-0.42, BONE_LENGTHS.upperArm),
-            wrists (~y=-0.8), to fingertips (~y=-1.05 to -1.15,
-            BONE_LENGTHS.upperArm+forearm+hand+2*fingerSegment below the
-            shoulder). The previous camera (position.y=0.05, fov=32) only
-            covered roughly [-0.41, 0.51] — everything from the elbows
-            down was simply outside the frustum, regardless of correct
-            positioning. This framing centers lower (y=-0.3) with a wider
-            fov so the full reach (including raised-hand signs going
-            above shoulder height) stays in frame with margin. */}
-        <Canvas camera={{ position: [0, -0.3, 2.1], fov: 50 }} dpr={[1, 1.5]}>
-          <ambientLight intensity={0.9} />
-          <directionalLight position={[1, 2, 2]} intensity={0.6} />
-          <group position={[0, -0.1, 0]}>
-            <AnimatedAvatar
-              frames={frames}
-              playing={playing}
-              loop={loop}
-              playbackRate={playbackRate}
-              onFinished={() => setPlaying(false)}
-              resetToken={resetToken}
-            />
-          </group>
-        </Canvas>
+        <div
+          ref={hostRef}
+          tabIndex={0}
+          role="img"
+          aria-roledescription="3D view"
+          aria-label={`${signName}: 3D signer. Drag or use the arrow keys to turn the view.`}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onKeyDown={onKeyDown}
+          className="h-full w-full cursor-grab focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--brand-blue)] active:cursor-grabbing"
+          style={{ width: '100%', height: '100%', transform: mirrored ? 'scaleX(-1)' : undefined, touchAction: 'pan-y' }}
+        />
         {mirrored && (
-          <span
-            className="absolute left-2 top-2 rounded-full bg-slate-900/70 px-2 py-0.5 text-[10px] font-medium text-white"
-            style={{ transform: 'scaleX(-1)' }}
-          >
-            Mirrored
+          <span className="absolute left-3 top-3 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+            Mirrored view
           </span>
+        )}
+        {!motion && !failure && (
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
+            Loading 3D signer…
+          </div>
+        )}
+        {failure && (
+          <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-rose-600">
+            {failure}. Please use the 2D Sign Guide.
+          </div>
         )}
       </div>
 
-      <p className="text-center text-xs text-slate-400">Reference: {signName}</p>
+      <p className="text-center text-xs text-slate-500">
+        3D demonstration generated from a reference signer&apos;s video.
+      </p>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => setPlaying((p) => !p)}
-          className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
-          {playing ? <Pause size={14} /> : <Play size={14} />}
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button
-          type="button"
-          onClick={handleReplay}
-          className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
-          <RotateCcw size={14} />
-          Replay
-        </button>
-        <button
-          type="button"
-          onClick={() => setMirrored((m) => !m)}
-          className={`flex items-center gap-1 rounded-[var(--radius-md)] border px-2.5 py-1.5 text-xs font-medium ${
-            mirrored
-              ? 'border-[var(--brand-blue)] bg-blue-50 text-[var(--brand-blue)]'
-              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <FlipHorizontal2 size={14} />
-          Mirror
-        </button>
-
-        <div className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 p-0.5">
-          {SPEED_OPTIONS.map((speed) => (
-            <button
-              key={speed}
-              type="button"
-              onClick={() => setPlaybackRate(speed)}
-              className={`rounded-[var(--radius-sm)] px-2 py-1 text-xs font-medium ${
-                playbackRate === speed
-                  ? 'bg-[var(--brand-blue)] text-white'
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
-            >
-              {speed}×
+      {!review && (
+        <>
+          <p className="text-center text-[11px] text-slate-400">
+            {mirrored
+              ? "Mirrored: the signer's right hand is on your right, like a mirror."
+              : "Facing you: the signer's right hand is on your left."}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button type="button" onClick={togglePlay} className={btn} disabled={!motion}>
+              {playing ? <Pause size={14} aria-hidden /> : <Play size={14} aria-hidden />}
+              {playing ? 'Pause' : 'Play'}
             </button>
-          ))}
-        </div>
-      </div>
+            <button type="button" onClick={replay} className={btn} disabled={!motion}>
+              <RotateCcw size={14} aria-hidden />
+              Replay
+            </button>
+            <button
+              type="button"
+              onClick={() => setMirrored((m) => !m)}
+              aria-pressed={mirrored}
+              className={`${btn} ${mirrored ? 'border-[var(--brand-blue)] bg-blue-50 text-[var(--brand-blue)]' : ''}`}
+            >
+              <FlipHorizontal2 size={14} aria-hidden />
+              Mirror
+            </button>
+            <button type="button" onClick={() => stageRef.current?.resetView()} className={btn}>
+              <LocateFixed size={14} aria-hidden />
+              Reset view
+            </button>
+            <div role="group" aria-label="Playback speed" className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 p-0.5">
+              {SPEED_OPTIONS.map((speed) => (
+                <button
+                  key={speed}
+                  type="button"
+                  onClick={() => setRate(speed)}
+                  aria-pressed={rate === speed}
+                  aria-label={`${speed} times speed`}
+                  className={`rounded-[var(--radius-sm)] px-2 py-1 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-blue)] ${
+                    rate === speed ? 'bg-[var(--brand-blue)] text-white' : 'text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  {speed}×
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
