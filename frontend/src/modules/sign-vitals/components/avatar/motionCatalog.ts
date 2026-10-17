@@ -47,10 +47,13 @@ export function hasMotion(sign: string): boolean {
   return motionPath(sign) in LOADERS
 }
 
-/** Whether the switcher offers the 3D Signer for this sign. */
+/**
+ * Whether the switcher offers the 3D Signer for this sign: not for the
+ * not-recommended signs, and not for signs rejected on the review page.
+ */
 export function offer3D(sign: string): boolean {
   if (!hasMotion(sign)) return false
-  return devPreviewAll() || !KEEP_2D.has(sign)
+  return devPreviewAll() || (!KEEP_2D.has(sign) && QA[sign]?.verdict !== 'rejected')
 }
 
 /** Whether the 3D Signer is the default view: only signs approved on the review page. */
