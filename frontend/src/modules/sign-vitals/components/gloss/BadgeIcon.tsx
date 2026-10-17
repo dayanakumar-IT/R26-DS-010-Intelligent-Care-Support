@@ -1,4 +1,6 @@
+import { useId } from 'react'
 import type { GlossMilestoneType } from '../../types/gloss'
+import { categoryColors } from '../../utils/categoryColors'
 
 /**
  * BadgeIcon.tsx
@@ -11,7 +13,10 @@ import type { GlossMilestoneType } from '../../types/gloss'
  *   monthly    calendar page with the number of active days
  *
  * Deliberately no drawn hands or signing gestures (a wrong handshape on a
- * badge would teach the wrong thing). Locked badges are quiet grey.
+ * badge would teach the wrong thing). Earned badges are filled with a soft
+ * gradient and glow (category badges in their category's colour family);
+ * locked badges are a quiet grey outline. marker: the always-coloured round
+ * stage marker on My Journey (not a badge). No animation.
  */
 
 const EARNED = {
@@ -20,7 +25,7 @@ const EARNED = {
   practice: { ring: '#475569', fill: '#f1f5f9', motif: '#334155', accent: '#94a3b8' },
   monthly: { ring: '#7c3aed', fill: '#f5f3ff', motif: '#5b21b6', accent: '#a78bfa' },
 }
-const LOCKED = { ring: '#cbd5e1', fill: '#f8fafc', motif: '#cbd5e1', accent: '#e2e8f0' }
+const LOCKED = { ring: '#94a3b8', fill: '#ffffff', motif: '#94a3b8', accent: '#e2e8f0' }
 
 type Palette = typeof LOCKED
 
@@ -113,7 +118,8 @@ function CategoryMotif({ k, p }: { k: string; p: Palette }) {
   }
 }
 
-function Frame({ kind, p }: { kind: GlossMilestoneType; p: Palette }) {
+function Frame({ kind, p, marker }: { kind: GlossMilestoneType; p: Palette; marker?: boolean }) {
+  if (marker) return <circle cx="32" cy="32" r="28" fill={p.fill} stroke={p.ring} strokeWidth="2.5" />
   if (kind === 'category') {
     return <path d="M32 4 L56 18 V46 L32 60 L8 46 V18 Z" fill={p.fill} stroke={p.ring} strokeWidth="3" strokeLinejoin="round" />
   }
@@ -143,15 +149,48 @@ interface BadgeIconProps {
   earned: boolean
   size?: number
   label: string
+  /** Round stage marker in the category colour (My Journey), not a badge. */
+  marker?: boolean
 }
 
-export default function BadgeIcon({ kind, badgeKey, earned, size = 56, label }: BadgeIconProps) {
-  const p = earned ? EARNED[kind as keyof typeof EARNED] ?? EARNED.level : LOCKED
+function palette(kind: GlossMilestoneType, badgeKey: string, earned: boolean, marker: boolean): Palette {
+  if (kind === 'category' && (earned || marker)) {
+    const f = categoryColors(badgeKey)
+    return marker
+      ? { ring: f.border, fill: f.soft, motif: f.solid, accent: f.light }
+      : { ring: f.solid, fill: f.soft, motif: f.dark, accent: f.light }
+  }
+  return earned ? EARNED[kind as keyof typeof EARNED] ?? EARNED.level : LOCKED
+}
+
+export default function BadgeIcon({ kind, badgeKey, earned, size = 56, label, marker = false }: BadgeIconProps) {
+  // useId() contains ':' — keep only safe characters for an SVG url(#id).
+  const gradientId = `badge-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  const base = palette(kind, badgeKey, earned, marker)
+  const shine = earned && !marker
+  // Earned: soft top-to-bottom gradient fill and a gentle glow in the ring colour.
+  const p = shine ? { ...base, fill: `url(#${gradientId})` } : base
   const text = kind === 'practice' && badgeKey.startsWith('signs_') ? badgeKey.split('_')[1]
     : kind === 'monthly' ? badgeKey.split(':')[1] : null
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={`${label}${earned ? '' : ' (not earned yet)'}`}>
-      <Frame kind={kind} p={p} />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      role="img"
+      aria-label={marker ? label : `${label}${earned ? '' : ' (not earned yet)'}`}
+      style={shine ? { filter: `drop-shadow(0 2px 6px ${base.ring}55)`, overflow: 'visible' } : undefined}
+    >
+      {shine && (
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="55%" stopColor={base.fill} />
+            <stop offset="100%" stopColor={base.accent} stopOpacity="0.55" />
+          </linearGradient>
+        </defs>
+      )}
+      <Frame kind={kind} p={p} marker={marker} />
       {kind === 'level' && <LevelMotif k={badgeKey} p={p} />}
       {kind === 'category' && <CategoryMotif k={badgeKey} p={p} />}
       {kind === 'practice' && !text && (
