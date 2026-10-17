@@ -11,6 +11,8 @@ Independent of FastAPI — takes a supabase client + caregiver_profile_id
 and returns a plain list, so it is unit-testable.
 """
 
+from progress_store import schema_ready
+from sign_config import PIPELINE_VERSION
 import logging
 
 from execution_evaluator import LOW_CONFIDENCE_CUTOFF
@@ -23,12 +25,14 @@ logger = logging.getLogger("sign_vitals")
 
 def build_history(supabase_client, caregiver_profile_id: str, limit: int = DEFAULT_LIMIT) -> list[dict]:
     limit = max(1, min(int(limit), MAX_LIMIT))
+    # mode / pipeline_version exist once migration 0045 is applied.
+    extra = ", mode, pipeline_version" if schema_ready(supabase_client) else ""
 
     rows = (
         supabase_client.table("gloss_attempts")
         .select(
             "id, target_sign_id, recognized_sign_id, recognition_confidence, "
-            "execution_score, quality_tier, attempt_type, attempted_at"
+            "execution_score, quality_tier, attempt_type, attempted_at" + extra
         )
         .eq("caregiver_profile_id", caregiver_profile_id)
         .order("attempted_at", desc=True)
@@ -76,4 +80,8 @@ def _history_entry(r: dict, display_name_by_id: dict) -> dict:
         "quality_tier": None if not_recognised else r["quality_tier"],
         "execution_score": None if not_recognised else r["execution_score"],
         "attempted_at": r["attempted_at"],
+        # practice | recall | free (Check my sign: no target, never counted).
+        "mode": r.get("mode") or "practice",
+        # Made with an earlier grading pipeline: counts as practice only.
+        "earlier_version": r.get("pipeline_version", PIPELINE_VERSION) != PIPELINE_VERSION,
     }

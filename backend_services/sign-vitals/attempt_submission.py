@@ -25,12 +25,15 @@ from contextlib import contextmanager
 import numpy as np
 
 from capture_gates import check_capture
-from execution_evaluator import LOW_CONFIDENCE_CUTOFF, evaluate_execution
+import grading
+from execution_evaluator import CONFIDENCE_THRESHOLD, LOW_CONFIDENCE_CUTOFF, evaluate_execution
 from extract_landmarks_bridge import NoLandmarksExtractedError, extract_landmarks_via_subprocess
 from gemini_feedback import feedback_text
 from lesson_selector import select_next_lesson
-from mastery_engine import compute_execution_score, get_mastery, update_mastery
+from mastery_engine import compute_execution_score, get_mastery, next_mastery_row, update_mastery
 from preprocessing import normalize_raw_landmarks
+from progress_store import MIGRATIONS_NEEDED, record_attempt, schema_ready
+from sign_config import PIPELINE_VERSION
 from stage_timing import TimedDb, db_summary, instrument_grading, start_detail, take_detail
 
 logger = logging.getLogger("sign_vitals")
@@ -56,6 +59,13 @@ OUTCOME_DIFFERENT_SIGN = "different_sign"
 OUTCOME_TARGET_SIGN = "target_sign"
 OUTCOME_QUIZ_CORRECT = "quiz_correct"
 OUTCOME_QUIZ_WRONG = "quiz_wrong"
+# Check my sign (mode='free'): what the camera thinks was signed.
+OUTCOME_FREE_MATCH = "free_match"        # top confidence >= CONFIDENCE_THRESHOLD (0.6)
+OUTCOME_FREE_MAYBE = "free_maybe"        # LOW_CONFIDENCE_CUTOFF (0.35) .. 0.6
+OUTCOME_FREE_NO_MATCH = "free_no_match"  # below 0.35
+FREE_SECOND_GUESS_MIN = 0.2              # a second suggestion is shown only from here
+
+MODES = ("practice", "recall", "free")
 
 
 class _Timings:
@@ -144,10 +154,16 @@ def submit_attempt(
     model=None,
     class_names=None,
     class_thresholds=None,
+    mode: str = "practice",
 ) -> dict:
     """
     caregiver_profile_id: server-derived (never client-supplied).
-    target_sign_id: the sign the caregiver was asked to perform.
+    target_sign_id: the sign the caregiver was asked to perform (None for
+      mode='free').
+    mode: "practice" (lesson flow), "recall" (word only, from memory; graded
+      exactly like practice) or "free" (Check my sign: no target, the camera
+      names the sign; stored but never counted toward progress). Recall and
+      free need migrations 0045-0047.
     attempt_type: "webcam" or "multiple_choice".
     session_id: optional existing gloss_learning_sessions id — used if it
       exists and belongs to this caregiver; otherwise (missing, expired,
@@ -190,10 +206,26 @@ def submit_attempt(
         if video_path is not None:
             raise AttemptError(400, "video must not be provided for multiple_choice attempts")
 
+    if mode not in MODES:
+        raise AttemptError(400, f"mode must be one of {MODES}, got {mode!r}")
+    if mode != "practice" and attempt_type != "webcam":
+        raise AttemptError(400, f"{mode} attempts are camera attempts")
+    if mode == "free":
+        if target_sign_id:
+            raise AttemptError(400, "free attempts have no target sign")
+    elif not target_sign_id:
+        raise AttemptError(400, "target_sign_id is required")
+    # Migrations 0045-0047 applied? Until then the original practice write
+    # path is used and the new modes are unavailable.
+    progress_ready = schema_ready(supabase_client)
+    if mode != "practice" and not progress_ready:
+        raise AttemptError(503, MIGRATIONS_NEEDED)
+
     with timings.stage("validate_sign_and_session"):
-        sign_check = supabase_client.table("gloss_signs").select("id").eq("id", target_sign_id).limit(1).execute()
-        if not sign_check.data:
-            raise AttemptError(400, f"Unknown target_sign_id: {target_sign_id!r}")
+        if mode != "free":
+            sign_check = supabase_client.table("gloss_signs").select("id").eq("id", target_sign_id).limit(1).execute()
+            if not sign_check.data:
+                raise AttemptError(400, f"Unknown target_sign_id: {target_sign_id!r}")
 
         session_id = _resolve_session(supabase_client, caregiver_profile_id, session_id)
 
@@ -254,12 +286,17 @@ def submit_attempt(
             )
             return {
                 "outcome": OUTCOME_CAPTURE_REJECTED,
+                "mode": mode,
                 "session_id": session_id,
                 "capture_check": capture,
                 "message": capture["message"],
                 "timings": {**timings.as_dict(), **db_summary(supabase_client.calls)},
                 "diagnostics": diagnostics,
             }
+
+        if mode == "free":
+            return _free_attempt(supabase_client, caregiver_profile_id, session_id, normalized, raw,
+                                 model, class_names, capture, diagnostics, timings)
 
         logger.info("[GLOSS][INFERENCE] recognition + DTW grading started")
         start_detail()
@@ -392,29 +429,51 @@ def submit_attempt(
         "corrective_feedback": corrective_feedback,
         "attempt_type": attempt_type,
     }
-    with timings.stage("persist_attempt"):
-        inserted = supabase_client.table("gloss_attempts").insert(attempt_row).execute()
-        attempt_id = inserted.data[0]["id"]
-    logger.info("[GLOSS][DB] attempt persisted | attempt_id=%s", str(attempt_id)[:8])
+    new_milestones = []
+    if progress_ready:
+        # Attempt + mastery row + newly earned milestones, one transaction.
+        attempt_row["mode"] = mode
+        attempt_row["pipeline_version"] = PIPELINE_VERSION
+        with timings.stage("mastery_update"):
+            if not_recognised:
+                mastery_row, pending_mastery = get_mastery(supabase_client, caregiver_profile_id, target_sign_id), None
+            else:
+                mastery_row = pending_mastery = next_mastery_row(
+                    supabase_client, caregiver_profile_id, target_sign_id, attempt_type=attempt_type,
+                    is_correct_sign=is_correct_sign, quality_tier=quality_tier, execution_score=execution_score,
+                )
+        with timings.stage("persist_attempt"):
+            stored = record_attempt(supabase_client, attempt_row, pending_mastery)
+            attempt_id = stored["attempt_id"]
+            new_milestones = stored["new_milestones"]
+        logger.info(
+            "[GLOSS][DB] attempt persisted | attempt_id=%s | mode=%s | new milestones=%s",
+            str(attempt_id)[:8], mode, [m["key"] for m in new_milestones],
+        )
+    else:
+        with timings.stage("persist_attempt"):
+            inserted = supabase_client.table("gloss_attempts").insert(attempt_row).execute()
+            attempt_id = inserted.data[0]["id"]
+        logger.info("[GLOSS][DB] attempt persisted | attempt_id=%s", str(attempt_id)[:8])
 
-    with timings.stage("mastery_update"):
-        if not_recognised:
-            mastery_row = get_mastery(supabase_client, caregiver_profile_id, target_sign_id)
-        else:
-            mastery_row = update_mastery(
-                supabase_client,
-                caregiver_profile_id,
-                target_sign_id,
-                attempt_type=attempt_type,
-                is_correct_sign=is_correct_sign,
-                quality_tier=quality_tier,
-                execution_score=execution_score,
-            )
-    logger.info(
-        "[GLOSS][MASTERY] %s | sign=%s | status=%s | strong_streak=%s",
-        "unchanged (not recognised)" if not_recognised else "updated",
-        target_sign_id, mastery_row["mastery_status"], mastery_row["consecutive_strong_streak"],
-    )
+        with timings.stage("mastery_update"):
+            if not_recognised:
+                mastery_row = get_mastery(supabase_client, caregiver_profile_id, target_sign_id)
+            else:
+                mastery_row = update_mastery(
+                    supabase_client,
+                    caregiver_profile_id,
+                    target_sign_id,
+                    attempt_type=attempt_type,
+                    is_correct_sign=is_correct_sign,
+                    quality_tier=quality_tier,
+                    execution_score=execution_score,
+                )
+        logger.info(
+            "[GLOSS][MASTERY] %s | sign=%s | status=%s | strong_streak=%s",
+            "unchanged (not recognised)" if not_recognised else "updated",
+            target_sign_id, mastery_row["mastery_status"], mastery_row["consecutive_strong_streak"],
+        )
 
     with timings.stage("next_lesson_selection"):
         next_sign = select_next_lesson(supabase_client, caregiver_profile_id)
@@ -432,6 +491,7 @@ def submit_attempt(
 
     return {
         "outcome": outcome,
+        "mode": mode,
         "attempt_id": attempt_id,
         "session_id": session_id,
         "is_correct_sign": is_correct_sign,
@@ -442,9 +502,59 @@ def submit_attempt(
         "corrective_feedback": corrective_feedback,
         "mastery": mastery_row,
         "next_recommended_sign_id": next_sign,
+        # Milestones this attempt newly earned (empty before migrations 0045-0047).
+        "new_milestones": new_milestones,
+        "pipeline_version": PIPELINE_VERSION,
         # Task 6 instrumentation — additive; existing consumers ignore it.
         "timings": stage_timings,
         # Diagnostic summary — additive; predicted/expected/confidence/top-3,
         # capture quality, preprocessing description, mirroring flag.
+        "diagnostics": diagnostics,
+    }
+
+
+def _free_attempt(db, caregiver_profile_id, session_id, normalized, raw, model, class_names,
+                  capture, diagnostics, timings) -> dict:
+    """Check my sign: the recogniser's best guesses, stored with mode='free'
+    (no target; never counted toward streaks, Demonstrated, levels or badges)."""
+    with timings.stage("recognition"):
+        probs = grading.grade(normalized, model)["probs"]
+    order = [int(i) for i in np.argsort(probs)[::-1][:3]]
+    top3 = [{"sign_id": class_names[i], "confidence": float(probs[i])} for i in order]
+    confidence = top3[0]["confidence"]
+    if confidence >= CONFIDENCE_THRESHOLD:
+        outcome, suggestions = OUTCOME_FREE_MATCH, top3[:1]
+    elif confidence >= LOW_CONFIDENCE_CUTOFF:
+        outcome = OUTCOME_FREE_MAYBE
+        suggestions = top3[:1] + [t for t in top3[1:2] if t["confidence"] >= FREE_SECOND_GUESS_MIN]
+    else:
+        outcome, suggestions = OUTCOME_FREE_NO_MATCH, []
+    diagnostics.update(top3=top3, confidence=confidence, raw_frame_count=int(raw.shape[0]),
+                       predicted_sign_id=suggestions[0]["sign_id"] if suggestions else None)
+
+    row = {
+        "caregiver_profile_id": caregiver_profile_id,
+        "session_id": session_id,
+        "target_sign_id": None,
+        "recognized_sign_id": top3[0]["sign_id"] if confidence >= LOW_CONFIDENCE_CUTOFF else None,
+        "recognition_confidence": confidence,
+        "attempt_type": "webcam",
+        "mode": "free",
+        "pipeline_version": PIPELINE_VERSION,
+    }
+    with timings.stage("persist_attempt"):
+        stored = record_attempt(db, row, None)
+    logger.info("[GLOSS][FREE] check my sign | outcome=%s | top3=%s", outcome,
+                [(t["sign_id"], round(t["confidence"], 3)) for t in top3])
+    return {
+        "outcome": outcome,
+        "mode": "free",
+        "attempt_id": stored["attempt_id"],
+        "session_id": session_id,
+        "recognition_confidence": confidence,
+        "suggestions": suggestions,
+        "top3": top3,
+        "capture_check": capture,
+        "timings": {**timings.as_dict(), **db_summary(db.calls)},
         "diagnostics": diagnostics,
     }

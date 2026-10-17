@@ -19,9 +19,9 @@ Run with .venv's python:
 
 import os
 import sys
-import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import attempt_submission  # noqa: E402
 from attempt_submission import _resolve_session, submit_attempt  # noqa: E402
@@ -30,60 +30,25 @@ ME = "caregiver-me"
 OTHER = "caregiver-other"
 
 
-class _Result:
-    def __init__(self, data):
-        self.data = data
+from fake_supabase_rpc import FakeSupabase  # noqa: E402
+
+SIGNS = [{"id": s, "display_name": s.title(), "is_active": True} for s in ("hello", "water", "angry")]
 
 
-class _Query:
-    def __init__(self, db, table):
-        self.db, self.table, self.filters, self.row = db, table, {}, None
+class FakeDb(FakeSupabase):
+    """In-memory Supabase (tests/fake_supabase_rpc.py) with two sessions."""
 
-    def select(self, *a, **k):
-        return self
-
-    def eq(self, col, val):
-        self.filters[col] = val
-        return self
-
-    def limit(self, *a, **k):
-        return self
-
-    def insert(self, row, *a, **k):
-        self.row = row
-        return self
-
-    upsert = insert
-
-    def execute(self):
-        rows = self.db.tables.setdefault(self.table, [])
-        if self.row is not None:
-            stored = {"id": self.row.get("id", str(uuid.uuid4())), **self.row}
-            rows.append(stored)
-            self.db.writes.append((self.table, stored))
-            return _Result([stored])
-        if self.table == "gloss_signs" and "id" not in self.filters:
-            return _Result([{"id": s} for s in ("hello", "water", "angry")])
-        if self.table == "gloss_signs":
-            return _Result([{"id": self.filters["id"]}])
-        match = [r for r in rows if all(r.get(c) == v for c, v in self.filters.items())]
-        return _Result(match)
-
-
-class FakeDb:
     def __init__(self):
-        self.tables = {"gloss_learning_sessions": [
-            {"id": "s-mine", "caregiver_profile_id": ME},
-            {"id": "s-other", "caregiver_profile_id": OTHER},
-        ]}
-        self.writes = []
-
-    def table(self, name):
-        return _Query(self, name)
+        super().__init__({
+            "gloss_learning_sessions": [
+                {"id": "s-mine", "caregiver_profile_id": ME},
+                {"id": "s-other", "caregiver_profile_id": OTHER},
+            ],
+            "gloss_signs": SIGNS,
+        })
 
     def new_sessions(self):
         return [r for t, r in self.writes if t == "gloss_learning_sessions"]
-
 
 def test_no_session_starts_one():
     db = FakeDb()

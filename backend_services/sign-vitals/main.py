@@ -26,6 +26,9 @@ from pydantic import BaseModel
 from supabase import create_client
 
 from attempt_submission import AttemptError, submit_attempt
+from progress_store import MIGRATIONS_NEEDED, schema_ready
+from progress_summary import load_attempts, load_milestones, load_summary
+from recall_selector import pick_recall_sign
 from auth_helper import AuthError, get_authenticated_caregiver
 import grading
 from execution_evaluator import evaluate_execution
@@ -469,8 +472,9 @@ async def evaluate(video: UploadFile = File(...), target_sign_id: str = Form(...
 
 @app.post("/gloss/attempts")
 async def create_attempt(
-    target_sign_id: str = Form(...),
+    target_sign_id: str | None = Form(None),
     attempt_type: str = Form(...),
+    mode: str = Form("practice"),
     session_id: str | None = Form(None),
     selected_sign_id: str | None = Form(None),
     video: UploadFile | None = File(None),
@@ -529,6 +533,7 @@ async def create_attempt(
             model=state["model"],
             class_names=state["class_names"],
             class_thresholds=state["class_thresholds"],
+            mode=mode,
         )
         # Task 6 instrumentation — fold the endpoint-level timings (multipart
         # file save + total server request time) into the timings dict
@@ -777,6 +782,42 @@ def gloss_progress(authorization: str | None = Header(None)):
     report = build_progress_report(_db(), caregiver_profile_id)
     logger.info("[GLOSS][PROGRESS] request completed | status=200 | duration_ms=%s", _ms(t0))
     return report
+
+
+@app.get("/gloss/progress/summary")
+def gloss_progress_summary(authorization: str | None = Header(None)):
+    """Levels, badges and My Journey for the caller: current level, the
+    next level and exactly what is missing, per-category and per-sign
+    status, skill / practice / monthly badges with dates, and active days
+    this month. Built only from gloss_milestones and gloss_attempts
+    (progress_summary.py). Needs migrations 0045-0047."""
+    t0 = time.perf_counter()
+    try:
+        caregiver_profile_id = get_authenticated_caregiver(_db(), authorization, context="GLOSS")
+    except AuthError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    if not schema_ready(_db()):
+        raise HTTPException(status_code=503, detail=MIGRATIONS_NEEDED)
+    summary = load_summary(_db(), caregiver_profile_id)
+    logger.info("[GLOSS][PROGRESS] summary | level=%s | demonstrated=%d | duration_ms=%s",
+                (summary["level"] or {}).get("key"), summary["counts"]["demonstrated"], _ms(t0))
+    return summary
+
+
+@app.get("/gloss/recall/next")
+def gloss_recall_next(authorization: str | None = Header(None)):
+    """The word for the next Recall challenge: a sign the caller has
+    practised, never a not-recommended one (recall_selector.py)."""
+    try:
+        caregiver_profile_id = get_authenticated_caregiver(_db(), authorization, context="GLOSS")
+    except AuthError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    if not schema_ready(_db()):
+        raise HTTPException(status_code=503, detail=MIGRATIONS_NEEDED)
+    sign_id = pick_recall_sign(load_attempts(_db(), caregiver_profile_id), load_milestones(_db(), caregiver_profile_id))
+    if sign_id is None:
+        raise HTTPException(status_code=404, detail="Practise a few signs first; the Recall challenge uses signs you have practised.")
+    return {"sign_id": sign_id}
 
 
 @app.get("/gloss/history")

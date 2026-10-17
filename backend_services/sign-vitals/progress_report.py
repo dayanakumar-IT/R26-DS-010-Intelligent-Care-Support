@@ -18,7 +18,9 @@ from datetime import datetime, timedelta, timezone
 
 from execution_evaluator import LOW_CONFIDENCE_CUTOFF
 from mastery_engine import MASTERY_STREAK_REQUIRED, current_status
-from sign_config import is_recommendable
+from progress_store import schema_ready
+from progress_summary import load_milestones
+from sign_config import UNRELIABLE, UNRELIABLE_NOTE, is_recommendable
 
 logger = logging.getLogger("sign_vitals")
 
@@ -70,11 +72,14 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
         .data
     ) or []
 
+    # Once migrations 0045-0047 are applied: free (Check my sign) attempts
+    # are left out, and Demonstrated is permanent (gloss_milestones).
+    progress_ready = schema_ready(supabase_client)
     attempt_rows = (
         supabase_client.table("gloss_attempts")
         .select(
             "target_sign_id, recognized_sign_id, recognition_confidence, quality_tier, "
-            "attempt_type, attempted_at"
+            "attempt_type, attempted_at" + (", mode" if progress_ready else "")
         )
         .eq("caregiver_profile_id", caregiver_profile_id)
         .order("attempted_at", desc=True)
@@ -89,8 +94,18 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
         .data
     ) or []
     display_name_by_id = {s["id"]: s["display_name"] for s in signs}
+    attempt_rows = [a for a in attempt_rows if a.get("mode") != "free"]
+    earned: dict[str, set] = {}
+    if progress_ready:
+        for m in load_milestones(supabase_client, caregiver_profile_id):
+            if m["type"] in ("demonstrated", "retained"):
+                earned.setdefault(m["key"], set()).add(m["type"])
     for r in mastery_rows:
         r["mastery_status"] = current_status(r["mastery_status"])
+        # Demonstrated is permanent: a later non-strong attempt resets the
+        # streak (still shown as "Strong in a row") but not the status.
+        if "demonstrated" in earned.get(r["sign_id"], ()):
+            r["mastery_status"] = _MASTERED
 
     logger.info(
         "[GLOSS][DB] progress data loaded | mastery rows=%d | attempt rows=%d | signs rows=%d",
@@ -120,6 +135,9 @@ def build_progress_report(supabase_client, caregiver_profile_id: str) -> dict:
             "last_result": last_result_by_sign.get(r["sign_id"]),
             # False for dictionary-only signs: never offered in "Continue practising".
             "recommendable": is_recommendable(r["sign_id"]),
+            "retained": "retained" in earned.get(r["sign_id"], ()),
+            # hurt, pain, me, sleep: never counted for or against the learner.
+            "camera_unreliable_note": UNRELIABLE_NOTE if r["sign_id"] in UNRELIABLE else None,
             "best_score": r["best_score"],
             "last_score": r["last_score"],
             "last_practiced_at": r["last_practiced_at"],

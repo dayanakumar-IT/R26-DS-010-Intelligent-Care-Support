@@ -245,19 +245,33 @@ def update_mastery(
 
     Returns: the upserted gloss_caregiver_mastery row as a dict.
     """
-    existing = _fetch_existing_row(supabase_client, caregiver_profile_id, sign_id)
-    updated = apply_attempt(existing, attempt_type, is_correct_sign, quality_tier, execution_score)
-
-    row = {
-        "caregiver_profile_id": caregiver_profile_id,
-        "sign_id": sign_id,
-        **updated,
-        "last_practiced_at": datetime.now(timezone.utc).isoformat(),
-    }
-
+    row = next_mastery_row(supabase_client, caregiver_profile_id, sign_id, attempt_type,
+                           is_correct_sign, quality_tier, execution_score)
     result = (
         supabase_client.table(MASTERY_TABLE)
         .upsert(row, on_conflict="caregiver_profile_id,sign_id")
         .execute()
     )
     return result.data[0]
+
+
+def next_mastery_row(
+    supabase_client,
+    caregiver_profile_id: str,
+    sign_id: str,
+    attempt_type: str,
+    is_correct_sign: bool,
+    quality_tier: str | None = None,
+    execution_score: float | None = None,
+) -> dict:
+    """The gloss_caregiver_mastery row after one more attempt (same rules
+    and arguments as update_mastery()), WITHOUT saving it — the caller
+    stores it, e.g. together with the attempt in gloss_record_attempt."""
+    existing = _fetch_existing_row(supabase_client, caregiver_profile_id, sign_id)
+    updated = apply_attempt(existing, attempt_type, is_correct_sign, quality_tier, execution_score)
+    return {
+        "caregiver_profile_id": caregiver_profile_id,
+        "sign_id": sign_id,
+        **updated,
+        "last_practiced_at": datetime.now(timezone.utc).isoformat(),
+    }

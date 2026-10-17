@@ -89,9 +89,12 @@ def test_still_in_the_dictionary_with_note():
 
 def test_still_practisable():
     from attempt_submission import submit_attempt  # heavy import (model code), only here
+    import progress_store
+    from fake_supabase_rpc import FakeSupabase as RpcFakeSupabase  # has gloss_record_attempt (migrations 0045-0047)
 
     for sign in NOT_RECOMMENDED:
-        db = _db()
+        progress_store._ready.update(value=None, checked=0.0)
+        db = RpcFakeSupabase({"gloss_signs": [{"id": s, "display_name": s.title(), "is_active": True} for s in ALL_SIGNS]})
         result = submit_attempt(db, CAREGIVER, target_sign_id=sign, attempt_type="multiple_choice",
                                 selected_sign_id=sign)
         assert result["is_correct_sign"] is True and result["outcome"] == "quiz_correct"

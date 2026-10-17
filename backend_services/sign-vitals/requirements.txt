@@ -11,3 +11,4 @@ supabase==2.31.0
 dtw-python==1.9.0
 google-genai==2.29.0
 python-dotenv==1.2.3
+tzdata==2026.3          # zoneinfo on Windows: caregiver time zones (monthly badges)
