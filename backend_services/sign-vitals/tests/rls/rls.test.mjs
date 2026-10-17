@@ -145,3 +145,34 @@ test("gloss_record_attempt is atomic and never duplicates a milestone", async ()
   const ev = (await db.query(`select evidence from gloss_milestones where key = 'first_recall'`)).rows[0].evidence;
   assert.deepEqual(ev, [r.rows[0].out.attempt_id]);
 });
+
+test("gloss_sign_difficulty shows a caregiver only their own attempts (0048)", async () => {
+  const total = async (who) => as(db, who, async (tx) =>
+    (await tx.query("select coalesce(sum(total_attempts), 0)::int n from gloss_sign_difficulty")).rows[0].n);
+  const owned = async (cp) => (await db.query(
+    `select count(*)::int n from gloss_attempts where caregiver_profile_id = '${cp}' and target_sign_id is not null`)).rows[0].n;
+  const all = (await db.query("select count(*)::int n from gloss_attempts where target_sign_id is not null")).rows[0].n;
+  assert.equal(await total({ role: "authenticated", uid: U.careA }), await owned(CP.A));
+  assert.equal(await total({ role: "authenticated", uid: U.careB }), await owned(CP.B));
+  for (const sup of [U.sup1, U.sup2]) assert.equal(await total({ role: "authenticated", uid: sup }), all);
+  assert.equal(await total({ role: "service_role" }), all);
+  await assert.rejects(as(db, { role: "anon" }, (tx) => tx.query("select * from gloss_sign_difficulty")), /permission denied/);
+  assert.ok(await owned(CP.A) < all, "test data has other caregivers' attempts");
+});
+
+test("before 0048 the view leaked every caregiver's attempts (the test can fail)", async () => {
+  const { db: old } = await freshDatabase({ until: "0047_gloss_rls_backend_writes_supervisor_read.sql", onError: "collect" });
+  await old.exec(`
+    insert into auth.users (id, email) values ('${U.careA}', 'a@test'), ('${U.careB}', 'b@test');
+    insert into profiles (id, email, name, role) values ('${U.careA}', 'a@test', 'A', 'caregiver'), ('${U.careB}', 'b@test', 'B', 'caregiver');
+    insert into participants (participant_id, split_group) values ('20000000-0000-0000-0000-00000000000a', 'demo'), ('20000000-0000-0000-0000-00000000000b', 'demo');
+    insert into caregiver_profiles (id, display_name, participant_id, data_mode) values
+      ('${CP.A}', 'A', '20000000-0000-0000-0000-00000000000a', 'replay'), ('${CP.B}', 'B', '20000000-0000-0000-0000-00000000000b', 'replay');
+    insert into gloss_caregiver_accounts (user_id, caregiver_profile_id) values ('${U.careA}', '${CP.A}'), ('${U.careB}', '${CP.B}');
+    insert into gloss_signs (id, display_name) values ('hello', 'Hello');
+    insert into gloss_attempts (caregiver_profile_id, target_sign_id, attempt_type, pipeline_version) values ('${CP.B}', 'hello', 'webcam', '${V}');
+  `);
+  const seen = await as(old, { role: "authenticated", uid: U.careA }, async (tx) =>
+    (await tx.query("select sum(total_attempts)::int n from gloss_sign_difficulty")).rows[0].n);
+  assert.equal(seen, 1, "caregiver A saw caregiver B's attempt through the view");
+});
