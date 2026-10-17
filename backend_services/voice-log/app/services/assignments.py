@@ -109,7 +109,9 @@ def perform_handover(
 
     alerts_result = supabase_execute(
         lambda sb: sb.table("adl_alerts")
-        .select("*")
+        # Join the ADL record so build_handover_summary can say what each
+        # alert actually is (category + text), not just a bare timestamp.
+        .select("*, adl_records(*)")
         .eq("patient_id", patient_id)
         .eq("acknowledged", False)
     )

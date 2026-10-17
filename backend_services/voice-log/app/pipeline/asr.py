@@ -22,10 +22,18 @@ class WhisperAsr:
         self.model.eval()
 
     def transcribe(self, wav_path: Path) -> str:
+        """Transcribe a WAV file on disk (loads it, then delegates to transcribe_array)."""
         import librosa
-        import torch
 
         audio, _ = librosa.load(str(wav_path), sr=16000, mono=True)
+        return self.transcribe_array(audio)
+
+    def transcribe_array(self, audio) -> str:
+        """Transcribe an in-memory 16 kHz mono array — used both for the single-call
+        path above and for each chunk of a long recording (Change 1a), avoiding a
+        round trip through disk per chunk."""
+        import torch
+
         if audio.size == 0:
             return ""
 

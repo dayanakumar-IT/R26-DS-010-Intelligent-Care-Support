@@ -44,6 +44,9 @@ export interface AdlRecord {
   visitor_type?: string | null
   visit_reason?: string | null
   time_of_day?: string | null
+  /** 0-based position of this observation within its source recording —
+   * multiple records can share one client_recording_id (see migration 0044). */
+  observation_index?: number
 }
 
 export interface AdlAlert {
@@ -66,6 +69,16 @@ export interface CaregiverProfile {
   profile_id: string | null
 }
 
+/** One saved observation within a recording's ObservationResponse.records list. */
+export interface ObservationRecordSummary {
+  id: string
+  category: string
+  alert_required: boolean
+  observation_index: number
+  cleaned_transcript: string | null
+  recorded_at: string
+}
+
 export interface ObservationResponse {
   id: string
   patient_id: number
@@ -76,6 +89,10 @@ export interface ObservationResponse {
   r2_audio_key: string | null
   recorded_at: string
   duplicate: boolean
+  /** Every observation saved from this recording (length >= 1). The
+   * top-level fields above mirror records[0]; alert_required above is true
+   * if ANY record here alerted. */
+  records: ObservationRecordSummary[]
 }
 
 export interface DailyReportResponse {

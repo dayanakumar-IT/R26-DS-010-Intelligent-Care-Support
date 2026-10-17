@@ -8,12 +8,15 @@ import {
   UserRound,
 } from 'lucide-react'
 import CategoryBadge from './CategoryBadge'
+import FormattedFullText from './FormattedFullText'
 import StatusBadge from './StatusBadge'
 import SummaryCollapsibleSection from './SummaryCollapsibleSection'
 import styles from '../styles/dashboard.module.css'
 import {
   formatSummaryTimestamp,
+  groupObservationsByDate,
   parseHandoverSummary,
+  type ParsedObservation,
   type ParsedSection,
 } from '../utils/parseSummary'
 
@@ -34,6 +37,67 @@ function MetaCard({ label, value }: { label: string; value: string }) {
   )
 }
 
+function renderTimelineItem(
+  observation: ParsedObservation,
+  key: string,
+  isAlertSection: boolean,
+) {
+  const displayText = observation.text.replace(/^Alert raised\s+/i, '')
+  const formattedTime = observation.time
+    ? observation.time
+    : /^\d{4}-\d{2}-\d{2}/.test(displayText)
+      ? formatSummaryTimestamp(displayText)
+      : displayText
+
+  return (
+    <li
+      key={key}
+      className={`${styles.handoverTimelineItem} ${
+        observation.alert || isAlertSection ? styles.handoverTimelineItemAlert : ''
+      }`}
+    >
+      <div className={styles.handoverTimelineMarker} aria-hidden="true" />
+      <div className={styles.handoverTimelineContent}>
+        <div className={styles.handoverTimelineHeader}>
+          {observation.category ? (
+            <CategoryBadge category={toCategoryKey(observation.category)} />
+          ) : isAlertSection ? (
+            <StatusBadge variant="alert" label="Open alert" />
+          ) : null}
+          {observation.time ? (
+            <span className={styles.handoverTimelineTime}>{observation.time}</span>
+          ) : isAlertSection ? (
+            <span className={styles.handoverTimelineTime}>{formattedTime}</span>
+          ) : null}
+        </div>
+        <p className={styles.handoverTimelineText}>
+          {isAlertSection && !observation.category
+            ? `Requires supervisor review`
+            : observation.text.replace(/\s*\[ALERT\]\s*$/i, '')}
+        </p>
+      </div>
+    </li>
+  )
+}
+
+function DateGroupedTimeline({ observations }: { observations: ParsedObservation[] }) {
+  const groups = groupObservationsByDate(observations)
+  return (
+    <div className={styles.dateGroupedList}>
+      {groups.map((group) => (
+        <div key={group.date} className={styles.dateGroup}>
+          <h4 className={styles.dateGroupHeading}>{group.date}</h4>
+          <ul className={styles.handoverTimeline}>
+            {group.items.map((observation, index) =>
+              renderTimelineItem(observation, `${group.date}-${index}`, false),
+            )}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function HandoverSectionContent({ section }: { section: ParsedSection }) {
   if (section.kind === 'categories' && section.categories?.length) {
     return (
@@ -48,48 +112,17 @@ function HandoverSectionContent({ section }: { section: ParsedSection }) {
     )
   }
 
+  if (section.id === 'patient-overview' && section.observations?.length) {
+    return <DateGroupedTimeline observations={section.observations} />
+  }
+
   if (section.observations?.length) {
     const isAlertSection = section.kind === 'alerts' || section.emphasis === 'alert'
     return (
       <ul className={styles.handoverTimeline}>
-        {section.observations.map((observation, index) => {
-          const displayText = observation.text.replace(/^Alert raised\s+/i, '')
-          const formattedTime = observation.time
-            ? observation.time
-            : /^\d{4}-\d{2}-\d{2}/.test(displayText)
-              ? formatSummaryTimestamp(displayText)
-              : displayText
-
-          return (
-            <li
-              key={`${observation.text}-${index}`}
-              className={`${styles.handoverTimelineItem} ${
-                observation.alert || isAlertSection ? styles.handoverTimelineItemAlert : ''
-              }`}
-            >
-              <div className={styles.handoverTimelineMarker} aria-hidden="true" />
-              <div className={styles.handoverTimelineContent}>
-                <div className={styles.handoverTimelineHeader}>
-                  {observation.category ? (
-                    <CategoryBadge category={toCategoryKey(observation.category)} />
-                  ) : isAlertSection ? (
-                    <StatusBadge variant="alert" label="Open alert" />
-                  ) : null}
-                  {observation.time ? (
-                    <span className={styles.handoverTimelineTime}>{observation.time}</span>
-                  ) : isAlertSection ? (
-                    <span className={styles.handoverTimelineTime}>{formattedTime}</span>
-                  ) : null}
-                </div>
-                <p className={styles.handoverTimelineText}>
-                  {isAlertSection && !observation.category
-                    ? `Requires supervisor review`
-                    : observation.text.replace(/\s*\[ALERT\]\s*$/i, '')}
-                </p>
-              </div>
-            </li>
-          )
-        })}
+        {section.observations.map((observation, index) =>
+          renderTimelineItem(observation, `${observation.text}-${index}`, isAlertSection),
+        )}
       </ul>
     )
   }
@@ -181,13 +214,14 @@ export default function HandoverBriefView({ summaryText }: HandoverBriefViewProp
       <div className={styles.summaryRawToggle}>
         <button
           type="button"
-          className={styles.summaryRawButton}
+          className={`${styles.summaryRawButton} ${showRaw ? styles.summaryRawButtonActive : ''}`}
           onClick={() => setShowRaw((current) => !current)}
+          aria-expanded={showRaw}
         >
           {showRaw ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
           {showRaw ? 'Hide full brief' : 'View full brief'}
         </button>
-        {showRaw ? <pre className={styles.summaryRawText}>{summaryText}</pre> : null}
+        {showRaw ? <FormattedFullText text={summaryText} /> : null}
       </div>
     </div>
   )

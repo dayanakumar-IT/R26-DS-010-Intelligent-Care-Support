@@ -17,6 +17,7 @@ import EditObservationModal from '../../../components/EditObservationModal'
 import ProfileStrip from '../../../components/ProfileStrip'
 import SectionHeader from '../../../components/SectionHeader'
 import StatusBadge from '../../../components/StatusBadge'
+import TableSearchBox from '../../../components/TableSearchBox'
 import {
   fetchAlerts,
   fetchAllAdlRecords,
@@ -27,7 +28,7 @@ import {
 import { useSupervisorObservationActions } from '../../../hooks/useSupervisorObservationActions'
 import type { AdlAlert, AdlRecord, Patient } from '../../../types'
 import type { User } from '../../../../../types/user'
-import { formatCategory, formatDateTime, todayIso } from '../../../utils/format'
+import { formatCategory, formatReadableDateTime, todayIso } from '../../../utils/format'
 import styles from '../../../styles/dashboard.module.css'
 
 interface DashboardTabProps {
@@ -46,6 +47,7 @@ export default function DashboardTab({
   const [alerts, setAlerts] = useState<AdlAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activitySearch, setActivitySearch] = useState('')
 
   const loadData = useCallback(async () => {
     setError(null)
@@ -121,6 +123,20 @@ export default function DashboardTab({
 
   const recentActivity = useMemo(() => records.slice(0, 8), [records])
 
+  const filteredRecentActivity = useMemo(() => {
+    const query = activitySearch.trim().toLowerCase()
+    if (!query) return recentActivity
+    return recentActivity.filter((record) => {
+      const patientCode = patientMap.get(record.patient_id)?.patient_code.toLowerCase() ?? ''
+      const transcript = (record.cleaned_transcript ?? record.raw_transcript ?? '').toLowerCase()
+      return (
+        patientCode.includes(query) ||
+        record.category.toLowerCase().includes(query) ||
+        transcript.includes(query)
+      )
+    })
+  }, [recentActivity, activitySearch, patientMap])
+
   const subtitle = [user.institution, user.ward].filter(Boolean).join(' · ')
 
   if (loading) {
@@ -164,7 +180,7 @@ export default function DashboardTab({
         <KpiCard
           label="Observations today"
           value={todayRecords.length}
-          hint={`${today} (local)`}
+          hint={today}
           icon={ClipboardList}
         />
         <KpiCard
@@ -193,7 +209,7 @@ export default function DashboardTab({
         <section className={`${styles.card} ${alerts.length > 0 ? styles.cardAlertsActive : ''}`}>
           <SectionHeader
             title="Open alerts"
-            description="Symptom observations flagged for supervisor review."
+            description="Observations flagged for supervisor review (symptoms, meals, vitals)."
           />
           <OpenAlertsFeed
             alerts={alerts}
@@ -215,17 +231,30 @@ export default function DashboardTab({
             description="Activity will appear here once caregivers begin recording."
           />
         ) : (
-          <ObservationTable
-            records={recentActivity}
-            showPatient
-            showAdlDetails={false}
-            statusMode="review"
-            showManageActions
-            onEdit={setEditingRecord}
-            onDelete={(record) => void handleDelete(record)}
-            formatRecordedAt={formatDateTime}
-            getPatientCode={(patientId) => patientMap.get(patientId)?.patient_code ?? '—'}
-          />
+          <>
+            <div className="mb-4">
+              <TableSearchBox
+                value={activitySearch}
+                onChange={setActivitySearch}
+                placeholder="Search patient, category or transcript…"
+              />
+            </div>
+            {filteredRecentActivity.length === 0 ? (
+              <p className="text-sm text-[var(--text-secondary)]">No matching records.</p>
+            ) : (
+              <ObservationTable
+                records={filteredRecentActivity}
+                showPatient
+                showAdlDetails={false}
+                statusMode="review"
+                showManageActions
+                onEdit={setEditingRecord}
+                onDelete={(record) => void handleDelete(record)}
+                formatRecordedAt={formatReadableDateTime}
+                getPatientCode={(patientId) => patientMap.get(patientId)?.patient_code ?? '—'}
+              />
+            )}
+          </>
         )}
       </section>
 
@@ -268,7 +297,7 @@ export default function DashboardTab({
                 </div>
                 <p className="text-xs text-[var(--text-secondary)]">
                   Last observation:{' '}
-                  {lastObservation ? formatDateTime(lastObservation) : 'None recorded'}
+                  {lastObservation ? formatReadableDateTime(lastObservation) : 'None recorded'}
                 </p>
               </article>
             ))}

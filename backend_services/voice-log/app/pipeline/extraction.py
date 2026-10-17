@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 
 from app import config
 from app.schemas import AdlExtraction
 
-# Genuine clinical concern keywords — routine fluids/meals must not match these.
-_SYMPTOM_ALERT_KEYWORDS = (
+logger = logging.getLogger(__name__)
+
+# Genuine clinical concern keywords — routine fluids/meals must not match
+# these. Shared across the pipeline (guess_category_keywords here, the
+# negation-aware checks below, and adl_rules.py's alert rule) so there is
+# one list to extend, not several.
+SYMPTOM_ALERT_KEYWORDS = (
     "pain",
     "fever",
     "cough",
@@ -29,6 +35,19 @@ _SYMPTOM_ALERT_KEYWORDS = (
     "wheezing",
     "rash",
     "swelling",
+    "headache",
+    "breathing difficulty",
+    "bed sore",
+    "fainting",
+    "loss of consciousness",
+    "inflammation",
+    "skin allergy",
+    "fatigue",
+    "loose motion",
+    "frequent urination",
+    "difficulty passing urine",
+    "sudden crying",
+    "speaking unrelated words",
 )
 
 
@@ -64,11 +83,11 @@ def _parse_extraction(raw: str, *, fallback_text: str) -> AdlExtraction:
         payload = dict(payload)
     payload = _normalize_payload(payload)
     if not payload.get("category"):
-        payload["category"] = _guess_category(fallback_text)
+        payload["category"] = guess_category_keywords(fallback_text)
 
     category = str(payload.get("category", "nurse_check")).lower().replace(" ", "_")
     if category not in config.ADL_CATEGORIES:
-        category = _guess_category(fallback_text)
+        category = guess_category_keywords(fallback_text)
 
     category = _reconcile_category(fallback_text, category)
     payload["category"] = category
@@ -83,22 +102,115 @@ def _parse_extraction(raw: str, *, fallback_text: str) -> AdlExtraction:
     return AdlExtraction(**{k: payload.get(k) for k in AdlExtraction.model_fields})
 
 
+# --------------------------------------------------------------------------
+# Negation-aware symptom detection, shared with adl_rules.py's alert rule so
+# a negated symptom (e.g. "no fever", "denies chest pain") is treated the
+# same way everywhere: never forces the symptom category, never alerts.
+# --------------------------------------------------------------------------
+
+_NEGATION_CUES = (
+    "did not have",
+    "does not have",
+    "denies",
+    "denied",
+    "without",
+    "free of",
+    "no",
+    "not",
+)
+_NEGATION_CUE_PATTERN = "|".join(
+    re.escape(cue) for cue in sorted(_NEGATION_CUES, key=len, reverse=True)
+)
+# Matches when a negation cue (optionally followed by "any") ends exactly at
+# the symptom word that follows it — checked against the text immediately
+# preceding a symptom mention, not the whole sentence.
+_NEGATION_WINDOW_RE = re.compile(
+    rf"\b(?:{_NEGATION_CUE_PATTERN})\s+(?:any\s+)?$", re.IGNORECASE
+)
+_SYMPTOM_WORD_RE = re.compile(
+    "|".join(re.escape(w) for w in sorted(SYMPTOM_ALERT_KEYWORDS, key=len, reverse=True)),
+    re.IGNORECASE,
+)
+_NEGATION_WINDOW_CHARS = 30
+
+
+def _find_symptom_mentions(text: str) -> list[tuple[int, int, str]]:
+    return [(m.start(), m.end(), m.group(0)) for m in _SYMPTOM_WORD_RE.finditer(text)]
+
+
+def _is_negated_mention(text: str, start: int) -> bool:
+    window = text[max(0, start - _NEGATION_WINDOW_CHARS):start]
+    return bool(_NEGATION_WINDOW_RE.search(window))
+
+
+def has_non_negated_symptom_word(text: str) -> tuple[bool, str | None]:
+    """True (with the matched word) if `text` contains a symptom word from
+    SYMPTOM_ALERT_KEYWORDS that is NOT preceded by a negation cue such as
+    "no", "not", "denies", "denied", "without", "did not have",
+    "does not have" or "free of". Returns (False, None) when every symptom
+    mention found is negated, or there is none at all."""
+    for start, _end, word in _find_symptom_mentions(text):
+        if not _is_negated_mention(text, start):
+            return True, word
+    return False, None
+
+
+def _mask_negated_symptom_mentions(text: str) -> str:
+    """Blank out negated symptom spans (same length, to keep other word
+    boundaries intact) so a keyword-guess fallback can't re-derive
+    'symptom' from a word that was just ruled negated."""
+    masked = text
+    for start, end, _word in _find_symptom_mentions(text):
+        if _is_negated_mention(text, start):
+            masked = masked[:start] + (" " * (end - start)) + masked[end:]
+    return masked
+
+
+_NON_SYMPTOM_CATEGORIES = {
+    "fluid_intake",
+    "meal",
+    "medication",
+    "hygiene",
+    "mobility",
+    "mood",
+    "nurse_check",
+    "family_visit",
+}
+
+
 def _reconcile_category(text: str, model_category: str) -> str:
-    """Override T5 when transcript clearly indicates a non-symptom ADL."""
-    rule_category = _guess_category(text)
-    non_symptom = {
-        "fluid_intake",
-        "meal",
-        "medication",
-        "hygiene",
-        "mobility",
-        "mood",
-        "nurse_check",
-        "family_visit",
-    }
-    if model_category == "symptom" and rule_category in non_symptom:
-        return rule_category
-    if model_category == "symptom" and rule_category != "symptom":
+    """Decide whether to keep a 'symptom' category or let the keyword guess
+    override it. A missed alert is the most dangerous failure mode here, so:
+
+    - If the sentence contains a real (non-negated) symptom word, 'symptom'
+      is always kept — the keyword guess (e.g. matching "walk" -> mobility)
+      never overrides a genuine symptom just because other ADL words are
+      also present in the same sentence.
+    - If there is no non-negated symptom word (none at all, or the only
+      mention is negated, e.g. "she had no fever"), the original protection
+      against T5 mislabelling a non-symptom sentence as 'symptom' still
+      applies: the keyword guess may override, computed with any negated
+      symptom span masked out first so a negated word can't resurrect
+      'symptom' on its own.
+    """
+    if model_category != "symptom":
+        return model_category
+
+    has_symptom, symptom_word = has_non_negated_symptom_word(text)
+    if has_symptom:
+        logger.info(
+            "extraction: keeping category 'symptom' (non-negated symptom word %r) for: %s",
+            symptom_word, text[:160],
+        )
+        return "symptom"
+
+    rule_category = guess_category_keywords(_mask_negated_symptom_mentions(text))
+    if rule_category in _NON_SYMPTOM_CATEGORIES:
+        logger.info(
+            "extraction: overriding category 'symptom' -> %r "
+            "(no non-negated symptom word found) for: %s",
+            rule_category, text[:160],
+        )
         return rule_category
     return model_category
 
@@ -171,7 +283,7 @@ def _normalize_payload(payload: dict) -> dict:
     return normalized
 
 
-def _guess_category(text: str) -> str:
+def guess_category_keywords(text: str) -> str:
     lowered = text.lower()
 
     if _looks_like_fluid_intake(lowered):
@@ -182,7 +294,7 @@ def _guess_category(text: str) -> str:
         ("meal", ("meal", "breakfast", "lunch", "dinner", "ate", "curry", "rice", "kiribath", "hoppers", "thosa", "rotty", "pittu")),
         ("hygiene", ("bath", "shower", "hygiene", "grooming", "toilet")),
         ("mobility", ("walk", "wheelchair", "mobility", "transfer")),
-        ("symptom", _SYMPTOM_ALERT_KEYWORDS),
+        ("symptom", SYMPTOM_ALERT_KEYWORDS),
         ("mood", ("mood", "anxious", "happy", "agitated", "calm")),
         ("nurse_check", ("nurse", "vitals", "check", "blood pressure", " bp ")),
         ("family_visit", ("family", "visitor", "visit")),
@@ -270,7 +382,7 @@ def _enrich_from_text(payload: dict, text: str) -> dict:
                 payload["destination"] = dest.group(1).strip()
 
     elif category == "symptom" and not payload.get("symptom_type"):
-        for symptom in _SYMPTOM_ALERT_KEYWORDS:
+        for symptom in SYMPTOM_ALERT_KEYWORDS:
             if symptom in lowered:
                 payload["symptom_type"] = symptom
                 break
@@ -320,4 +432,4 @@ def _infer_alert(payload: dict, text: str) -> bool:
         return True
 
     lowered = text.lower()
-    return any(keyword in lowered for keyword in _SYMPTOM_ALERT_KEYWORDS)
+    return any(keyword in lowered for keyword in SYMPTOM_ALERT_KEYWORDS)

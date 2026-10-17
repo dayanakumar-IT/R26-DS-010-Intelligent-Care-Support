@@ -9,10 +9,14 @@ import {
   UserRound,
 } from 'lucide-react'
 import CategoryBadge from './CategoryBadge'
+import FormattedFullText from './FormattedFullText'
+import PlayToggleButton from './PlayToggleButton'
 import StatusBadge from './StatusBadge'
 import SummaryCollapsibleSection from './SummaryCollapsibleSection'
+import { useAudioPlayer } from '../hooks/useAudioPlayer'
 import styles from '../styles/dashboard.module.css'
 import {
+  groupObservationsByDate,
   parsePeriodSummary,
   type ParsedCategoryCount,
   type ParsedObservation,
@@ -87,6 +91,32 @@ function ObservationCard({ observation }: { observation: ParsedObservation }) {
   )
 }
 
+function DateGroupedHighlights({ observations }: { observations: ParsedObservation[] }) {
+  const groups = groupObservationsByDate(observations)
+  return (
+    <div className={styles.dateGroupedList}>
+      {groups.map((group) => (
+        <div key={group.date} className={styles.dateGroup}>
+          <h4 className={styles.dateGroupHeading}>{group.date}</h4>
+          <div className={styles.summaryObservationList}>
+            {group.items.map((observation, index) => (
+              <ObservationCard
+                key={`${observation.time ?? 't'}-${observation.text}-${index}`}
+                observation={{
+                  ...observation,
+                  text: observation.alert
+                    ? observation.text.replace(/\s*\[ALERT\]\s*$/i, '')
+                    : observation.text,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function SectionContent({ section }: { section: ParsedSection }) {
   if (section.kind === 'stats' && section.stats?.length) {
     return (
@@ -135,6 +165,7 @@ function SectionContent({ section }: { section: ParsedSection }) {
 
 export default function PeriodSummaryView({ summaryText, audioUrl }: PeriodSummaryViewProps) {
   const [showRaw, setShowRaw] = useState(false)
+  const { playingId, toggle: toggleAudio } = useAudioPlayer()
   const parsed = useMemo(() => parsePeriodSummary(summaryText), [summaryText])
 
   const headlineStats = useMemo(() => {
@@ -217,29 +248,35 @@ export default function PeriodSummaryView({ summaryText, audioUrl }: PeriodSumma
           defaultOpen={section.defaultExpanded}
           emphasis={section.emphasis}
         >
-          <SectionContent section={section} />
+          {section.id === 'recent-highlights' && section.observations?.length ? (
+            <DateGroupedHighlights observations={section.observations} />
+          ) : (
+            <SectionContent section={section} />
+          )}
         </SummaryCollapsibleSection>
       ))}
 
       {audioUrl ? (
         <div className={styles.summaryAudio}>
           <p className={styles.summaryPanelTitle}>Listen to summary</p>
-          <audio controls src={audioUrl} className={styles.summaryAudioPlayer}>
-            <track kind="captions" />
-          </audio>
+          <PlayToggleButton
+            playing={playingId === audioUrl}
+            onToggle={() => void toggleAudio(audioUrl, () => Promise.resolve(audioUrl))}
+          />
         </div>
       ) : null}
 
       <div className={styles.summaryRawToggle}>
         <button
           type="button"
-          className={styles.summaryRawButton}
+          className={`${styles.summaryRawButton} ${showRaw ? styles.summaryRawButtonActive : ''}`}
           onClick={() => setShowRaw((current) => !current)}
+          aria-expanded={showRaw}
         >
           {showRaw ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
           {showRaw ? 'Hide full text' : 'View full text'}
         </button>
-        {showRaw ? <pre className={styles.summaryRawText}>{summaryText}</pre> : null}
+        {showRaw ? <FormattedFullText text={summaryText} /> : null}
       </div>
     </div>
   )

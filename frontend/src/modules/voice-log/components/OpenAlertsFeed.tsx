@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowRight, Clock, UserRound } from 'lucide-react'
-import type { AdlAlert, Patient } from '../types'
+import type { AdlAlert, AdlRecord, Patient } from '../types'
 import { formatDateTime } from '../utils/format'
 import CategoryBadge from './CategoryBadge'
 import EmptyState from './EmptyState'
@@ -20,6 +20,34 @@ function truncateText(text: string, maxLength = 72): string {
   return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`
 }
 
+function capitalize(text: string): string {
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : text
+}
+
+/** Alerts can now come from any category (Change 3c), not just symptoms —
+ * build a headline that makes sense for meal/nurse_check alerts too. */
+function alertHeadline(record: AdlRecord | null | undefined): string {
+  if (!record) {
+    return 'Observation flagged for review'
+  }
+  switch (record.category) {
+    case 'symptom':
+      return record.symptom_type ? `${capitalize(record.symptom_type)} reported` : 'Symptom observation flagged'
+    case 'meal':
+      return record.intake_level
+        ? `${capitalize(record.intake_level)} meal intake flagged`
+        : 'Meal intake flagged'
+    case 'nurse_check': {
+      const reading = [record.vital_type, record.vital_reading].filter(Boolean).join(' ')
+      return record.vital_status
+        ? `Vitals flagged${reading ? `: ${reading}` : ''} (${record.vital_status})`
+        : 'Vitals flagged for review'
+    }
+    default:
+      return 'Observation flagged for review'
+  }
+}
+
 export default function OpenAlertsFeed({
   alerts,
   patientMap,
@@ -35,7 +63,7 @@ export default function OpenAlertsFeed({
         <EmptyState
           icon={AlertTriangle}
           title="No open alerts"
-          description="New flagged symptom observations will appear here in real time."
+          description="New flagged observations will appear here in real time."
         />
       </div>
     )
@@ -49,7 +77,7 @@ export default function OpenAlertsFeed({
           Live
         </span>
         <span className={styles.openAlertsSummaryText}>
-          {alerts.length} symptom alert{alerts.length === 1 ? '' : 's'} awaiting review
+          {alerts.length} alert{alerts.length === 1 ? '' : 's'} awaiting review
         </span>
       </div>
 
@@ -59,7 +87,7 @@ export default function OpenAlertsFeed({
             patientMap.get(alert.patient_id)?.patient_code ?? `Patient #${alert.patient_id}`
           const record = alert.adl_record
           const transcript = record?.cleaned_transcript ?? record?.raw_transcript ?? ''
-          const symptomType = record?.symptom_type
+          const headline = alertHeadline(record)
 
           return (
             <li key={alert.id}>
@@ -83,11 +111,7 @@ export default function OpenAlertsFeed({
                     </time>
                   </div>
 
-                  <p className={styles.openAlertsHeadline}>
-                    {symptomType
-                      ? `${symptomType.charAt(0).toUpperCase()}${symptomType.slice(1)} reported`
-                      : 'Symptom observation flagged'}
-                  </p>
+                  <p className={styles.openAlertsHeadline}>{headline}</p>
 
                   {transcript ? (
                     <p className={styles.openAlertsTranscript}>{truncateText(transcript)}</p>

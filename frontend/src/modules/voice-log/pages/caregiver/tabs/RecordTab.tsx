@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, Mic, Square } from 'lucide-react'
-import Button from '../../../../../shared/components/Button'
 import CategoryBadge from '../../../components/CategoryBadge'
 import EmptyState from '../../../components/EmptyState'
 import LoadingState from '../../../components/LoadingState'
@@ -13,6 +12,7 @@ import { fetchCaregiverRecords } from '../../../services/scribeSupabase'
 import type {
   AdlRecord,
   CareActivityPhase,
+  ObservationResponse,
   Patient,
   PendingRecording,
   SyncStatus,
@@ -30,11 +30,37 @@ interface RecordTabProps {
   onPatientsLoaded: (patients: Patient[]) => void
 }
 
+/** A recording can now yield several observations (Change 1) — summarize
+ * how many were saved and how many were flagged, instead of a generic message. */
+function buildUploadSuccessMessage(result: ObservationResponse): string {
+  if (result.duplicate) {
+    return 'Recording already synced.'
+  }
+  const count = result.records.length || 1
+  const alertCount = result.records.filter((record) => record.alert_required).length
+  if (count <= 1) {
+    return alertCount > 0
+      ? 'Care activity completed. Observation saved and flagged for review.'
+      : 'Care activity completed. Observation saved and daily summary generated.'
+  }
+  const observationLabel = `${count} observations`
+  const alertLabel = alertCount > 0 ? `, ${alertCount} flagged for review` : ''
+  return `Care activity completed. ${observationLabel} saved${alertLabel}.`
+}
+
 const PHASE_LABELS: Record<CareActivityPhase, string> = {
   idle: 'Ready to start',
   in_progress: 'Care activity in progress',
   processing: 'Processing recording',
   completed: 'Care activity completed',
+}
+
+const WAVEFORM_BAR_COUNT = 7
+
+function formatElapsed(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
 export default function RecordTab({
@@ -54,6 +80,10 @@ export default function RecordTab({
   const [loadingToday, setLoadingToday] = useState(true)
   const [pendingQueue, setPendingQueue] = useState<PendingRecording[]>([])
   const [dailySummary, setDailySummary] = useState<string | null>(null)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
+  // Both stages below are real, separate network calls (uploadObservation,
+  // then completeCareActivity) — not an invented/simulated progression.
+  const [processingStage, setProcessingStage] = useState<'uploading' | 'finalizing' | null>(null)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -121,6 +151,18 @@ export default function RecordTab({
     }
   }, [])
 
+  useEffect(() => {
+    if (careActivityPhase !== 'in_progress') {
+      setRecordingSeconds(0)
+      return
+    }
+    setRecordingSeconds(0)
+    const interval = setInterval(() => {
+      setRecordingSeconds((seconds) => seconds + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [careActivityPhase])
+
   const patientFilteredPending = useMemo(
     () =>
       selectedPatientId === ''
@@ -145,6 +187,7 @@ export default function RecordTab({
     careActivityId: string,
   ) => {
     setCareActivityPhase('processing')
+    setProcessingStage('uploading')
     setPendingQueue((queue) =>
       queue.map((item) =>
         item.clientRecordingId === clientRecordingId
@@ -164,6 +207,7 @@ export default function RecordTab({
         careActivityId,
       })
 
+      setProcessingStage('finalizing')
       const completed = await completeCareActivity(careActivityId)
       setDailySummary(completed.daily_summary_text)
       careActivityIdRef.current = null
@@ -171,12 +215,9 @@ export default function RecordTab({
       setPendingQueue((queue) =>
         queue.filter((item) => item.clientRecordingId !== clientRecordingId),
       )
+      setProcessingStage(null)
       setCareActivityPhase('completed')
-      showSuccess(
-        result.duplicate
-          ? 'Recording already synced.'
-          : 'Care activity completed. Observation saved and daily summary generated.',
-      )
+      showSuccess(buildUploadSuccessMessage(result))
       await loadTodayRecords()
 
       if (completedTimerRef.current) {
@@ -187,6 +228,7 @@ export default function RecordTab({
       }, 6000)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed.'
+      setProcessingStage(null)
       setCareActivityPhase('idle')
       careActivityIdRef.current = null
       setPendingQueue((queue) =>
@@ -360,53 +402,82 @@ export default function RecordTab({
               )}
             </div>
 
-            <div className="flex flex-wrap items-end gap-4">
-              <label className="flex min-w-[220px] flex-1 flex-col gap-1.5 text-sm font-medium text-slate-700">
-                Patient
-                <select
-                  value={selectedPatientId}
-                  onChange={(event) => onPatientChange(Number(event.target.value))}
-                  disabled={activityLocked}
-                  className="rounded-[var(--radius-md)] border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--brand-blue)] disabled:bg-slate-100"
-                >
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.patient_code}
-                      {patient.room_id ? ` · Room ${patient.room_id}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <label className="mb-4 flex min-w-[220px] flex-col gap-1.5 text-sm font-medium text-slate-700">
+              Patient
+              <select
+                value={selectedPatientId}
+                onChange={(event) => onPatientChange(Number(event.target.value))}
+                disabled={activityLocked}
+                className="rounded-[var(--radius-md)] border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[var(--brand-blue)] disabled:bg-slate-100"
+              >
+                {patients.map((patient) => (
+                  <option key={patient.id} value={patient.id}>
+                    {patient.patient_code}
+                    {patient.room_id ? ` · Room ${patient.room_id}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-              {careActivityPhase !== 'in_progress' ? (
-                <Button
-                  onClick={() => void startCareActivity()}
-                  disabled={activityLocked || !selectedPatientId}
-                  className="min-w-[180px]"
-                >
-                  <Mic size={16} aria-hidden="true" />
-                  Start care activity
-                </Button>
-              ) : (
-                <Button variant="danger" onClick={finishCareActivity} className="min-w-[180px]">
-                  <Square size={16} aria-hidden="true" />
-                  Finish care activity
-                </Button>
+            <div className={styles.recordMicWrap}>
+              <button
+                type="button"
+                onClick={() =>
+                  careActivityPhase === 'in_progress'
+                    ? finishCareActivity()
+                    : void startCareActivity()
+                }
+                disabled={careActivityPhase === 'processing' || !selectedPatientId}
+                className={`${styles.recordMicButton} ${
+                  careActivityPhase === 'in_progress' ? styles.recordMicButtonActive : ''
+                }`}
+                aria-label={
+                  careActivityPhase === 'in_progress' ? 'Finish care activity' : 'Start care activity'
+                }
+              >
+                {careActivityPhase === 'in_progress' ? (
+                  <Square size={32} aria-hidden="true" />
+                ) : (
+                  <Mic size={36} aria-hidden="true" />
+                )}
+              </button>
+
+              {careActivityPhase === 'in_progress' && (
+                <>
+                  <p className={styles.recordTimer}>{formatElapsed(recordingSeconds)}</p>
+                  <div className={styles.recordWaveform} aria-hidden="true">
+                    {Array.from({ length: WAVEFORM_BAR_COUNT }).map((_, index) => (
+                      <span
+                        key={index}
+                        className={styles.recordWaveformBar}
+                        style={{ animationDelay: `${index * 0.12}s` }}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {careActivityPhase === 'idle' && (
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Tap to start the care activity
+                </p>
               )}
             </div>
 
             {careActivityPhase === 'in_progress' && (
               <div className={`${styles.phaseBanner} ${styles.phaseRecording}`}>
                 <span className={`${styles.recordDot} ${styles.recordDotLive}`} aria-hidden="true" />
-                Care activity in progress — perform care, then tap Finish when done. Recording
+                Care activity in progress — perform care, then tap the button when done. Recording
                 will only be processed after you finish.
               </div>
             )}
 
             {careActivityPhase === 'processing' && (
               <div className={`${styles.phaseBanner} ${styles.phaseProcessing}`}>
-                Processing recording through SCRIBE pipeline (transcription → ADL extraction →
-                save)…
+                <span className={styles.loadingSpinner} aria-hidden="true" />
+                {processingStage === 'finalizing'
+                  ? 'Finalizing care activity and generating daily summary…'
+                  : 'Uploading and processing your recording (transcription → ADL extraction → save)…'}
               </div>
             )}
 
