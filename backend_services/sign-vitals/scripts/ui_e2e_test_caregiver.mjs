@@ -38,6 +38,21 @@ const text = (sel) => evaluate(`document.querySelector(${JSON.stringify(sel)})?.
 
 try {
   await send("Page.enable");
+  // Log the server's own per-stage timings for every attempt the app submits.
+  await send("Network.enable");
+  const pending = new Set();
+  c.on(async (m) => {
+    if (m.method === "Network.responseReceived" && m.params.response.url.endsWith("/gloss/attempts")) pending.add(m.params.requestId);
+    if (m.method === "Network.loadingFinished" && pending.has(m.params.requestId)) {
+      pending.delete(m.params.requestId);
+      try {
+        const body = JSON.parse((await send("Network.getResponseBody", { requestId: m.params.requestId })).body);
+        const t = body.timings ?? {}, ex = t.extraction_detail ?? {};
+        console.log(`   server: ${body.mode ?? "?"} ${body.outcome} | total ${t.request_total_ms} ms | frames ${ex.frames} | ` +
+          `MediaPipe ${t.landmark_extraction} ms (imports ${ex.imports_ms}, frames ${ex.frames_ms}) | supabase ${t.supabase_total_ms} ms | gemini ${t.feedback_rewording ?? "-"} ms`);
+      } catch { /* not JSON */ }
+    }
+  });
   await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
   await send("Page.navigate", { url: `${app}/login` });
   await waitFor("!!document.querySelector('input[type=email]')", 30000);
@@ -60,7 +75,9 @@ try {
   await waitFor(has("Not a translator"));
   await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Start Recording') && !b.disabled)", 30000);
   await click("Start Recording");
-  await waitFor(`${has("This looks like")} || ${has("Maybe")} || ${has("couldn't match")}`, 90000);
+  let t0 = Date.now();
+  await waitFor(`${has("This looks like")} || ${has("Maybe")} || ${has("couldn't match")}`, 180000);
+  console.log(`   timing: Check my sign, start (3 s countdown + 5 s recording) -> result ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await sleep(3000);
   console.log("   Check my sign said:", (await text("h2 + p + * , .text-2xl.font-bold.text-slate-900")) || "(see screenshot)");
   await shot("02_check_my_sign_result");
@@ -72,7 +89,9 @@ try {
   console.log("   Recall word:", word);
   await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Start Recording') && !b.disabled)", 30000);
   await click("Start Recording");
-  await waitFor(has("Compare with the demonstration"), 90000);
+  t0 = Date.now();
+  await waitFor(has("Compare with the demonstration"), 180000);
+  console.log(`   timing: Recall, start (3 s countdown + 5 s recording) -> result ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await sleep(3000);
   await shot("03_recall_result");
 
@@ -89,12 +108,23 @@ try {
   await click("Stop Recording");
   await waitFor(has("Submit Attempt"));
   await click("Submit Attempt");
-  await waitFor(`${has("counted attempt")} || ${has("not counted")} || ${has("try that recording again")}`, 90000);
+  t0 = Date.now();
+  await waitFor(`${has("counted attempt")} || ${has("not counted")} || ${has("try that recording again")}`, 180000);
+  console.log(`   timing: Practice, Submit -> feedback ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await sleep(1000);
   await shot("04_practice_camera_feedback");
 
-  // Quiz (camera-denied fallback path, chosen here)
+  // "Practice Again" goes straight back to the camera practice screen.
   await click("Practice Again");
+  await waitFor(has("Your camera"), 30000);
+  console.log("step ok: Practice Again opened the camera practice screen");
+
+  // Quiz (camera-prompt fallback path, chosen here)
+  await click("Browse Signs");
+  await waitFor("!!document.querySelector('[aria-label=\"Open Water\"]')", 30000);
+  await evaluate("document.querySelector('[aria-label=\"Open Water\"]').click()");
+  await waitFor(has("Practice This Sign"), 30000);
+  await click("Practice This Sign");
   await click("Use Quiz Instead");
   await waitFor(has("Which sign was that?"), 30000);
   await evaluate(`(() => { const b = [...document.querySelectorAll('button')].find(e => e.textContent.trim().toLowerCase() === 'water'); b.click(); })()`);

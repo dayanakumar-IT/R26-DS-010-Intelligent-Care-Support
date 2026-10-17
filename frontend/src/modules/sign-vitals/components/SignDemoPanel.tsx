@@ -137,7 +137,7 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
   // while that loads (or if it fails).
   if (status === 'loading' && mode !== '3d') {
     return (
-      <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-400">
+      <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-400">
         Loading reference demonstration…
       </div>
     )
@@ -145,7 +145,7 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
 
   if ((status === 'error' || !reference) && mode !== '3d') {
     return (
-      <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-600">
+      <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-600">
         <span>Reference demonstration unavailable for this sign.</span>
         <button
           type="button"
@@ -160,8 +160,11 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-1 self-start rounded-full border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
+    <div className="flex flex-col gap-3">
+      {/* Toolbar: one row of fixed height, matching the camera's status row,
+          so the demonstration and the camera boxes start at the same line. */}
+      <div className="flex min-h-10 flex-wrap items-center justify-between gap-2 xl:flex-nowrap">
+      <div className="flex gap-1 rounded-full border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
         <button
           type="button"
           onClick={() => setMode('2d')}
@@ -200,23 +203,24 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
         type="button"
         role="switch"
         aria-checked={mirrorView}
+        aria-label={mirrorView ? MIRROR_LABEL : REAL_LABEL}
+        title={mirrorView ? MIRROR_LABEL : REAL_LABEL}
         onClick={() => setMirrorView(!mirrorView)}
-        className={`flex items-center gap-2 self-start rounded-[var(--radius-md)] border px-2.5 py-1.5 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-blue)] ${
+        className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border px-2.5 py-1.5 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-blue)] ${
           mirrorView ? 'border-[var(--brand-blue)] bg-blue-50 text-[var(--brand-blue)]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
         }`}
       >
         <FlipHorizontal2 size={14} aria-hidden />
-        {mirrorView ? MIRROR_LABEL : REAL_LABEL}
+        {/* Short label keeps the toolbar on one line; full wording in the tooltip. */}
+        {mirrorView ? 'Mirror view' : 'Real view'}
       </button>
-      {threeDFailed && mode === '2d' && (
-        <p className="text-xs text-slate-500">The 3D Signer isn't available on this device, so the 2D Sign Guide is shown.</p>
-      )}
+      </div>
 
       {mode === '3d' ? (
         <LoadBoundary onError={fallBackTo2D}>
           <Suspense
             fallback={
-              <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[var(--radius-md)] bg-slate-50 text-sm text-slate-400">
+              <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[var(--radius-md)] bg-[#eef2f6] text-sm text-slate-400">
                 Loading 3D signer…
               </div>
             }
@@ -240,7 +244,7 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
             onError={() => setVideoState({ status: 'error' })}
           />
         ) : videoState.status === 'error' ? (
-          <div className="flex aspect-video w-full flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] border border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-600">
+          <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] border border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-600">
             <span>Reference video could not be loaded.</span>
             <button
               type="button"
@@ -252,13 +256,13 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
             </button>
           </div>
         ) : videoState.status === 'unavailable' ? (
-          <div className="flex aspect-video w-full flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-400">
+          <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-400">
             <span>Reference video is not available for this sign yet.</span>
             <span className="text-xs">The 2D Sign Guide remains the primary reference demonstration.</span>
           </div>
         ) : (
           // 'loading' and the brief 'idle' before the fetch effect runs
-          <div className="flex aspect-video w-full items-center justify-center rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-400">
+          <div className="flex aspect-[4/3] w-full items-center justify-center rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-400">
             Loading reference video…
           </div>
         )
@@ -273,6 +277,9 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
             mirrorView={mirrorView}
           />
         )
+      )}
+      {threeDFailed && mode === '2d' && (
+        <p className="text-xs text-slate-500">The 3D Signer isn't available on this device, so the 2D Sign Guide is shown.</p>
       )}
     </div>
   )

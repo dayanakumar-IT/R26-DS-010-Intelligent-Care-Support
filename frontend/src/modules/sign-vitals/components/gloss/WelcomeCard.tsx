@@ -1,4 +1,3 @@
-import { ChevronRight } from 'lucide-react'
 import type { GlossProgressSummary } from '../../types/gloss'
 import BadgeIcon from './BadgeIcon'
 import { levelProgress } from '../../utils/journey'
@@ -6,11 +5,12 @@ import { levelProgress } from '../../utils/journey'
 /**
  * WelcomeCard.tsx
  * GLOSS component — shown on opening GLOSS: current level badge, a bar
- * toward the next level, one "next goal" line and Continue. Every number
+ * toward the next level, and one "next goal" line. Every number
  * comes from GET /gloss/progress/summary (earned milestones only).
+ * (No button: practice starts from Today's Practice right below.)
  */
 
-export default function WelcomeCard({ summary, onContinue }: { summary: GlossProgressSummary; onContinue: () => void }) {
+export default function WelcomeCard({ summary }: { summary: GlossProgressSummary }) {
   const [done, needed] = levelProgress(summary)
   const level = summary.level
   return (
@@ -46,14 +46,6 @@ export default function WelcomeCard({ summary, onContinue }: { summary: GlossPro
           <p className="text-base text-slate-700">Every countable sign Demonstrated and Retained.</p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onContinue}
-        className="flex items-center justify-center gap-1 rounded-[var(--radius-md)] bg-[var(--brand-blue)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)]"
-      >
-        Continue
-        <ChevronRight size={16} aria-hidden="true" />
-      </button>
     </section>
   )
 }

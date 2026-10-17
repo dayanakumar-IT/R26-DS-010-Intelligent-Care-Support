@@ -59,7 +59,7 @@ export default function ReferenceVideoPlayer({ src, signName, mirrorView, onErro
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onError={onError}
-        className="aspect-video w-full rounded-[var(--radius-md)] bg-black"
+        className="aspect-[4/3] w-full rounded-[var(--radius-md)] bg-black object-contain"
         style={{ transform: mirrorView ? 'scaleX(-1)' : undefined }}
       />
       <div className="flex flex-wrap items-center justify-center gap-2">

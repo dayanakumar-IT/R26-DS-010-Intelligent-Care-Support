@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CheckingSign from './gloss/CheckingSign'
 import { Info, RotateCcw, Video } from 'lucide-react'
 import Button from '../../../shared/components/Button'
 import SignDemoPanel from './SignDemoPanel'
@@ -55,6 +56,13 @@ export default function CheckMySign({ sessionId, onSession, onPractise }: CheckM
 
   const tip = result ? lowHandTip(result.capture_check.hand_presence) : null
 
+  const checkAnother = (
+    <Button variant="secondary" onClick={again}>
+      <RotateCcw size={16} />
+      Check another sign
+    </Button>
+  )
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -83,10 +91,7 @@ export default function CheckMySign({ sessionId, onSession, onPractise }: CheckM
       )}
 
       {state === 'checking' && (
-        <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[var(--brand-blue)]" />
-          Checking your sign…
-        </div>
+        <CheckingSign />
       )}
 
       {state === 'error' && (
@@ -106,12 +111,14 @@ export default function CheckMySign({ sessionId, onSession, onPractise }: CheckM
               <p className="text-2xl font-bold text-slate-900">
                 Maybe {result.suggestions.map((s) => upper(s.sign_id)).join(' or ')}
               </p>
-              <div className="flex flex-wrap gap-2">
+              {/* With no sign shown yet, "Check another sign" sits in this row too. */}
+              <div className="flex flex-wrap gap-3">
                 {result.suggestions.map((s) => (
                   <Button key={s.sign_id} variant={shown === s.sign_id ? 'primary' : 'secondary'} onClick={() => setShown(s.sign_id)}>
                     Show me {s.sign_id.replace(/_/g, ' ')}
                   </Button>
                 ))}
+                {!shown && checkAnother}
               </div>
             </div>
           )}
@@ -126,17 +133,17 @@ export default function CheckMySign({ sessionId, onSession, onPractise }: CheckM
           {shown && (
             <div className="flex flex-col gap-3">
               <SignDemoPanel key={shown} signId={shown} signDisplayName={shown.replace(/_/g, ' ')} />
-              <Button onClick={() => onPractise(shown)} className="self-start">
-                <Video size={16} />
-                Practise this sign
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => onPractise(shown)}>
+                  <Video size={16} />
+                  Practise this sign
+                </Button>
+                {checkAnother}
+              </div>
             </div>
           )}
 
-          <Button variant="secondary" onClick={again} className="self-start">
-            <RotateCcw size={16} />
-            Check another sign
-          </Button>
+          {!shown && result.outcome !== 'free_maybe' && <div className="flex flex-wrap gap-3">{checkAnother}</div>}
         </div>
       )}
     </div>

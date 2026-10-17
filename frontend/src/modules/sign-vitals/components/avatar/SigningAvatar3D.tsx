@@ -219,7 +219,7 @@ export default function SigningAvatar3D({
     <div className={`flex flex-col gap-2 ${compact ? 'h-full' : ''}`}>
       <div
         className="relative w-full overflow-hidden rounded-[var(--radius-md)] bg-[#eef2f6]"
-        style={compact ? { height: '100%' } : { aspectRatio: '4 / 3', maxHeight: 420 }}
+        style={compact ? { height: '100%' } : { aspectRatio: '4 / 3' }}
       >
         <div
           ref={hostRef}

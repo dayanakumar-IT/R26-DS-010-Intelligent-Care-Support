@@ -57,6 +57,7 @@ def build_summary(milestones: list[dict], attempts: list[dict], timezone: str, n
     for m in milestones:
         by_type.setdefault(m["type"], {})[m["key"]] = m
     demonstrated = set(by_type.get("demonstrated", {}))
+    all_countable = set(cfg.countable_signs())
     retained = set(by_type.get("retained", {}))
     levels_earned = by_type.get("level", {})
 
@@ -132,11 +133,16 @@ def build_summary(milestones: list[dict], attempts: list[dict], timezone: str, n
         ),
         "levels": [{"key": lvl["key"], "name": lvl["name"], "rule": lvl["rule"],
                     "earned_at": levels_earned.get(lvl["key"], {}).get("achieved_at")} for lvl in cfg.LEVELS],
+        # The one definition of these numbers for every screen (Practice,
+        # My Journey, Progress, report): Demonstrated / Retained out of the
+        # countable signs; practised = different signs tried in practice or
+        # recall (camera or quiz fallback).
         "counts": {
-            "countable": len(cfg.countable_signs()),
-            "demonstrated": len(demonstrated),
-            "retained": len(retained),
+            "countable": len(all_countable),
+            "demonstrated": len(demonstrated & all_countable),
+            "retained": len(retained & all_countable),
             "practised": len(practised),
+            "not_assessed": len(cfg.ALL_SIGNS) - len(all_countable),
         },
         "categories": categories,
         "skill_badges": skill_badges,

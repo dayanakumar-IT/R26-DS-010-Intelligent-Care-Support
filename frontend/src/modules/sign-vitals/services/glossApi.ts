@@ -133,3 +133,15 @@ export function getGlossProgressSummary(): Promise<GlossProgressSummary> {
 export function getRecallSign(): Promise<{ sign_id: string }> {
   return apiGet<{ sign_id: string }>('/gloss/recall/next')
 }
+
+// The guarded Gemini rewording of an attempt's feedback, which the backend
+// finishes after sending the attempt result (feedback_pending: true).
+export interface GlossFeedbackUpdate {
+  status: 'pending' | 'ready' | 'unchanged'
+  summary: string | null
+}
+
+export function getGlossAttemptFeedback(attemptId: string): Promise<GlossFeedbackUpdate> {
+  return apiGet<GlossFeedbackUpdate>(`/gloss/attempts/${encodeURIComponent(attemptId)}/feedback`)
+}
+

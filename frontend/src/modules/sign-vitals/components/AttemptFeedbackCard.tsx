@@ -10,6 +10,7 @@ import {
   strongInARow,
 } from '../utils/progressLabels'
 import { lowHandTip } from '../utils/captureTips'
+import { useRewordedFeedback } from '../hooks/useRewordedFeedback'
 
 function signLabel(signId: string): string {
   return signId.replace(/_/g, ' ')
@@ -77,6 +78,8 @@ export default function AttemptFeedbackCard({
   nextLabel = 'Next Recommended Sign',
 }: AttemptFeedbackCardProps) {
   const banner = resultBanner(result, targetSignId)
+  // Rule text now; the reworded text replaces it when ready (feedback_pending).
+  const feedback = useRewordedFeedback(result.attempt_id, result.corrective_feedback.summary, result.feedback_pending)
   const isCamera = result.outcome !== 'quiz_correct' && result.outcome !== 'quiz_wrong'
   // Specific camera advice when the hands were out of view for most of the clip.
   const cameraTip =
@@ -116,8 +119,8 @@ export default function AttemptFeedbackCard({
         <p className="text-sm text-slate-600">{TIER_SENTENCE[result.quality_tier]}</p>
       )}
 
-      <div className="rounded-[var(--radius-md)] bg-blue-50 px-4 py-3 text-base text-blue-900">
-        {result.corrective_feedback.summary}
+      <div className="rounded-[var(--radius-md)] bg-blue-50 px-4 py-3 text-base text-blue-900" aria-live="polite">
+        {feedback.text}
       </div>
 
       {result.corrective_feedback.top_deviating_groups.length > 0 && (

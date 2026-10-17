@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import CheckingSign from './gloss/CheckingSign'
 import { Brain, CameraOff } from 'lucide-react'
 import Button from '../../../shared/components/Button'
 import AttemptFeedbackCard from './AttemptFeedbackCard'
@@ -133,10 +134,7 @@ export default function RecallChallenge({ allSigns, sessionId, onSession, onAtte
       )}
 
       {stage === 'checking' && (
-        <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[var(--brand-blue)]" />
-          Analysing your attempt…
-        </div>
+        <CheckingSign />
       )}
 
       {stage === 'quiz' && sign && (

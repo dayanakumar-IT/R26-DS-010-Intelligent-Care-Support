@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import CheckingSign from '../components/gloss/CheckingSign'
 import { Link } from 'react-router-dom'
 import {
   Award,
@@ -205,6 +206,17 @@ export default function SignLanguage() {
     [selectSign],
   )
 
+  // "Practice again" / "Practise this sign": straight to the camera practice
+  // screen for that sign (the camera prompt is skipped; if the camera is
+  // blocked the usual camera-denied screen with the quiz appears).
+  const practiseNow = useCallback((signId: string) => {
+    setTargetSignId(signId)
+    setPickedByUser(true)
+    setRecordedBlob(null)
+    setStage('practicing')
+    setTab('practice')
+  }, [])
+
   const loadRecommendedSign = useCallback(async () => {
     setStage('loading')
     setErrorMessage(null)
@@ -305,7 +317,9 @@ export default function SignLanguage() {
   const strongNeeded = progress?.strong_needed ?? STRONG_NEEDED
   const recState = progressState(recRow?.mastery_status, recRow?.attempts ?? 0)
   const activeDays = progress ? activeDaysThisWeek(progress.practice_calendar) : 0
-  const demonstratedCount = progress?.mastered_count ?? 0
+  // Practised / Demonstrated: the same numbers as My Journey and Progress
+  // (GET /gloss/progress/summary): Demonstrated out of the countable signs.
+  const counts = summary?.counts ?? null
   const qualityNote = allSigns.find((s) => s.id === targetSignId)?.quality_note ?? null
   // Dictionary-only signs are never offered here, even if already practised.
   const recentSigns = (progress?.mastery_summary ?? [])
@@ -331,7 +345,7 @@ export default function SignLanguage() {
 
       {stage === 'ready' && targetSignId && (
         <div className="flex flex-col gap-8">
-          {summary && <WelcomeCard summary={summary} onContinue={() => setStage('camera-choice')} />}
+          {summary && <WelcomeCard summary={summary} />}
           {/* Recommended Next hero */}
           <section className="flex flex-col gap-4">
             <h2 className="text-2xl font-bold text-[var(--brand-blue)]">Today&apos;s Practice</h2>
@@ -402,8 +416,8 @@ export default function SignLanguage() {
                   accent="blue"
                   icon={BookOpen}
                   label="Signs Practised"
-                  value={String(progress.signs_practiced)}
-                  caption="Total signs practised"
+                  value={counts ? String(counts.practised) : '–'}
+                  caption="Different signs practised"
                 />
                 <GlossStatCard
                   accent="green"
@@ -416,8 +430,8 @@ export default function SignLanguage() {
                   accent="purple"
                   icon={Award}
                   label="Demonstrated"
-                  value={`${demonstratedCount} of ${allSigns.length || 59}`}
-                  caption={`Signs with ${strongNeeded} strong attempts in a row`}
+                  value={counts ? `${counts.demonstrated} of ${counts.countable}` : '–'}
+                  caption={`${strongNeeded} strong attempts in a row${counts && counts.not_assessed ? ` · ${counts.not_assessed} signs not assessed by camera` : ''}`}
                 />
               </div>
             </section>
@@ -444,7 +458,7 @@ export default function SignLanguage() {
                     row={row}
                     strongNeeded={strongNeeded}
                     accentIndex={index}
-                    onPracticeAgain={() => selectSign(row.sign_id)}
+                    onPracticeAgain={() => practiseNow(row.sign_id)}
                   />
                 ))}
               </div>
@@ -463,8 +477,13 @@ export default function SignLanguage() {
 
       {stage === 'practicing' && targetSignId && (
         <div className="flex flex-col gap-4">
-          {qualityNote && <QualityNote text={qualityNote} />}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-2xl font-bold capitalize text-slate-900">{signLabel(targetSignId)}</h2>
+            {qualityNote && <QualityNote text={qualityNote} />}
+          </div>
+          {/* Equal columns; both media boxes are 4:3 under a toolbar row of the
+              same height, so they line up at the top and the bottom. */}
+          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
             <SignDemoPanel key={targetSignId} signId={targetSignId} />
             <WebcamCapture onRecorded={setRecordedBlob} onCameraError={() => setStage('camera-denied')} />
           </div>
@@ -505,10 +524,7 @@ export default function SignLanguage() {
       )}
 
       {stage === 'submitting' && (
-        <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[var(--brand-blue)]" />
-          Analysing your attempt…
-        </div>
+        <CheckingSign />
       )}
 
       {stage === 'retake' && targetSignId && (
@@ -542,7 +558,7 @@ export default function SignLanguage() {
           targetSignId={targetSignId}
           onPracticeAgain={() => {
             setRecordedBlob(null)
-            setStage('camera-choice')
+            setStage('practicing')
           }}
           onNextSign={loadRecommendedSign}
         />
@@ -575,7 +591,7 @@ export default function SignLanguage() {
         {tab === 'practice' && practiceContent}
 
         {tab === 'check' && (
-          <CheckMySign sessionId={sessionId} onSession={setSessionId} onPractise={practiseSign} />
+          <CheckMySign sessionId={sessionId} onSession={setSessionId} onPractise={practiseNow} />
         )}
 
         {tab === 'recall' && (
@@ -587,7 +603,7 @@ export default function SignLanguage() {
               afterAttempt(r)
               invalidateGlossActivity()
             }}
-            onPractise={practiseSign}
+            onPractise={practiseNow}
           />
         )}
 

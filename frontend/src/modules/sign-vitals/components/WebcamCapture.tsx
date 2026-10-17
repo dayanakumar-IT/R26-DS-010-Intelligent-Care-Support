@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Circle, Square } from 'lucide-react'
+import { CheckCircle2, Circle, MoveDiagonal, Square } from 'lucide-react'
 import Button from '../../../shared/components/Button'
+import { useHandOverlay, type HandOverlayStatus } from '../hooks/useHandOverlay'
 
 interface WebcamCaptureProps {
   onRecorded: (blob: Blob) => void
@@ -29,10 +30,19 @@ function pickSupportedMimeType(): string {
   return 'video/webm' // last-resort default; browsers without isTypeSupported are effectively all webm-capable
 }
 
+// Status chip above the preview (icon + words + colour, never colour alone).
+const CHIP: Record<HandOverlayStatus, { text: string; tone: string } | null> = {
+  loading: { text: 'Starting hand guide…', tone: 'border-slate-200 bg-slate-50 text-slate-600' },
+  visible: { text: 'Hands visible ✓', tone: 'border-emerald-300 bg-emerald-50 text-emerald-800' },
+  'not-visible': { text: 'Move back – hands not in view', tone: 'border-amber-300 bg-amber-50 text-amber-900' },
+  off: null,
+}
+
 // Start/Stop recording. Practice uses it as is; Check my sign and Recall add a
 // countdown before recording and an automatic stop (countdownSeconds / maxSeconds).
 export default function WebcamCapture({ onRecorded, onCameraError, countdownSeconds = 0, maxSeconds }: WebcamCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const overlayRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -42,6 +52,9 @@ export default function WebcamCapture({ onRecorded, onCameraError, countdownSeco
   const [countdown, setCountdown] = useState<number | null>(null)
   const timersRef = useRef<number[]>([])
   useEffect(() => () => timersRef.current.forEach((t) => window.clearTimeout(t)), [])
+  // Live hand landmarks on the preview: display only (see useHandOverlay).
+  const hands = useHandOverlay(videoRef, overlayRef, cameraReady)
+  const chip = CHIP[hands]
 
   useEffect(() => {
     let cancelled = false
@@ -123,6 +136,25 @@ export default function WebcamCapture({ onRecorded, onCameraError, countdownSeco
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Status row: same height as the demonstration's toolbar, so both
+          boxes line up side by side. */}
+      <div className="flex min-h-10 items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-slate-700">Your camera</span>
+        {cameraReady && chip && (
+          <span
+            role="status"
+            aria-live="polite"
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium ${chip.tone}`}
+          >
+            {hands === 'visible' ? (
+              <CheckCircle2 size={15} aria-hidden="true" />
+            ) : hands === 'not-visible' ? (
+              <MoveDiagonal size={15} aria-hidden="true" />
+            ) : null}
+            {chip.text}
+          </span>
+        )}
+      </div>
       {/* 4:3 and object-contain: the preview shows exactly what is recorded. */}
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--radius-md)] bg-slate-900">
         {/* Preview is mirrored for a natural selfie view only. The
@@ -137,19 +169,21 @@ export default function WebcamCapture({ onRecorded, onCameraError, countdownSeco
           className="h-full w-full object-contain"
           style={{ transform: 'scaleX(-1)' }}
         />
-        {/* Framing guide (preview only, never recorded): head in the oval,
-            hands inside the box from the chest down to the waist. */}
-        <svg
-          viewBox="0 0 640 480"
-          className="pointer-events-none absolute inset-0 h-full w-full"
+        {/* Hand landmarks drawn over the preview (display only, never
+            recorded or sent). Same box, fit and mirroring as the video. */}
+        <canvas
+          ref={overlayRef}
           aria-hidden="true"
-        >
-          <ellipse cx="320" cy="120" rx="62" ry="80" fill="none" stroke="white" strokeOpacity="0.7" strokeWidth="3" strokeDasharray="10 8" />
-          <rect x="110" y="215" width="420" height="255" rx="24" fill="none" stroke="white" strokeOpacity="0.7" strokeWidth="3" strokeDasharray="10 8" />
-        </svg>
-        <span className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-slate-900/70 px-3 py-1 text-xs font-medium text-white">
-          Head in the oval, hands inside the box
-        </span>
+          className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+          style={{ transform: 'scaleX(-1)' }}
+        />
+        {/* Fallback when the hand guide is off (could not load, or not
+            smooth on this device): a small, faint face guide only. */}
+        {hands === 'off' && (
+          <svg viewBox="0 0 640 480" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+            <ellipse cx="320" cy="105" rx="44" ry="56" fill="none" stroke="white" strokeOpacity="0.45" strokeWidth="2" strokeDasharray="6 6" />
+          </svg>
+        )}
         {countdown !== null && (
           <span
             aria-live="assertive"
@@ -165,8 +199,8 @@ export default function WebcamCapture({ onRecorded, onCameraError, countdownSeco
           </span>
         )}
       </div>
-      <p className="text-center text-xs text-slate-400">
-        Sit back so your head and your hands down to your waist fit the guide, and face the light
+      <p className="text-center text-xs text-slate-500">
+        Sit back so your head and both hands, down to your waist, are in view, and face the light
         (a bright window behind you makes the camera slow and blurry). Preview is mirrored; your
         recording is not.
       </p>

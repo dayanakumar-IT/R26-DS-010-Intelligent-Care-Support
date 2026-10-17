@@ -117,6 +117,9 @@ export interface GlossAttemptResult {
   // Milestones this attempt newly earned (celebrated only on a success).
   new_milestones?: GlossNewMilestone[]
   pipeline_version?: string
+  // True while the reworded feedback text is still being prepared: the rule
+  // text is shown now and GET /gloss/attempts/{id}/feedback swaps it in.
+  feedback_pending?: boolean
   // Task 6 instrumentation — per-stage backend timings in ms. Additive
   // and optional; the UI only uses it for a dev/diagnostic readout.
   timings?: Record<string, number>
@@ -262,7 +265,9 @@ export interface GlossProgressSummary {
   level: { key: string; name: string } | null
   next_level: { key: string; name: string; missing: string } | null
   levels: Array<{ key: string; name: string; rule: string; earned_at: string | null }>
-  counts: { countable: number; demonstrated: number; retained: number; practised: number }
+  // practised: different signs tried in practice or recall (camera or quiz).
+  // not_assessed: signs the camera does not assess (not countable).
+  counts: { countable: number; demonstrated: number; retained: number; practised: number; not_assessed?: number }
   categories: Array<{
     key: string
     name: string
@@ -290,3 +295,4 @@ export interface GlossProgressSummary {
   timezone: string
   pipeline_version: string
 }
+

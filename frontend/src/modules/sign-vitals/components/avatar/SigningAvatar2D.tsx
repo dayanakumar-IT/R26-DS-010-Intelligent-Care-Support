@@ -358,15 +358,14 @@ export default function SigningAvatar2D({
     <div className={`flex flex-col gap-2 ${compact ? 'h-full' : ''}`}>
       <div
         className="relative w-full overflow-hidden rounded-[var(--radius-md)] p-2"
-        style={{ background: COLORS.panel, minHeight: compact ? 0 : 220, height: compact ? '100%' : undefined }}
+        style={{ background: COLORS.panel, height: compact ? '100%' : undefined, aspectRatio: compact ? undefined : '4 / 3' }}
       >
         <svg
           role="img"
           aria-label={`${signName} — 2D sign guide`}
           viewBox={`0 0 ${proj.vbWidth} ${VB_HEIGHT}`}
           preserveAspectRatio="xMidYMid meet"
-          className="mx-auto block h-auto w-full"
-          style={{ maxHeight: compact ? '100%' : 420, height: compact ? '100%' : undefined }}
+          className="mx-auto block h-full w-full"
         >
           <title>{`${signName} — animated 2D sign guide`}</title>
           <g transform={mirrorView ? undefined : `translate(${proj.vbWidth} 0) scale(-1 1)`}>
