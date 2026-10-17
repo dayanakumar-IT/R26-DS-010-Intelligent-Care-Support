@@ -18,10 +18,10 @@ import tensorflow as tf
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# The fingerprinted product bundle (see gloss_assets/manifest.json) at
-# the repo root. Every GLOSS model/scaler/threshold/reference file the
-# app loads comes from here — nothing is read from models/ any more.
-ASSETS_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "..", "gloss_assets"))
+# The fingerprinted product bundle (see gloss_assets/manifest.json),
+# inside this service folder. Every GLOSS model/scaler/threshold/reference
+# file the app loads comes from here — nothing is read from models/ any more.
+ASSETS_DIR = os.path.join(BASE_DIR, "gloss_assets")
 
 MODEL_FILENAME = "GLOSS_ensemble.keras"
 MODEL_PATH = os.path.join(ASSETS_DIR, MODEL_FILENAME)

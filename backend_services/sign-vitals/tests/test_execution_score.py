@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mastery_engine import compute_execution_score  # noqa: E402
 
 ASSETS_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "gloss_assets")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "gloss_assets")
 )
 
 
