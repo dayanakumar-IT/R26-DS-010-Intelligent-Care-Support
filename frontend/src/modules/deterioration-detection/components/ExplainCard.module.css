@@ -1,0 +1,112 @@
+/* Shared explanation-card template — same card treatment as the rest of the
+   module (dd-card from styles/tokens.css), with a tone-coloured left edge
+   built from the existing --risk-* tokens. No new CSS variables. */
+
+.card {
+  composes: dd-card from global;
+  min-width: 0;
+  padding: 14px 16px;
+  border-left-width: 4px;
+}
+
+.toneGood {
+  border-left-color: var(--risk-low);
+}
+
+.toneWatch {
+  border-left-color: var(--risk-moderate);
+}
+
+.toneInfo {
+  border-left-color: var(--brand-blue);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.headline {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #111827;
+  overflow-wrap: anywhere;
+}
+
+.meaning {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1f2937;
+}
+
+.note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  cursor: pointer;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.chevron {
+  display: inline-block;
+  transition: transform var(--transition-fast, 160ms ease);
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.more {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1f2937;
+}
+
+.more p {
+  margin: 0 0 6px;
+}
+
+.more p:last-child {
+  margin-bottom: 0;
+}
