@@ -1,0 +1,60 @@
+{
+  "mouth": {
+    "sign": "mouth",
+    "frames": 184,
+    "fps": 30.00163052339801,
+    "active_periods": [
+      [
+        23,
+        63
+      ],
+      [
+        95,
+        135
+      ]
+    ],
+    "proposed_range": [
+      18,
+      68
+    ],
+    "proposed_frames": 51,
+    "reason": "signed 2 times; keeping the first performance",
+    "status": "pending_approval"
+  },
+  "sick": {
+    "sign": "sick",
+    "frames": 150,
+    "fps": 30.0,
+    "active_periods": [
+      [
+        54,
+        101
+      ]
+    ],
+    "proposed_range": [
+      49,
+      106
+    ],
+    "proposed_frames": 58,
+    "reason": "signed once; removing rest at the start and end",
+    "status": "pending_approval"
+  },
+  "pain": {
+    "sign": "pain",
+    "frames": 128,
+    "fps": 29.997656433091166,
+    "active_periods": [
+      [
+        41,
+        97
+      ]
+    ],
+    "proposed_range": [
+      36,
+      102
+    ],
+    "proposed_frames": 67,
+    "reason": "signed once; removing rest at the start and end",
+    "status": "pending_approval"
+  }
+}
