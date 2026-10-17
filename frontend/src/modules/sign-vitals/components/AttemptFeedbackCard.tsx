@@ -9,22 +9,32 @@ import {
   progressState,
   strongInARow,
 } from '../utils/progressLabels'
+import { lowHandTip } from '../utils/captureTips'
 
 function signLabel(signId: string): string {
   return signId.replace(/_/g, ' ')
 }
 
+// Below this the feedback text hedges ("wasn't fully certain"), so the
+// banner does too. Same value as execution_evaluator.CONFIDENCE_THRESHOLD.
+const FAIRLY_SURE_BELOW = 0.6
+
 // The result banner. Below the confidence cut-off ('not_recognised') no
 // sign is ever named and the colour is neutral — the learner is asked to
-// repeat, not told they signed something else.
+// repeat, not told they signed something else. Between the cut-off and
+// FAIRLY_SURE_BELOW the sign is named as "(fairly sure)", matching the
+// feedback text; "correct!" only from FAIRLY_SURE_BELOW up.
 function resultBanner(result: GlossAttemptResult, targetSignId: string) {
+  const fairlySure = result.recognition_confidence != null && result.recognition_confidence < FAIRLY_SURE_BELOW
   switch (result.outcome) {
     case 'target_sign':
-    case 'quiz_correct':
+    case 'quiz_correct': // no confidence: always 'correct!'
       return {
         tone: 'bg-emerald-50 text-emerald-700',
         icon: <CheckCircle2 size={18} />,
-        text: `Recognized as "${signLabel(targetSignId)}" — correct!`,
+        text: fairlySure
+          ? `Recognised as "${signLabel(targetSignId)}" (fairly sure)`
+          : `Recognised as "${signLabel(targetSignId)}" — correct!`,
       }
     case 'not_recognised':
       return {
@@ -36,7 +46,7 @@ function resultBanner(result: GlossAttemptResult, targetSignId: string) {
       return {
         tone: 'bg-rose-50 text-rose-700',
         icon: <XCircle size={18} />,
-        text: `Recognized as "${signLabel(result.recognized_sign_id ?? '')}", not "${signLabel(targetSignId)}".`,
+        text: `Recognised as "${signLabel(result.recognized_sign_id ?? '')}"${fairlySure ? ' (fairly sure)' : ''}, not "${signLabel(targetSignId)}".`,
       }
   }
 }
@@ -65,6 +75,11 @@ export default function AttemptFeedbackCard({
 }: AttemptFeedbackCardProps) {
   const banner = resultBanner(result, targetSignId)
   const isCamera = result.outcome !== 'quiz_correct' && result.outcome !== 'quiz_wrong'
+  // Specific camera advice when the hands were out of view for most of the clip.
+  const cameraTip =
+    result.outcome === 'not_recognised' || result.outcome === 'different_sign'
+      ? lowHandTip(result.diagnostics?.capture_check?.hand_presence)
+      : null
   return (
     <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-slate-200 bg-white p-6 shadow-[var(--shadow-sm)]">
       <div
@@ -73,6 +88,10 @@ export default function AttemptFeedbackCard({
         {banner.icon}
         {banner.text}
       </div>
+
+      {cameraTip && (
+        <p className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{cameraTip}</p>
+      )}
 
       <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
         {result.quality_tier && (

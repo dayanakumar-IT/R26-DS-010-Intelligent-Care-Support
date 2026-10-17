@@ -40,7 +40,12 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
     let cancelled = false
 
     navigator.mediaDevices
-      .getUserMedia({ video: true, audio: false })
+      // 640x480 at 30 fps: the reference videos' size and rate. 'ideal' so a
+      // camera that can't do it still works (some slow down in poor light).
+      .getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+        audio: false,
+      })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((track) => track.stop())
@@ -95,7 +100,8 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative aspect-video w-full overflow-hidden rounded-[var(--radius-md)] bg-slate-900">
+      {/* 4:3 and object-contain: the preview shows exactly what is recorded. */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--radius-md)] bg-slate-900">
         {/* Preview is mirrored for a natural selfie view only. The
             recorded stream is the raw camera track and is NOT mirrored —
             the backend receives the true (un-flipped) video, so
@@ -105,9 +111,22 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
           autoPlay
           playsInline
           muted
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           style={{ transform: 'scaleX(-1)' }}
         />
+        {/* Framing guide (preview only, never recorded): head in the oval,
+            hands inside the box from the chest down to the waist. */}
+        <svg
+          viewBox="0 0 640 480"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          aria-hidden="true"
+        >
+          <ellipse cx="320" cy="120" rx="62" ry="80" fill="none" stroke="white" strokeOpacity="0.7" strokeWidth="3" strokeDasharray="10 8" />
+          <rect x="110" y="215" width="420" height="255" rx="24" fill="none" stroke="white" strokeOpacity="0.7" strokeWidth="3" strokeDasharray="10 8" />
+        </svg>
+        <span className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-slate-900/70 px-3 py-1 text-xs font-medium text-white">
+          Head in the oval, hands inside the box
+        </span>
         {isRecording && (
           <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-1 text-xs font-medium text-white">
             <Circle size={8} className="fill-current" />
@@ -116,8 +135,9 @@ export default function WebcamCapture({ onRecorded, onCameraError }: WebcamCaptu
         )}
       </div>
       <p className="text-center text-xs text-slate-400">
-        Keep your whole upper body and both hands in frame, with even lighting. Preview is mirrored;
-        your recording is not.
+        Sit back so your head and your hands down to your waist fit the guide, and face the light
+        (a bright window behind you makes the camera slow and blurry). Preview is mirrored; your
+        recording is not.
       </p>
 
       <div className="flex justify-center gap-3">

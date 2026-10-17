@@ -7,7 +7,6 @@ import {
   CameraOff,
   ChevronLeft,
   ChevronRight,
-  Hand,
   History,
   List,
   LogOut,
@@ -30,7 +29,8 @@ import GlossStatCard from '../components/gloss/GlossStatCard'
 import PracticeSignCard from '../components/gloss/PracticeSignCard'
 import StrongInARowMeter from '../components/gloss/StrongInARowMeter'
 import QualityNote from '../components/gloss/QualityNote'
-import glossHero from '../assets/images/practise.jpg'
+import SignPreview from '../components/gloss/SignPreview'
+import { lowHandTip } from '../utils/captureTips'
 import {
   getNextGlossLesson,
   submitMultipleChoiceAttempt,
@@ -205,7 +205,7 @@ export default function SignLanguage() {
       setSessionId(result.session_id)
       if (result.outcome === 'capture_rejected') {
         setRecordedBlob(null)
-        setRetakeMessage(result.message)
+        setRetakeMessage(lowHandTip(result.capture_check.hand_presence) ?? result.message)
         setStage('retake')
         return
       }
@@ -329,11 +329,8 @@ export default function SignLanguage() {
 
                 <div className="overflow-hidden rounded-2xl border border-[#D5E2F6] bg-white shadow-[var(--shadow-sm)]">
                   <div className="relative h-[210px] w-full sm:h-[240px]">
-                    <img src={glossHero} alt="" loading="lazy" className="h-full w-full object-cover" />
-                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-lg bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-blue)] shadow-sm backdrop-blur">
-                      <Hand size={13} aria-hidden="true" />
-                      Sign practice
-                    </span>
+                    <SignPreview key={targetSignId} signId={targetSignId} signName={signLabel(targetSignId)} />
+
                   </div>
                 </div>
               </div>
