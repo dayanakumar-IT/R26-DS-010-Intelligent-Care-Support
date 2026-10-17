@@ -55,7 +55,8 @@ def test_pipeline_parity():
     failures = []
     for exp in expected:
         i = exp["index"]
-        ev = evaluate_execution(z[f"normalized_{i}"], exp["true_sign"], model)
+        # v1 = the thesis-evaluated feedback (notebook verbatim); see execution_evaluator.FEEDBACK_VERSIONS.
+        ev = evaluate_execution(z[f"normalized_{i}"], exp["true_sign"], model, feedback_version_override="v1")
         result, base = ev["result"], ev["base"]
 
         top_landmarks = [d["landmark"] for d in result["top_deviating_landmarks"][:2]]

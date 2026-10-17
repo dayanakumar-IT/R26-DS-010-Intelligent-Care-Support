@@ -290,6 +290,7 @@ def submit_attempt(
         )
         diagnostics["was_multi_attempt"] = bool(grading_result["was_multi_attempt"])
         diagnostics["n_repetitions_detected"] = int(grading_result["n_repetitions_detected"])
+        diagnostics["feedback_version"] = eval_result["feedback_version"]
 
         logger.info(
             "[GLOSS][INFERENCE] recognition completed | target=%s | predicted=%s | confidence=%.4f "
