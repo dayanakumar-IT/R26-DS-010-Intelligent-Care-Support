@@ -3,15 +3,18 @@
 //   node ../../frontend/node_modules/vite/bin/vite.js --config scripts/avatar/preview/vite.config.mjs
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../../../../..");
 const MODULE = path.join(REPO, "frontend/src/modules/sign-vitals").replaceAll("\\", "/");
+// The app's own Tailwind setup, so harness pages look like the app (styles.css).
+const { default: tailwindcss } = await import(pathToFileURL(path.join(REPO, "frontend/node_modules/@tailwindcss/vite/dist/index.mjs")).href);
 
 export default {
   root: HERE,
   publicDir: false,
+  plugins: [tailwindcss()],
   css: { postcss: {} }, // don't search parent folders for a PostCSS config
   cacheDir: path.join(os.tmpdir(), "gloss-avatar-preview-vite"),
   define: { __MODULE_DIR__: JSON.stringify(MODULE) },

@@ -47,11 +47,8 @@ const errors = await session({}, async (c) => {
   const p1 = await shotHash(c); await c.sleep(400); const p2 = await shotHash(c);
   check("pause holds the frame", p1 === p2 && (await buttons(c)).includes("Play"));
 
-  await click(c, "Mirror");
-  await c.sleep(100);
-  check("mirror flips the view and shows the label",
-    await c.evaluate("document.body.textContent.includes('Mirrored view') && document.querySelector('[aria-roledescription=\"3D view\"]').style.transform === 'scaleX(-1)'"));
-  await click(c, "Mirror");
+  check("real view (mirrorView=false) is not flipped",
+    await c.evaluate("document.querySelector('[aria-roledescription=\"3D view\"]').style.transform === ''"));
 
   await c.evaluate("[...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === '0.5 times speed').click()");
   await c.sleep(50);
@@ -91,6 +88,12 @@ const errors = await session({}, async (c) => {
   await c.sleep(200);
   check("unmount removes the canvas and frees the WebGL context",
     await c.evaluate("!document.querySelector('canvas') && window.__gl.isContextLost()"));
+
+  await c.evaluate("window.__mount('hello', true)");
+  await c.waitFor("!!document.querySelector('canvas')");
+  check("mirror view (shared setting) flips the 3D view, display only",
+    await c.evaluate("document.querySelector('[aria-roledescription=\"3D view\"]').style.transform === 'scaleX(-1)' && document.body.textContent.includes(\"signer's right hand is on your right\")"));
+  await c.evaluate("window.__unmount()");
 
   await c.evaluate("window.__mount('not_a_sign')");
   await c.sleep(500);

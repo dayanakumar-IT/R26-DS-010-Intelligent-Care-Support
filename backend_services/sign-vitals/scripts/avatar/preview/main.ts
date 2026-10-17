@@ -31,6 +31,8 @@ async function setup() {
     };
     video.onerror = () => res(); // no video: avatar only
   });
+  // ?mirror=1: mirror view, flipped for display only (as the app does).
+  if (params.get("mirror") === "1") for (const id of ["avatar", "video"]) document.getElementById(id)!.style.transform = "scaleX(-1)";
   document.getElementById("caption")!.textContent =
     `${sign} · frame ${frame} of ${motion.frames} · ${motion.fps.toFixed(2)} fps · ${motion.source.video_id}` +
     ` · video ${video.duration ? (video.duration * motion.fps).toFixed(1) : "?"} frames long`;
