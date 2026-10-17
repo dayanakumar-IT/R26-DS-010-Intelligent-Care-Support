@@ -1,0 +1,22 @@
+{
+  "model": "Random Forest (300 trees, balanced class weight)",
+  "n_features": 18,
+  "test_n": 578,
+  "accuracy": 0.9792387543252595,
+  "macro_f1": 0.972507610350076,
+  "fall_recall": 0.9523809523809523,
+  "fall_precision": 0.9655172413793104,
+  "false_alarm_rate": 0.01160092807424594,
+  "roc_auc": 0.9969537699070347,
+  "confusion_matrix": [
+    [
+      426,
+      5
+    ],
+    [
+      7,
+      140
+    ]
+  ],
+  "classification_report": "              precision    recall  f1-score   support\n\n      NORMAL       0.98      0.99      0.99       431\n        FALL       0.97      0.95      0.96       147\n\n    accuracy                           0.98       578\n   macro avg       0.97      0.97      0.97       578\nweighted avg       0.98      0.98      0.98       578\n"
+}

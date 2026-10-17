@@ -54,8 +54,26 @@
     return { session: data.session, profile }
   }
 
+  const LOGOUT_TIMEOUT_MS = 4000
+
   export async function logout(): Promise<void> {
-    await supabase.auth.signOut()
+    // supabase-js only clears the local session AFTER its network call to
+    // revoke the token server-side completes (confirmed against
+    // GoTrueClient's _signOut implementation) — if that call hangs, callers
+    // awaiting logout() would hang too, and a "Log out" button would never
+    // navigate anywhere. Race it against a timeout so this never blocks
+    // indefinitely; the real signOut() keeps running in the background and
+    // will still clear local state whenever it does resolve.
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((resolve) => setTimeout(resolve, LOGOUT_TIMEOUT_MS)),
+      ])
+    } catch {
+      // Whatever went wrong server-side, the caller should still be able to
+      // leave — logging out is not something that should be able to "fail"
+      // from the user's perspective.
+    }
   }
 
   export async function getStoredUser(): Promise<User | null> {

@@ -1,0 +1,78 @@
+.status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.chartContainer {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.historyControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.rangeToggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.rangeButton {
+  padding: 5px 10px;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 160ms ease), color var(--transition-fast, 160ms ease);
+}
+
+.rangeButton:hover {
+  color: #111827;
+}
+
+.rangeButtonActive,
+.rangeButtonActive:hover {
+  background: var(--surface);
+  color: var(--brand-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.overlayToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 160ms ease), color var(--transition-fast, 160ms ease), background-color var(--transition-fast, 160ms ease);
+}
+
+.overlayToggle:hover {
+  color: #111827;
+}
+
+.overlayToggleActive {
+  border-color: var(--brand-accent);
+  color: var(--brand-accent);
+  background: rgba(20, 184, 166, 0.08);
+}

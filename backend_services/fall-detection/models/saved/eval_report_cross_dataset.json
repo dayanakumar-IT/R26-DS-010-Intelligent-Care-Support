@@ -1,0 +1,44 @@
+{
+  "ST-GCN only": {
+    "confusion_matrix": [
+      [
+        0,
+        40
+      ],
+      [
+        0,
+        30
+      ]
+    ],
+    "roc_auc": 0.5,
+    "pr_auc": 0.42857142857142855
+  },
+  "Feature-only classifier": {
+    "confusion_matrix": [
+      [
+        30,
+        10
+      ],
+      [
+        29,
+        1
+      ]
+    ],
+    "roc_auc": 0.185,
+    "pr_auc": 0.29251664276233713
+  },
+  "Fusion (ST-GCN + features)": {
+    "confusion_matrix": [
+      [
+        19,
+        21
+      ],
+      [
+        19,
+        11
+      ]
+    ],
+    "roc_auc": 0.41000000000000003,
+    "pr_auc": 0.36736544997248405
+  }
+}

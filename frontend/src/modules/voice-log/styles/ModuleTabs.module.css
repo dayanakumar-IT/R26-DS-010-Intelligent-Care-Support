@@ -1,0 +1,41 @@
+.tabRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--brand-blue);
+}
+
+.tabActive {
+  border-bottom-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
+.panel {
+  margin-top: 24px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}

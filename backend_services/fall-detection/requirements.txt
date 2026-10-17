@@ -1,0 +1,36 @@
+# Core
+numpy>=1.26,<2.0
+scikit-learn>=1.4,<1.6
+joblib>=1.3
+pandas>=2.1
+
+# Deep learning
+torch>=2.2,<2.5
+
+# Edge inference (live MediaPipe loop)
+mediapipe>=0.10
+opencv-python>=4.9
+
+# API + WebSocket
+fastapi>=0.110
+uvicorn[standard]>=0.27
+websockets>=12
+pydantic>=2.6
+
+# Database
+supabase>=2.0
+
+# Environment variables
+python-dotenv>=1.0
+
+# Audio alerts
+sounddevice>=0.4
+
+# File upload support
+python-multipart>=0.0.9
+
+# Cloudflare R2 / AWS S3
+boto3>=1.34
+
+# Utilities
+matplotlib>=3.8

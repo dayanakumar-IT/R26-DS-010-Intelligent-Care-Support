@@ -1,0 +1,18 @@
+{
+  "split": "subject_disjoint",
+  "accuracy": 0.9647435897435898,
+  "macro_f1": 0.9519482519636531,
+  "fall_recall": 0.8974358974358975,
+  "false_alarm_rate": 0.01282051282051282,
+  "roc_auc": 0.9881930747315363,
+  "confusion_matrix": [
+    [
+      231,
+      3
+    ],
+    [
+      8,
+      70
+    ]
+  ]
+}

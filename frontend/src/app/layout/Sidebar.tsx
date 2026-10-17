@@ -21,6 +21,7 @@ export default function Sidebar() {
   const navigateTo = useNavigate()
   const [user, setUser] = useState<User | null>(null)
   const [collapsed, setCollapsed] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -35,8 +36,13 @@ export default function Sidebar() {
   }, [])
 
   const handleLogout = async () => {
-    await logout()
-    navigateTo('/login', { replace: true })
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      navigateTo('/login', { replace: true })
+    }
   }
 
   return (
@@ -105,10 +111,11 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={handleLogout}
+          disabled={loggingOut}
           className={cx(styles.navLink, styles.logoutLink, collapsed && styles.navLinkCollapsed)}
         >
           <Icon name="logout" size={18} />
-          {!collapsed && <span>Log out</span>}
+          {!collapsed && <span>{loggingOut ? 'Logging out…' : 'Log out'}</span>}
         </button>
       </div>
 

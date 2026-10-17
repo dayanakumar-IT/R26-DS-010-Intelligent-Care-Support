@@ -1,0 +1,24 @@
+# SCRIBE (voice-log) — requires Python 3.11 (team standard)
+# Install PyTorch CPU first (see README in repo or run setup below):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+supabase>=2.10.0
+boto3>=1.35.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+numpy>=1.26.0
+librosa>=0.10.2
+soundfile>=0.12.1
+transformers>=4.46.0
+peft>=0.13.0
+accelerate>=1.1.0
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+language-tool-python>=2.8.0
+gTTS>=2.5.0
+httpx>=0.27.0
+openpyxl>=3.1.0
+reportlab>=4.0.0

@@ -1,0 +1,26 @@
+# SCRIBE protected vocabulary — medications and facility foods.
+# LanguageTool must not "correct" these terms (see grammar.py).
+
+# Medications (care home formulary)
+Metformin
+Losartan
+Atova
+Aspirin
+Sindopa
+Glyco
+Omez
+Empa
+Sita
+Paracetamol
+Amlodipine
+Omeprazole
+Atorvastatin
+
+# Sri Lankan / facility foods
+Kiribath
+string hoppers
+thosa
+rotty
+pittu
+kadala
+kawpi
