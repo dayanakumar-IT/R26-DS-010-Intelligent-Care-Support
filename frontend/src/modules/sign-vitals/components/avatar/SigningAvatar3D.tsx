@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FlipHorizontal2, LocateFixed, Pause, Play, RotateCcw } from 'lucide-react'
+import { LocateFixed, Pause, Play, RotateCcw } from 'lucide-react'
 import * as THREE from 'three'
 import skeletonJson from '../../assets/motion/standard_skeleton.json'
 import { AvatarStage } from './avatarStage'
@@ -30,6 +30,13 @@ export interface SigningAvatar3DProps {
   loop?: boolean
   onUnavailable?: (reason: string) => void
   /**
+   * Shared Mirror view setting (mirrorView.ts). The character faces the
+   * viewer, so the plain render is the real view; mirror view flips it.
+   */
+  mirrorView?: boolean
+  /** Small preview (e.g. the Recommended next card): the view only, no controls or captions. */
+  compact?: boolean
+  /**
    * Review page: show this already-loaded motion at this frame (the video
    * is the clock). No player controls and no trim.
    */
@@ -51,6 +58,8 @@ export default function SigningAvatar3D({
   autoplay = true,
   loop = true,
   onUnavailable,
+  mirrorView = false,
+  compact = false,
   review,
 }: SigningAvatar3DProps) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -67,7 +76,6 @@ export default function SigningAvatar3D({
   const [failure, setFailure] = useState<string | null>(null)
   const [playing, setPlaying] = useState(() => autoplay && !prefersReducedMotion())
   const [rate, setRate] = useState<number>(1)
-  const [mirrored, setMirrored] = useState(false)
   const [replayToken, setReplayToken] = useState(0)
 
   const reviewMotion = review?.motion
@@ -178,7 +186,7 @@ export default function SigningAvatar3D({
 
   // Limited view turning: drag, or arrow keys when the view has focus.
   // The mirror is a CSS flip, so horizontal drags are flipped back.
-  const turn = (dx: number, dy: number) => stageRef.current?.turn(mirrored ? dx : -dx, dy)
+  const turn = (dx: number, dy: number) => stageRef.current?.turn(mirrorView ? dx : -dx, dy)
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = { x: e.clientX, y: e.clientY }
@@ -208,10 +216,10 @@ export default function SigningAvatar3D({
   if (failure && onUnavailable) return null
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${compact ? 'h-full' : ''}`}>
       <div
         className="relative w-full overflow-hidden rounded-[var(--radius-md)] bg-[#eef2f6]"
-        style={{ aspectRatio: '4 / 3', maxHeight: 420 }}
+        style={compact ? { height: '100%' } : { aspectRatio: '4 / 3', maxHeight: 420 }}
       >
         <div
           ref={hostRef}
@@ -225,13 +233,8 @@ export default function SigningAvatar3D({
           onPointerCancel={onPointerUp}
           onKeyDown={onKeyDown}
           className="h-full w-full cursor-grab focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--brand-blue)] active:cursor-grabbing"
-          style={{ width: '100%', height: '100%', transform: mirrored ? 'scaleX(-1)' : undefined, touchAction: 'pan-y' }}
+          style={{ width: '100%', height: '100%', transform: mirrorView ? 'scaleX(-1)' : undefined, touchAction: 'pan-y' }}
         />
-        {mirrored && (
-          <span className="absolute left-3 top-3 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-            Mirrored view
-          </span>
-        )}
         {!motion && !failure && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
             Loading 3D signer…
@@ -244,14 +247,16 @@ export default function SigningAvatar3D({
         )}
       </div>
 
-      <p className="text-center text-xs text-slate-500">
-        3D demonstration generated from a reference signer&apos;s video.
-      </p>
+      {!compact && (
+        <p className="text-center text-xs text-slate-500">
+          3D demonstration generated from a reference signer&apos;s video.
+        </p>
+      )}
 
-      {!review && (
+      {!review && !compact && (
         <>
           <p className="text-center text-[11px] text-slate-400">
-            {mirrored
+            {mirrorView
               ? "Mirrored: the signer's right hand is on your right, like a mirror."
               : "Facing you: the signer's right hand is on your left."}
           </p>
@@ -263,15 +268,6 @@ export default function SigningAvatar3D({
             <button type="button" onClick={replay} className={btn} disabled={!motion}>
               <RotateCcw size={14} aria-hidden />
               Replay
-            </button>
-            <button
-              type="button"
-              onClick={() => setMirrored((m) => !m)}
-              aria-pressed={mirrored}
-              className={`${btn} ${mirrored ? 'border-[var(--brand-blue)] bg-blue-50 text-[var(--brand-blue)]' : ''}`}
-            >
-              <FlipHorizontal2 size={14} aria-hidden />
-              Mirror
             </button>
             <button type="button" onClick={() => stageRef.current?.resetView()} className={btn}>
               <LocateFixed size={14} aria-hidden />

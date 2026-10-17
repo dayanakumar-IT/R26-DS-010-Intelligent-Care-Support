@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FlipHorizontal2, Pause, Play, RotateCcw } from 'lucide-react'
+import { Pause, Play, RotateCcw } from 'lucide-react'
 import type { GlossLandmark, GlossReferenceFrame } from '../../types/gloss'
 import { computePlaybackPosition, interpolateFrame } from './avatarAnimation'
 
@@ -26,7 +26,10 @@ import { computePlaybackPosition, interpolateFrame } from './avatarAnimation'
  *    a legend below (never colour alone). No floating on-canvas
  *    labels — a hand that isn't used in a sign is simply not drawn.
  *
- * Mirror is display-only (an SVG transform); stored coordinates are
+ * View side: the normalized reference data is already a mirror view (the
+ * normalization turns the shoulder line by ~180°, which with the y flip
+ * below shows the signer's right hand on the viewer's right). Real view
+ * flips it back. Display only (an SVG transform); stored coordinates are
  * never changed and this component feeds nothing into recognition.
  */
 
@@ -36,7 +39,10 @@ export interface SigningAvatar2DProps {
   autoplay?: boolean
   loop?: boolean
   playbackRate?: number
-  mirrored?: boolean
+  /** Shared Mirror view setting (mirrorView.ts); true = mirror view. */
+  mirrorView?: boolean
+  /** Small preview: the guide only, no legend or controls. */
+  compact?: boolean
 }
 
 const SPEED_OPTIONS = [0.5, 0.75, 1] as const
@@ -244,11 +250,11 @@ export default function SigningAvatar2D({
   autoplay = true,
   loop = true,
   playbackRate: initialPlaybackRate = 1,
-  mirrored: initialMirrored = false,
+  mirrorView = true,
+  compact = false,
 }: SigningAvatar2DProps) {
   const [playing, setPlaying] = useState(autoplay)
   const [playbackRate, setPlaybackRate] = useState<number>(initialPlaybackRate)
-  const [mirrored, setMirrored] = useState(initialMirrored)
   const [resetToken, setResetToken] = useState(0)
   const [displayFrame, setDisplayFrame] = useState<GlossReferenceFrame>(() => frames[0])
 
@@ -349,26 +355,21 @@ export default function SigningAvatar2D({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${compact ? 'h-full' : ''}`}>
       <div
         className="relative w-full overflow-hidden rounded-[var(--radius-md)] p-2"
-        style={{ background: COLORS.panel, minHeight: 220 }}
+        style={{ background: COLORS.panel, minHeight: compact ? 0 : 220, height: compact ? '100%' : undefined }}
       >
-        {mirrored && (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-            Mirrored view
-          </span>
-        )}
         <svg
           role="img"
           aria-label={`${signName} — 2D sign guide`}
           viewBox={`0 0 ${proj.vbWidth} ${VB_HEIGHT}`}
           preserveAspectRatio="xMidYMid meet"
           className="mx-auto block h-auto w-full"
-          style={{ maxHeight: 420 }}
+          style={{ maxHeight: compact ? '100%' : 420, height: compact ? '100%' : undefined }}
         >
           <title>{`${signName} — animated 2D sign guide`}</title>
-          <g transform={mirrored ? `translate(${proj.vbWidth} 0) scale(-1 1)` : undefined}>
+          <g transform={mirrorView ? undefined : `translate(${proj.vbWidth} 0) scale(-1 1)`}>
             {/* ---- body (behind) ---- */}
             {torso && isFinitePoint(lShoulder) && isFinitePoint(rShoulder) && (
               <path
@@ -444,68 +445,59 @@ export default function SigningAvatar2D({
         </svg>
       </div>
 
-      <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: COLORS.left.node }} />
-          Left hand
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: COLORS.right.node }} />
-          Right hand
-        </span>
-      </div>
+      {!compact && (
+        <>
+          <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: COLORS.left.node }} />
+              Left hand
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: COLORS.right.node }} />
+              Right hand
+            </span>
+          </div>
 
-      <p className="text-center text-xs text-slate-400">Reference: {signName}</p>
+          <p className="text-center text-xs text-slate-400">Reference: {signName}</p>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => setPlaying((p) => !p)}
-          className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
-          {playing ? <Pause size={14} /> : <Play size={14} />}
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button
-          type="button"
-          onClick={handleReplay}
-          className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
-          <RotateCcw size={14} />
-          Replay
-        </button>
-        <button
-          type="button"
-          onClick={() => setMirrored((m) => !m)}
-          aria-pressed={mirrored}
-          className={`flex items-center gap-1 rounded-[var(--radius-md)] border px-2.5 py-1.5 text-xs font-medium ${
-            mirrored
-              ? 'border-[var(--brand-blue)] bg-blue-50 text-[var(--brand-blue)]'
-              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <FlipHorizontal2 size={14} />
-          Mirror
-        </button>
-
-        <div className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 p-0.5">
-          {SPEED_OPTIONS.map((speed) => (
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <button
-              key={speed}
               type="button"
-              onClick={() => setPlaybackRate(speed)}
-              aria-pressed={playbackRate === speed}
-              className={`rounded-[var(--radius-sm)] px-2 py-1 text-xs font-medium ${
-                playbackRate === speed
-                  ? 'bg-[var(--brand-blue)] text-white'
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
+              onClick={() => setPlaying((p) => !p)}
+              className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
             >
-              {speed}×
+              {playing ? <Pause size={14} /> : <Play size={14} />}
+              {playing ? 'Pause' : 'Play'}
             </button>
-          ))}
-        </div>
-      </div>
+            <button
+              type="button"
+              onClick={handleReplay}
+              className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <RotateCcw size={14} />
+              Replay
+            </button>
+
+            <div className="flex items-center gap-1 rounded-[var(--radius-md)] border border-slate-200 p-0.5">
+              {SPEED_OPTIONS.map((speed) => (
+                <button
+                  key={speed}
+                  type="button"
+                  onClick={() => setPlaybackRate(speed)}
+                  aria-pressed={playbackRate === speed}
+                  className={`rounded-[var(--radius-sm)] px-2 py-1 text-xs font-medium ${
+                    playbackRate === speed
+                      ? 'bg-[var(--brand-blue)] text-white'
+                      : 'text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  {speed}×
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

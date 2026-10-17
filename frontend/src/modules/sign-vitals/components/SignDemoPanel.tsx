@@ -1,6 +1,8 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { FlipHorizontal2, RotateCcw } from 'lucide-react'
 import SigningAvatar2D from './avatar/SigningAvatar2D'
+import ReferenceVideoPlayer from './ReferenceVideoPlayer'
+import { MIRROR_LABEL, REAL_LABEL, useMirrorView } from './mirrorView'
 import { default3D, offer3D } from './avatar/motionCatalog'
 import { getGlossSignDemoVideo, getGlossSignReference } from '../services/glossApi'
 import type { GlossDemoVideo, GlossSignReference } from '../types/gloss'
@@ -63,6 +65,8 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
   const [retryToken, setRetryToken] = useState(0)
   const [mode, setMode] = useState<ReferenceMode>(() => (default3D(signId) ? '3d' : '2d'))
   const [threeDFailed, setThreeDFailed] = useState(false)
+  // One view side for all three demonstrations (display only).
+  const [mirrorView, setMirrorView] = useMirrorView()
   const show3DTab = offer3D(signId) && !threeDFailed
   const fallBackTo2D = () => {
     setThreeDFailed(true)
@@ -192,6 +196,18 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
         )}
       </div>
 
+      <button
+        type="button"
+        role="switch"
+        aria-checked={mirrorView}
+        onClick={() => setMirrorView(!mirrorView)}
+        className={`flex items-center gap-2 self-start rounded-[var(--radius-md)] border px-2.5 py-1.5 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-blue)] ${
+          mirrorView ? 'border-[var(--brand-blue)] bg-blue-50 text-[var(--brand-blue)]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+        }`}
+      >
+        <FlipHorizontal2 size={14} aria-hidden />
+        {mirrorView ? MIRROR_LABEL : REAL_LABEL}
+      </button>
       {threeDFailed && mode === '2d' && (
         <p className="text-xs text-slate-500">The 3D Signer isn't available on this device, so the 2D Sign Guide is shown.</p>
       )}
@@ -210,23 +226,18 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
               signId={signId}
               signName={signDisplayName ?? reference?.display_name ?? signId}
               onUnavailable={fallBackTo2D}
+              mirrorView={mirrorView}
             />
           </Suspense>
         </LoadBoundary>
       ) : mode === 'video' ? (
         videoState.status === 'ready' ? (
-          <video
+          <ReferenceVideoPlayer
             key={videoState.video.video_url}
             src={videoState.video.video_url}
-            controls
-            playsInline
-            preload="metadata"
-            // The <video> only mounts once videoState is 'ready', so the
-            // "Loading…" text is already gone before onLoadedMetadata /
-            // onCanPlay would fire — no state change needed there. onError
-            // is the only handler that moves the machine (-> 'error').
+            signName={signDisplayName ?? reference?.display_name ?? signId}
+            mirrorView={mirrorView}
             onError={() => setVideoState({ status: 'error' })}
-            className="aspect-video w-full rounded-[var(--radius-md)] bg-black"
           />
         ) : videoState.status === 'error' ? (
           <div className="flex aspect-video w-full flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] border border-dashed border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-600">
@@ -259,6 +270,7 @@ export default function SignDemoPanel({ signId, signDisplayName }: SignDemoPanel
             signName={signDisplayName ?? reference.display_name}
             autoplay
             loop
+            mirrorView={mirrorView}
           />
         )
       )}
