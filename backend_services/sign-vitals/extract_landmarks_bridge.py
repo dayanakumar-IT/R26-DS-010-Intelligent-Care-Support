@@ -11,9 +11,11 @@ This module itself imports only numpy/stdlib — it is safe to import
 from the main .venv without mediapipe installed.
 """
 
+import json
 import os
 import subprocess
 import tempfile
+import time
 
 import numpy as np
 
@@ -52,12 +54,31 @@ def _find_mediapipe_python() -> str:
     )
 
 
+def _stage_timings(stdout: str, launched: float, returned: float) -> dict:
+    """Split the subprocess time using the worker's TIMINGS line (ms)."""
+    for line in stdout.splitlines():
+        if line.startswith("TIMINGS "):
+            m = json.loads(line[len("TIMINGS "):])
+            ms = lambda a, b: round((b - a) * 1000, 1)  # noqa: E731
+            return {
+                "process_start_ms": ms(launched, m["start"]),
+                "imports_ms": ms(m["start"], m["imported"]),
+                "model_load_ms": ms(m["imported"], m["model_loaded"]),
+                "frames_ms": ms(m["model_loaded"], m["frames_done"]),
+                "save_ms": ms(m["frames_done"], m["saved"]),
+                "process_exit_ms": ms(m["saved"], returned),
+                "frames": m["frames"],
+            }
+    return {}
+
+
 def extract_landmarks_via_subprocess(
-    video_path: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
+    video_path: str, timeout: float = DEFAULT_TIMEOUT_SECONDS, timings: dict | None = None
 ) -> np.ndarray:
     """
     Runs extract_landmarks_worker.py under .venv_mediapipe to extract
     raw landmarks from video_path, and returns the resulting array.
+    If `timings` is given, it is filled with the subprocess stage times.
 
     Returns: np.ndarray of shape (T, 49, 3).
     Raises: FileNotFoundError, ValueError, RuntimeError, or
@@ -75,12 +96,15 @@ def extract_landmarks_via_subprocess(
     os.close(fd)
 
     try:
+        launched = time.time()
         result = subprocess.run(
             [mediapipe_python, WORKER_SCRIPT, video_path, output_path],
             capture_output=True,
             text=True,
             timeout=timeout,
         )
+        if timings is not None:
+            timings.update(_stage_timings(result.stdout, launched, time.time()))
 
         if result.returncode == 2:
             raise NoLandmarksExtractedError(

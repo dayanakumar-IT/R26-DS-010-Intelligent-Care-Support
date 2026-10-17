@@ -23,11 +23,18 @@ Exit codes:
     2  no landmarks could be extracted from the video
 """
 
-import sys
+import time
 
-import numpy as np
+_T_START = time.time()  # first line run: the interpreter is up
 
-from landmark_extraction import extract_landmarks_from_video, make_holistic
+import json  # noqa: E402
+import sys  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from landmark_extraction import extract_landmarks_from_video, make_holistic  # noqa: E402
+
+_T_IMPORTED = time.time()
 
 
 def main():
@@ -41,9 +48,11 @@ def main():
     video_path, output_path = sys.argv[1], sys.argv[2]
 
     holistic = make_holistic()
+    t_model = time.time()
     try:
         raw = extract_landmarks_from_video(video_path, holistic)
     finally:
+        t_frames = time.time()
         holistic.close()
 
     if raw is None:
@@ -52,6 +61,11 @@ def main():
 
     np.save(output_path, raw)
     print(f"Extracted raw landmarks with shape {raw.shape} -> {output_path}")
+    # Wall-clock marks (epoch seconds) for the bridge's stage timings.
+    print("TIMINGS " + json.dumps({
+        "start": _T_START, "imported": _T_IMPORTED, "model_loaded": t_model,
+        "frames_done": t_frames, "saved": time.time(), "frames": int(raw.shape[0]),
+    }))
 
 
 if __name__ == "__main__":
