@@ -175,6 +175,7 @@ with `water.mp4`, `pain.mp4`, `afternoon.mp4` and `please.mp4` sign clips):
 | `Could not find the .venv_mediapipe Python interpreter` | Step 3: `.venv_mediapipe` must be inside `backend_services\sign-vitals`. |
 | `/health` shows a fingerprint mismatch | A file in `gloss_assets/` changed (e.g. line endings). Re-checkout it: `git checkout -- gloss_assets`. |
 | Attempts take much longer than ~5–8 s | Check the start-up log says `unthrottled=True` (Windows power throttling slows background processes 3–4x while the browser is in front). Close other heavy programs (MediaPipe is CPU-bound, ~50 ms per frame); keep the backend running between attempts (the worker loads once). |
+| App says "Couldn't reach the Sign & Vitals server" | The backend is not running on 8009, or the frontend runs on a port other than 5173/5174: add its address to `GLOSS_CORS_ORIGINS` in `.env` and restart the backend. |
 | Reference Video says "not available" | R2 keys missing in `.env` (optional); the 2D guide and 3D Signer still work. |
 | "This feature needs the GLOSS database migrations…" | Apply the migrations in step 5. |
 | Camera hand guide missing (only a faint face oval) | The browser is too slow for the live hand guide or has no GPU; practice and grading are unaffected. |

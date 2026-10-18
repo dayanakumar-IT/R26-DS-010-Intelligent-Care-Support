@@ -306,14 +306,17 @@ async def json_errors(request: Request, call_next):
 # than this API (localhost:8000), so the browser blocks fetch() calls here
 # without CORS headers — that's what surfaces as "Failed to fetch" in the
 # frontend. Allow the common local Vite ports on both localhost and 127.0.0.1.
+# GLOSS_CORS_ORIGINS (optional, comma-separated) adds other frontend
+# addresses, e.g. the combined CareSense app on another port or host.
+_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+] + [o.strip() for o in os.environ.get("GLOSS_CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
