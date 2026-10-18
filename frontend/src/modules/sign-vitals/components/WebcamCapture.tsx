@@ -53,7 +53,7 @@ export default function WebcamCapture({ onRecorded, onCameraError, countdownSeco
   const timersRef = useRef<number[]>([])
   useEffect(() => () => timersRef.current.forEach((t) => window.clearTimeout(t)), [])
   // Live hand landmarks on the preview: display only (see useHandOverlay).
-  const hands = useHandOverlay(videoRef, overlayRef, cameraReady)
+  const hands = useHandOverlay(videoRef, overlayRef, cameraReady, isRecording)
   const chip = CHIP[hands]
 
   useEffect(() => {

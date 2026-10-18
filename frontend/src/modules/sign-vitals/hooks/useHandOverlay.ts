@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import type { HandLandmarker, NormalizedLandmark } from '@mediapipe/tasks-vision'
 // MediaPipe tasks-vision 0.10.14 (same version as the backend's MediaPipe),
 // kept in the module so the app works without a CDN.
@@ -15,13 +15,20 @@ import handModelPath from '../assets/mediapipe/hand_landmarker.task?url'
  * (WebcamCapture) and the backend extracts its own landmarks.
  *
  * status: 'loading' until the model is ready; 'visible' / 'not-visible'
- * while running; 'off' if it could not load or runs too slowly on this
- * device (the caller then shows only the simple face guide).
+ * while running; 'off' if it could not load, is unusably slow on this device
+ * before recording starts, or the viewer switched it off (localStorage
+ * 'gloss-hand-guide' = 'off'). The caller then shows a faint face guide.
+ *
+ * Speed: detection runs on about every 3rd camera frame (~10 a second) and
+ * backs off further when it is slow, so the recording keeps its frame rate.
+ * It never switches itself off during a recording (that made the landmarks
+ * disappear in Check my sign as soon as recording started).
  */
 export type HandOverlayStatus = 'loading' | 'visible' | 'not-visible' | 'off'
 
-const FRAME_INTERVAL_MS = 100 // 10 checks a second is plenty for a guide
-const TOO_SLOW_MS = 60 // average detection time above this -> not smooth, turn off
+const BASE_INTERVAL_MS = 100 // ~every 3rd frame at 30 fps
+const MAX_INTERVAL_MS = 400 // slowest back-off (2-3 checks a second)
+const UNUSABLE_MS = 250 // before recording: slower than this per check -> face guide only
 const SETTLE_MS = 400 // a status must hold this long before the chip changes
 const WARMUP_CHECKS = 10
 const EDGE = 0.02 // a hand touching the frame edge counts as "not in view"
@@ -64,6 +71,15 @@ function draw(canvas: HTMLCanvasElement, hands: NormalizedLandmark[][]) {
   }
 }
 
+/** The viewer switched the hand guide off on this browser (or storage is unavailable: on). */
+export function handGuideSwitchedOff(): boolean {
+  try {
+    return localStorage.getItem('gloss-hand-guide') === 'off'
+  } catch {
+    return false
+  }
+}
+
 async function createLandmarker(): Promise<HandLandmarker> {
   const { HandLandmarker } = await import('@mediapipe/tasks-vision')
   const fileset = { wasmLoaderPath, wasmBinaryPath }
@@ -83,11 +99,18 @@ export function useHandOverlay(
   videoRef: RefObject<HTMLVideoElement | null>,
   canvasRef: RefObject<HTMLCanvasElement | null>,
   enabled: boolean,
+  recording = false,
 ): HandOverlayStatus {
   const [status, setStatus] = useState<HandOverlayStatus>('loading')
+  const switchedOff = handGuideSwitchedOff()
+  // Read inside the loop without restarting it.
+  const recordingRef = useRef(recording)
+  useEffect(() => {
+    recordingRef.current = recording
+  }, [recording])
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || switchedOff) return
     let stopped = false
     let landmarker: HandLandmarker | null = null
     let raf = 0
@@ -95,6 +118,7 @@ export function useHandOverlay(
     let lastVideoTime = -1
     const durations: number[] = []
     let checks = 0
+    let interval = BASE_INTERVAL_MS
     let shown: HandOverlayStatus = 'loading'
     let candidate: HandOverlayStatus = 'loading'
     let candidateSince = 0
@@ -113,7 +137,7 @@ export function useHandOverlay(
       raf = requestAnimationFrame(tick)
       const video = videoRef.current
       const canvas = canvasRef.current
-      if (!landmarker || !video || !canvas || video.readyState < 2 || now - last < FRAME_INTERVAL_MS) return
+      if (!landmarker || !video || !canvas || video.readyState < 2 || now - last < interval) return
       if (video.currentTime === lastVideoTime) return
       last = now
       lastVideoTime = video.currentTime
@@ -133,10 +157,11 @@ export function useHandOverlay(
       // The first checks compile GPU shaders and are slow: judge after them.
       if (checks > WARMUP_CHECKS) durations.push(performance.now() - t0)
       if (durations.length > 30) durations.shift()
-      // Judge smoothness after a short warm-up (the first calls are slow).
-      const avg = durations.reduce((a, b) => a + b, 0) / durations.length
-      if (durations.length === 30 && checks === WARMUP_CHECKS + 30) console.debug(`[GLOSS] hand guide: ${Math.round(avg)} ms per check`)
-      if (durations.length === 30 && avg > TOO_SLOW_MS) {
+      const avg = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0
+      if (checks === WARMUP_CHECKS + 30) console.debug(`[GLOSS] hand guide: ${Math.round(avg)} ms per check`)
+      // Back off when detection is slow (keeps the page and the recording smooth).
+      interval = Math.min(MAX_INTERVAL_MS, Math.max(BASE_INTERVAL_MS, avg * 2.5))
+      if (durations.length >= 20 && avg > UNUSABLE_MS && !recordingRef.current) {
         turnOff(`too slow on this device (${Math.round(avg)} ms per check)`)
         return
       }
@@ -170,7 +195,7 @@ export function useHandOverlay(
       cancelAnimationFrame(raf)
       landmarker?.close()
     }
-  }, [enabled, videoRef, canvasRef])
+  }, [enabled, switchedOff, videoRef, canvasRef])
 
-  return enabled ? status : 'off'
+  return enabled && !switchedOff ? status : 'off'
 }

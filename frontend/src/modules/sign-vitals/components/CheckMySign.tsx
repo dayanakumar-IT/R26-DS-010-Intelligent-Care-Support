@@ -102,37 +102,38 @@ export default function CheckMySign({ sessionId, onSession, onPractise }: CheckM
       )}
 
       {state === 'result' && result && (
-        <div className="flex flex-col gap-4">
-          {result.outcome === 'free_match' && (
-            <p className="text-2xl font-bold text-slate-900">This looks like {upper(result.suggestions[0].sign_id)}</p>
-          )}
-          {result.outcome === 'free_maybe' && (
-            <div className="flex flex-col gap-2">
-              <p className="text-2xl font-bold text-slate-900">
-                Maybe {result.suggestions.map((s) => upper(s.sign_id)).join(' or ')}
-              </p>
-              {/* With no sign shown yet, "Check another sign" sits in this row too. */}
-              <div className="flex flex-wrap gap-3">
-                {result.suggestions.map((s) => (
-                  <Button key={s.sign_id} variant={shown === s.sign_id ? 'primary' : 'secondary'} onClick={() => setShown(s.sign_id)}>
-                    Show me {s.sign_id.replace(/_/g, ' ')}
-                  </Button>
-                ))}
-                {!shown && checkAnother}
+        // Result title and buttons on the left; the demonstration (same size
+        // as the practice screen's box, at most 460 px wide) on the right, so
+        // everything fits on screen without scrolling.
+        <div className={`grid items-start gap-6 ${shown ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)]' : ''}`}>
+          <div className="flex flex-col gap-4">
+            {result.outcome === 'free_match' && (
+              <p className="text-2xl font-bold text-slate-900">This looks like {upper(result.suggestions[0].sign_id)}</p>
+            )}
+            {result.outcome === 'free_maybe' && (
+              <div className="flex flex-col gap-2">
+                <p className="text-2xl font-bold text-slate-900">
+                  Maybe {result.suggestions.map((s) => upper(s.sign_id)).join(' or ')}
+                </p>
+                {/* With no sign shown yet, "Check another sign" sits in this row too. */}
+                <div className="flex flex-wrap gap-3">
+                  {result.suggestions.map((s) => (
+                    <Button key={s.sign_id} variant={shown === s.sign_id ? 'primary' : 'secondary'} onClick={() => setShown(s.sign_id)}>
+                      Show me {s.sign_id.replace(/_/g, ' ')}
+                    </Button>
+                  ))}
+                  {!shown && checkAnother}
+                </div>
               </div>
-            </div>
-          )}
-          {(result.outcome === 'free_no_match' || result.outcome === 'capture_rejected') && (
-            <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-lg font-semibold text-slate-900">I couldn&apos;t match that to the 59 signs I know</p>
-              {tip && <p className="text-sm text-amber-900">{tip}</p>}
-              {!tip && result.outcome === 'capture_rejected' && <p className="text-sm text-slate-600">{result.message}</p>}
-            </div>
-          )}
-
-          {shown && (
-            <div className="flex flex-col gap-3">
-              <SignDemoPanel key={shown} signId={shown} signDisplayName={shown.replace(/_/g, ' ')} />
+            )}
+            {(result.outcome === 'free_no_match' || result.outcome === 'capture_rejected') && (
+              <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-lg font-semibold text-slate-900">I couldn&apos;t match that to the 59 signs I know</p>
+                {tip && <p className="text-sm text-amber-900">{tip}</p>}
+                {!tip && result.outcome === 'capture_rejected' && <p className="text-sm text-slate-600">{result.message}</p>}
+              </div>
+            )}
+            {shown && (
               <div className="flex flex-wrap gap-3">
                 <Button onClick={() => onPractise(shown)}>
                   <Video size={16} />
@@ -140,10 +141,10 @@ export default function CheckMySign({ sessionId, onSession, onPractise }: CheckM
                 </Button>
                 {checkAnother}
               </div>
-            </div>
-          )}
-
-          {!shown && result.outcome !== 'free_maybe' && <div className="flex flex-wrap gap-3">{checkAnother}</div>}
+            )}
+            {!shown && result.outcome !== 'free_maybe' && <div className="flex flex-wrap gap-3">{checkAnother}</div>}
+          </div>
+          {shown && <SignDemoPanel key={shown} signId={shown} signDisplayName={shown.replace(/_/g, ' ')} />}
         </div>
       )}
     </div>

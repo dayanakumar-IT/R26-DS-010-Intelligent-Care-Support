@@ -224,7 +224,12 @@ export default function SignLanguage() {
 
   // Reuse of the exact sign-selection behaviour already used by the
   // Browse tab's onSelect — no new practice logic.
+  // Bumped whenever the learner picks a sign, so a recommendation that
+  // arrives later never replaces their choice.
+  const pickRef = useRef(0)
+
   const selectSign = useCallback((signId: string) => {
+    pickRef.current += 1
     setTargetSignId(signId)
     setPickedByUser(true)
     setRecordedBlob(null)
@@ -243,6 +248,7 @@ export default function SignLanguage() {
   // screen for that sign (the camera prompt is skipped; if the camera is
   // blocked the usual camera-denied screen with the quiz appears).
   const practiseNow = useCallback((signId: string) => {
+    pickRef.current += 1
     setTargetSignId(signId)
     setPickedByUser(true)
     setRecordedBlob(null)
@@ -253,13 +259,16 @@ export default function SignLanguage() {
   const loadRecommendedSign = useCallback(async () => {
     setStage('loading')
     setErrorMessage(null)
+    const pick = pickRef.current
     try {
       const { next_recommended_sign_id: signId } = await getNextGlossLesson()
+      if (pick !== pickRef.current) return // the learner chose a sign meanwhile
       setTargetSignId(signId)
       setPickedByUser(false)
       setRecordedBlob(null)
       setStage('ready')
     } catch (error) {
+      if (pick !== pickRef.current) return
       setErrorMessage(error instanceof Error ? error.message : 'Could not load a recommended sign.')
       setStage('error')
     }
@@ -654,6 +663,7 @@ export default function SignLanguage() {
             signs={allSigns}
             mastery={progress?.mastery_summary ?? []}
             onSelect={(signId) => {
+              pickRef.current += 1
               setTargetSignId(signId)
               setPickedByUser(true)
               setRecordedBlob(null)

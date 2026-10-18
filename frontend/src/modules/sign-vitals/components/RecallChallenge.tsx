@@ -113,17 +113,27 @@ export default function RecallChallenge({ allSigns, sessionId, onSession, onAtte
       {stage === 'error' && (
         <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
           <p>{message}</p>
-          <Button variant="secondary" onClick={next} className="self-start">Try again</Button>
+          <div className="flex flex-wrap gap-3">
+            {sign && <Button onClick={() => setStage('word')}>Try this word again</Button>}
+            <Button variant="secondary" onClick={next}>New word</Button>
+          </div>
         </div>
       )}
 
       {(stage === 'word' || stage === 'retake') && sign && (
-        <div className="grid gap-4 lg:grid-cols-[0.8fr_1fr]">
-          <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-[#c7d2fe] bg-[#eef2ff] p-8 text-center">
-            <span className="text-sm font-semibold uppercase tracking-wide text-[#4338ca]">Sign this word</span>
-            <span className="text-5xl font-bold capitalize text-slate-900">{word}</span>
+        // Equal columns: the word box is 4:3 under a header row of the same
+        // height as the camera's status row, so both boxes line up top and bottom.
+        <div className="grid items-start gap-6 xl:grid-cols-2">
+          <div className="flex flex-col gap-3">
+            <div className="flex min-h-10 items-center">
+              <span className="text-sm font-semibold uppercase tracking-wide text-[#4338ca]">Sign this word</span>
+            </div>
+            <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border border-[#c7d2fe] bg-[#eef2ff] p-6 text-center">
+              <span className="break-words text-4xl font-bold capitalize text-slate-900">{word}</span>
+              <span className="text-base text-slate-600">From memory — press Start Recording when ready.</span>
+            </div>
             {stage === 'retake' && (
-              <p className="mt-2 flex items-start gap-2 text-left text-sm text-amber-900">
+              <p className="flex items-start gap-2 rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 p-3 text-left text-sm text-amber-900">
                 <CameraOff size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
                 {message} This try wasn&apos;t counted.
               </p>
@@ -147,7 +157,9 @@ export default function RecallChallenge({ allSigns, sessionId, onSession, onAtte
       )}
 
       {stage === 'result' && result && sign && (
-        <div className="flex flex-col gap-4">
+        // Feedback on the left, the demonstration (at most 460 px wide, like
+        // the practice screen's box) on the right.
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
           <AttemptFeedbackCard result={result} targetSignId={sign} onPracticeAgain={() => onPractise(sign)} onNextSign={next} nextLabel="Next word" />
           <div className="flex flex-col gap-2">
             <span className="text-sm font-semibold text-slate-700">Compare with the demonstration of &ldquo;{word}&rdquo;</span>
