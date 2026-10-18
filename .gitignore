@@ -13,6 +13,13 @@ Research Paper - Writing/
 "Component Completion.xlsx"
 *.xlsx
 *.xls
+# Personal viva/demo scripts and documents
+Document/
+BUILD_APK.bat
+START_VIVA.bat
+PP1/
+Phase\ 02.zip
+*.zip
 # Node
 node_modules/
 dist/
