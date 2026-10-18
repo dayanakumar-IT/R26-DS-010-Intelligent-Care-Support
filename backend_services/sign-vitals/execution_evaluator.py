@@ -53,7 +53,8 @@ _HANDS = {
 
 
 def feedback_version(explicit: str | None = None) -> str:
-    version = explicit or os.environ.get("GLOSS_FEEDBACK_VERSION", DEFAULT_FEEDBACK_VERSION)
+    # An empty setting (e.g. "GLOSS_FEEDBACK_VERSION=" copied from .env.example) means the default.
+    version = explicit or os.environ.get("GLOSS_FEEDBACK_VERSION") or DEFAULT_FEEDBACK_VERSION
     if version not in FEEDBACK_VERSIONS:
         raise ValueError(f"Unknown feedback version {version!r}; expected one of {FEEDBACK_VERSIONS}")
     return version

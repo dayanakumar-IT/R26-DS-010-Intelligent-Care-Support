@@ -78,6 +78,12 @@ def test_version_setting():
     finally:
         del os.environ["GLOSS_FEEDBACK_VERSION"]
     assert ev.feedback_version() == ev.DEFAULT_FEEDBACK_VERSION == "v2"
+    # "GLOSS_FEEDBACK_VERSION=" (empty, as copied from .env.example) = the default, not an error.
+    os.environ["GLOSS_FEEDBACK_VERSION"] = ""
+    try:
+        assert ev.feedback_version() == "v2"
+    finally:
+        del os.environ["GLOSS_FEEDBACK_VERSION"]
     try:
         ev.feedback_version("v3")
         raise AssertionError("v3 accepted")
