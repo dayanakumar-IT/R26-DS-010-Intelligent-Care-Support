@@ -15,6 +15,7 @@ import os
 import tempfile
 import threading
 import time
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -25,7 +26,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from supabase import create_client
+from db_client import make_client
 
 from attempt_submission import AttemptError, submit_attempt
 from progress_store import MIGRATIONS_NEEDED, schema_ready
@@ -143,7 +144,7 @@ def _check_reference_exemplars() -> dict:
 def _check_supabase() -> dict:
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    supabase = create_client(url, key)
+    supabase = make_client(url, key)
     result = supabase.table("gloss_signs").select("*", count="exact").limit(1).execute()
     state.update(supabase=supabase)
     return {
@@ -193,6 +194,25 @@ _STARTUP_LABELS = {
 }
 
 
+def _attempt_error_status(e: Exception) -> int:
+    return 503 if _is_connection_error(e) else 500
+
+
+def _is_connection_error(e: Exception) -> bool:
+    import httpx
+    from postgrest.exceptions import APIError
+    return isinstance(e, (httpx.HTTPError, APIError, ConnectionError, TimeoutError))
+
+
+def _attempt_error_message(e: Exception, ref: str) -> str:
+    """What the learner sees instead of a bare "Attempt submission failed"."""
+    if _is_connection_error(e):
+        return (f"We couldn't reach the progress database just now, so this attempt may not have been saved. "
+                f"Please try again in a moment. (ref {ref})")
+    return (f"Something went wrong while checking this attempt, so it may not have been saved. "
+            f"Please try again; if it keeps happening, tell your supervisor (ref {ref}).")
+
+
 def _db():
     """The Supabase client. If the startup connection failed (e.g. a
     network blip during boot), connect now instead of failing every
@@ -202,7 +222,7 @@ def _db():
         return client
     logger.warning("[SIGN_VITALS][DB] no startup Supabase connection — reconnecting")
     try:
-        client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+        client = make_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     except Exception as e:
         logger.error("[SIGN_VITALS][DB][ERROR] reconnect failed: %s: %s", type(e).__name__, e)
         raise HTTPException(status_code=503, detail="The database is unreachable right now. Please try again shortly.")
@@ -255,7 +275,7 @@ def _warm_up():
     t0 = time.perf_counter()
     try:
         if state.get("model") is not None:
-            grading.predict_probs(state["model"], np.zeros((60, 441), dtype=np.float32))
+            grading.predict_probs(state["model"], np.zeros((1, 60, 441), dtype=np.float32))
     except Exception:
         logger.exception("[SIGN_VITALS][STARTUP] model warm-up failed (first attempt will build the graph)")
     worker_ok = warm_up_worker()
@@ -590,12 +610,14 @@ async def create_attempt(
         raise HTTPException(status_code=e.status_code, detail=e.detail)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        # A short reference ties what the learner sees to this log line.
+        ref = uuid.uuid4().hex[:8]
         logger.exception(
-            "[GLOSS][ATTEMPT][ERROR] attempt processing failed | caregiver=%s",
-            _short(caregiver_profile_id),
+            "[GLOSS][ATTEMPT][ERROR] attempt processing failed | caregiver=%s | ref=%s",
+            _short(caregiver_profile_id), ref,
         )
-        raise HTTPException(status_code=500, detail="Attempt submission failed")
+        raise HTTPException(status_code=_attempt_error_status(e), detail=_attempt_error_message(e, ref))
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)

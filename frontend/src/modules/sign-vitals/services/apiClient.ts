@@ -15,6 +15,15 @@ async function getAccessToken(): Promise<string> {
   return data.session.access_token
 }
 
+// fetch() rejects only when the server can't be reached at all.
+async function send(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch {
+    throw new Error("Couldn't reach the Sign & Vitals server. Check your connection and try again.")
+  }
+}
+
 async function parseErrorDetail(response: Response, fallback: string): Promise<string> {
   try {
     const body: unknown = await response.json()
@@ -29,7 +38,7 @@ async function parseErrorDetail(response: Response, fallback: string): Promise<s
 
 export async function apiGet<T>(path: string): Promise<T> {
   const token = await getAccessToken()
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await send(`${API_BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!response.ok) {
@@ -40,7 +49,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiPostJson<T>(path: string, body: unknown): Promise<T> {
   const token = await getAccessToken()
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await send(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -56,7 +65,7 @@ export async function apiPostJson<T>(path: string, body: unknown): Promise<T> {
 
 export async function apiPostFormData<T>(path: string, formData: FormData): Promise<T> {
   const token = await getAccessToken()
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await send(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
