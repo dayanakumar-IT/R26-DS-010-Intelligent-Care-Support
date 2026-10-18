@@ -39,3 +39,22 @@ export function categoryColors(categoryKey: string): ColorFamily {
 
 // Level path and level badges use the app's brand blue.
 export const LEVEL_COLORS = FAMILIES.blue
+
+// Practice and monthly badges: one family each, so earned badges read as a
+// colourful set (the same style as My Journey's categories).
+const BY_PRACTICE_BADGE: Record<string, keyof typeof FAMILIES> = {
+  signs_5: 'teal',
+  signs_10: 'blue',
+  signs_25: 'purple',
+  signs_40: 'pink',
+  first_recall: 'amber',
+}
+const MONTHLY_TIERS: Array<keyof typeof FAMILIES> = ['green', 'teal', 'blue']
+
+export function practiceBadgeColors(key: string): ColorFamily {
+  return FAMILIES[BY_PRACTICE_BADGE[key] ?? 'coral']
+}
+
+export function monthlyBadgeColors(tierIndex: number): ColorFamily {
+  return FAMILIES[MONTHLY_TIERS[Math.min(Math.max(tierIndex, 0), MONTHLY_TIERS.length - 1)]]
+}

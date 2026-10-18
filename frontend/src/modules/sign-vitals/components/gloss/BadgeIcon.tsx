@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { GlossMilestoneType } from '../../types/gloss'
-import { categoryColors } from '../../utils/categoryColors'
+import { categoryColors, type ColorFamily } from '../../utils/categoryColors'
 
 /**
  * BadgeIcon.tsx
@@ -151,9 +151,12 @@ interface BadgeIconProps {
   label: string
   /** Round stage marker in the category colour (My Journey), not a badge. */
   marker?: boolean
+  /** Colour family for an earned practice / monthly badge. */
+  family?: ColorFamily
 }
 
-function palette(kind: GlossMilestoneType, badgeKey: string, earned: boolean, marker: boolean): Palette {
+function palette(kind: GlossMilestoneType, badgeKey: string, earned: boolean, marker: boolean, family?: ColorFamily): Palette {
+  if (earned && family) return { ring: family.solid, fill: family.soft, motif: family.dark, accent: family.light }
   if (kind === 'category' && (earned || marker)) {
     const f = categoryColors(badgeKey)
     return marker
@@ -163,10 +166,10 @@ function palette(kind: GlossMilestoneType, badgeKey: string, earned: boolean, ma
   return earned ? EARNED[kind as keyof typeof EARNED] ?? EARNED.level : LOCKED
 }
 
-export default function BadgeIcon({ kind, badgeKey, earned, size = 56, label, marker = false }: BadgeIconProps) {
+export default function BadgeIcon({ kind, badgeKey, earned, size = 56, label, marker = false, family }: BadgeIconProps) {
   // useId() contains ':' — keep only safe characters for an SVG url(#id).
   const gradientId = `badge-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
-  const base = palette(kind, badgeKey, earned, marker)
+  const base = palette(kind, badgeKey, earned, marker, family)
   const shine = earned && !marker
   // Earned: soft top-to-bottom gradient fill and a gentle glow in the ring colour.
   const p = shine ? { ...base, fill: `url(#${gradientId})` } : base

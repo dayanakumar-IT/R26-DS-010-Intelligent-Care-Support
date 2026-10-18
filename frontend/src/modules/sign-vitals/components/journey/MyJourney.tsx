@@ -2,7 +2,7 @@ import { AlertTriangle, BadgeCheck, Check, Circle, FileText, Hourglass, Lock } f
 import type { GlossProgressSummary, GlossSignStatus } from '../../types/gloss'
 import BadgeIcon from '../gloss/BadgeIcon'
 import { fmtDate } from '../../utils/journey'
-import { LEVEL_COLORS, categoryColors, type ColorFamily } from '../../utils/categoryColors'
+import { LEVEL_COLORS, categoryColors, monthlyBadgeColors, practiceBadgeColors, type ColorFamily } from '../../utils/categoryColors'
 
 /**
  * MyJourney.tsx
@@ -39,6 +39,42 @@ function chipStyle(status: GlossSignStatus | 'unreliable', f: ColorFamily): Reac
     default:
       return { background: '#ffffff', borderColor: '#cbd5e1', color: '#475569' }
   }
+}
+
+/** A practice / monthly badge: filled colour, gradient, soft glow and the
+ *  date when earned; a grey dashed outline with a lock and what is needed
+ *  when not yet. */
+function BadgeCard({ kind, badgeKey, name, earnedAt, needed, family }: {
+  kind: 'practice' | 'monthly'
+  badgeKey: string
+  name: string
+  earnedAt: string | null
+  needed: string
+  family: ColorFamily
+}) {
+  const earned = !!earnedAt
+  return (
+    <div
+      className="flex h-full flex-col items-center gap-1.5 rounded-[16px] border p-3 text-center"
+      style={earned
+        ? { borderColor: family.border, backgroundImage: `linear-gradient(160deg, #ffffff, ${family.soft} 60%, ${family.border})`, boxShadow: `0 6px 16px ${family.solid}22` }
+        : { borderColor: '#cbd5e1', borderStyle: 'dashed', background: '#f8fafc' }}
+    >
+      <BadgeIcon kind={kind} badgeKey={badgeKey} earned={earned} size={52} label={name} family={family} />
+      <span className="text-sm font-semibold" style={{ color: earned ? family.dark : '#475569' }}>{name}</span>
+      {earned ? (
+        <span className="flex items-center gap-1 text-xs font-medium" style={{ color: family.solid }}>
+          <Check size={12} aria-hidden="true" /> Earned {fmtDate(earnedAt)}
+        </span>
+      ) : (
+        needed && (
+          <span className="flex items-start gap-1 text-xs text-slate-600">
+            <Lock size={12} aria-hidden="true" className="mt-0.5 shrink-0" /> {needed}
+          </span>
+        )
+      )}
+    </div>
+  )
 }
 
 interface MyJourneyProps {
@@ -212,38 +248,52 @@ export default function MyJourney({ summary, onOpenSign, onOpenReport }: MyJourn
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Practice badges</h3>
           <p className="text-sm text-slate-600">For effort over all your practice, including earlier versions. Separate from skill.</p>
         </div>
-        <ul className="flex flex-wrap gap-4">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {summary.practice_badges.map((b) => (
-            <li key={b.key} className="flex w-32 flex-col items-center gap-1 text-center">
-              <BadgeIcon kind="practice" badgeKey={b.key} earned={!!b.earned_at} label={b.name} />
-              <span className={`text-sm font-semibold ${b.earned_at ? 'text-slate-800' : 'text-slate-600'}`}>{b.name}</span>
-              <span className="text-sm text-slate-600">
-                {b.earned_at ? `Earned ${fmtDate(b.earned_at)}` : b.description}
-              </span>
+            <li key={b.key}>
+              <BadgeCard
+                kind="practice"
+                badgeKey={b.key}
+                name={b.name}
+                earnedAt={b.earned_at}
+                needed={b.description}
+                family={practiceBadgeColors(b.key)}
+              />
             </li>
           ))}
         </ul>
-        <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-slate-200 p-3">
+        <div className="flex flex-col gap-3 rounded-[16px] border border-slate-200 p-4">
           <span className="text-base text-slate-700">
             This month: <b>{summary.monthly.active_days}</b> active day{summary.monthly.active_days === 1 ? '' : 's'}
             <span className="text-slate-600"> · badges at {summary.monthly.tiers.join(' / ')} days, nothing is ever lost</span>
           </span>
-          <ul className="flex flex-wrap gap-4">
-            {summary.monthly.tiers.map((t) => {
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {summary.monthly.tiers.map((t, i) => {
               const earned = summary.monthly.badges.find((b) => b.month === summary.monthly.month && b.days === t)
               const left = Math.max(t - summary.monthly.active_days, 0)
               return (
-                <li key={t} className="flex w-24 flex-col items-center gap-0.5 text-center">
-                  <BadgeIcon kind="monthly" badgeKey={`${summary.monthly.month}:${t}`} earned={!!earned} size={44} label={`${t} active days this month`} />
-                  <span className="text-sm text-slate-700">{t} days</span>
-                  <span className="text-xs text-slate-600">{earned ? `Earned ${fmtDate(earned.earned_at)}` : `${left} more day${left === 1 ? '' : 's'}`}</span>
+                <li key={t}>
+                  <BadgeCard
+                    kind="monthly"
+                    badgeKey={`${summary.monthly.month}:${t}`}
+                    name={`${t} active days`}
+                    earnedAt={earned?.earned_at ?? null}
+                    needed={`${left} more active day${left === 1 ? '' : 's'} this month`}
+                    family={monthlyBadgeColors(i)}
+                  />
                 </li>
               )
             })}
             {summary.monthly.badges.filter((b) => b.month !== summary.monthly.month).map((b) => (
-              <li key={b.key} className="flex w-24 flex-col items-center gap-0.5 text-center">
-                <BadgeIcon kind="monthly" badgeKey={b.key} earned size={44} label={b.name} />
-                <span className="text-sm text-slate-700">{new Date(`${b.month}-01`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
+              <li key={b.key}>
+                <BadgeCard
+                  kind="monthly"
+                  badgeKey={b.key}
+                  name={`${b.days} days · ${new Date(`${b.month}-01`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`}
+                  earnedAt={b.earned_at}
+                  needed=""
+                  family={monthlyBadgeColors(summary.monthly.tiers.indexOf(b.days))}
+                />
               </li>
             ))}
           </ul>
