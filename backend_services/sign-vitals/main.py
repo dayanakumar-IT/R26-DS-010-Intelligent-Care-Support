@@ -40,6 +40,7 @@ from auth_helper import (
     get_authenticated_supervisor,
 )
 import supervisor_report
+from win_perf import opt_out_of_power_throttling
 import grading
 from execution_evaluator import evaluate_execution
 import feedback_async
@@ -234,6 +235,8 @@ def _db():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Full speed while the browser is in front (Windows 11 power throttling).
+    logger.info("[SIGN_VITALS][STARTUP] power throttling opt-out: %s", opt_out_of_power_throttling())
     checks = {}
     failed = []
     for name, fn in (

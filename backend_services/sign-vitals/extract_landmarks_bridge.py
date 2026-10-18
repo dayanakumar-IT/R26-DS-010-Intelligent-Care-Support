@@ -168,7 +168,8 @@ class _PersistentWorker:
         hello = self._read()
         if not hello.get("ready"):
             raise LandmarkExtractionError(f"MediaPipe worker did not start: {hello}")
-        logger.info("[GLOSS][MEDIAPIPE] long-running worker started | imports_s=%s", hello.get("imports_s"))
+        logger.info("[GLOSS][MEDIAPIPE] long-running worker started | imports_s=%s | unthrottled=%s",
+                    hello.get("imports_s"), hello.get("unthrottled"))
 
     def _read(self) -> dict:
         while True:

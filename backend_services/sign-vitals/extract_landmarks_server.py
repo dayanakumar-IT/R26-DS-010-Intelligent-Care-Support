@@ -31,6 +31,11 @@ import traceback  # noqa: E402
 import numpy as np  # noqa: E402
 
 from landmark_extraction import extract_landmarks_from_video, make_holistic  # noqa: E402
+from win_perf import opt_out_of_power_throttling  # noqa: E402
+
+# Full speed while the browser is in front (Windows 11 throttles background
+# processes); scheduling only, landmarks are unchanged.
+_UNTHROTTLED = opt_out_of_power_throttling()
 
 _T_IMPORTED = time.time()
 
@@ -61,7 +66,7 @@ def handle(req: dict) -> dict:
 
 def main():
     out = sys.stdout
-    out.write(json.dumps({"ready": True, "imports_s": round(_T_IMPORTED - _T_START, 2)}) + "\n")
+    out.write(json.dumps({"ready": True, "imports_s": round(_T_IMPORTED - _T_START, 2), "unthrottled": _UNTHROTTLED}) + "\n")
     out.flush()
     for line in sys.stdin:
         line = line.strip()
