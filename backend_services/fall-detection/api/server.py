@@ -30,7 +30,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Set
@@ -41,10 +43,26 @@ warnings.filterwarnings("ignore", message="SymbolDatabase.GetPrototype", categor
 
 import cv2
 import torch
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+
+# ── API key auth ──────────────────────────────────────────────────────────────
+# Set SENTRY_API_KEY in .env to require X-API-Key header on all endpoints.
+# Leave blank to run unauthenticated (local-network-only deployments).
+_API_KEY: str = os.environ.get("SENTRY_API_KEY", "").strip()
+_UNPROTECTED = {"/api/health", "/", "/docs", "/openapi.json", "/redoc", "/api/auth/login"}
+
+def _check_key(request: Request) -> bool:
+    """Return True if the request is allowed (no key configured, or key matches)."""
+    if not _API_KEY:
+        return True
+    if request.url.path in _UNPROTECTED:
+        return True
+    if request.url.path.startswith("/video/"):
+        return True
+    return request.headers.get("X-API-Key", "") == _API_KEY
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -62,6 +80,12 @@ from src.postprocess import RiskPostProcessor
 from src.context_engine import ContextEngine
 
 import numpy as np
+from supabase import create_client as _create_supabase_client
+
+# ── Supabase client (used for auth proxy) ─────────────────────────────────────
+_SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+_SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+_supabase = _create_supabase_client(_SUPABASE_URL, _SUPABASE_KEY) if _SUPABASE_URL and _SUPABASE_KEY else None
 
 # ── App ──────────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -75,8 +99,17 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-API-Key"],
 )
+
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    if not _check_key(request):
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Unauthorized — X-API-Key header required"},
+        )
+    return await call_next(request)
 
 # ── Global state ─────────────────────────────────────────────────────────────
 _engines:     Dict[str, InferenceEngine]   = {}   # room_id → engine
@@ -90,6 +123,59 @@ _replay_buf:  Dict[str, list]              = {}   # room_id → rolling 5-sec bu
 _replay_mem:  Dict[int, list]              = {}   # alert_id → saved frames (in-memory, no R2 needed)
 
 
+def _find_hikvision_index() -> Optional[int]:
+    """
+    Check Windows device list for a connected Hikvision camera by name.
+    If found, scan cv2 indices 1..4 and return the first one that opens.
+    Returns None if Hikvision is not physically connected.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "powershell", "-NoProfile", "-Command",
+                "Get-PnpDevice -Class Camera -Status OK | Select-Object -ExpandProperty FriendlyName",
+            ],
+            capture_output=True, text=True, timeout=5,
+        )
+        names = result.stdout.lower()
+        if "hikvision" in names or "ds-u02" in names or "ds-u" in names:
+            # Hikvision is in device list — find its cv2 index (skip 0 = built-in)
+            for idx in range(1, 5):
+                cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+                opened = cap.isOpened()
+                cap.release()
+                if opened:
+                    return idx
+    except Exception as e:
+        print(f"[server] Hikvision detection error: {e}")
+    return None
+
+
+def _resolve_camera_source(src: str):
+    """
+    Resolve camera source:
+    - If CAMERA_SRC_OVERRIDE is set in .env → use that index directly, no Hikvision detection.
+    - If src is an RTSP URL (non-digit) → use it unchanged.
+    - Otherwise auto-detect Hikvision; fall back to 0 if not found.
+    """
+    override = os.environ.get("CAMERA_SRC_OVERRIDE", "").strip()
+    if override and override.isdigit():
+        idx = int(override)
+        print(f"[server] CAMERA_SRC_OVERRIDE set — using camera index {idx}.")
+        return idx
+
+    if not str(src).isdigit():
+        return src  # RTSP URL — use as-is
+
+    hik_idx = _find_hikvision_index()
+    if hik_idx is not None:
+        print(f"[server] Hikvision camera detected at index {hik_idx} — using USB camera.")
+        return hik_idx
+
+    print("[server] Hikvision not connected — using built-in camera (index 0).")
+    return 0
+
+
 # ── Startup / shutdown ───────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
@@ -99,18 +185,21 @@ async def startup():
     except Exception as e:
         print(f"[server] DB init warning: {e} — continuing.")
 
-    # Auto-start engines for rooms with cameras — also non-fatal
+    # Auto-start engine for the FIRST room with a camera only (single physical camera).
     try:
         rooms_with_cam = await asyncio.to_thread(get_rooms_with_camera)
-        for room in rooms_with_cam:
-            src        = room["camera_src"]
+        if rooms_with_cam:
+            room       = rooms_with_cam[0]  # use first room only — one camera, one engine
+            src        = os.environ.get("CAMERA_SRC_OVERRIDE") or room["camera_src"]
             suffix     = room.get("camera_suffix") or ""
-            source     = int(src) if str(src).isdigit() else src
-            room_key   = room["room_code"]   # always use room_code — WebSocket uses room_code too
-            patient_id = room.get("patient_id") or "P001"   # use saved patient if available
+            source     = _resolve_camera_source(src)
+            room_key   = room["room_code"]
+            patient_id = room.get("patient_id") or "P001"
             _start_room_engine(room_key, source=source, suffix=suffix, patient_id=patient_id)
-            print(f"[server] Auto-started engine for {room_key} (source={src})")
-        if not rooms_with_cam:
+            print(f"[server] Auto-started engine for {room_key} (source={source})")
+            if len(rooms_with_cam) > 1:
+                print(f"[server] {len(rooms_with_cam)-1} other room(s) skipped — single camera mode.")
+        else:
             print("[server] No cameras configured yet — configure via portal.")
     except Exception as e:
         print(f"[server] Camera auto-start skipped ({e.__class__.__name__}: {e}).")
@@ -234,6 +323,13 @@ async def _broadcast_loop(room_id: str):
         last_frame = np.array(result.skeleton, dtype=np.float32)
         ctx_result = ctx.update(last_frame, result.timestamp)
 
+        # Reset postprocessor EMA the first time the engine's buffer is fully warm.
+        # Warmup inference (partial buffer) can score high on static standing poses;
+        # resetting here ensures those scores don't carry into real inference.
+        if getattr(eng, '_buffer_warmed', False) and not getattr(proc, '_warmed', False):
+            proc.reset()
+            proc._warmed = True  # type: ignore[attr-defined]
+
         # Feed raw model score directly to postprocessor — no zone modifier.
         # Zone modifier was causing false HIGHs: harmless posture jitter (TRANSITION)
         # in a configured BED/CHAIR zone added +0.12–+0.15 to the score, pushing
@@ -250,7 +346,13 @@ async def _broadcast_loop(room_id: str):
         # those. False positives while standing are a threshold/EMA issue, not
         # a posture-rule issue.
         from dataclasses import replace as _dc_replace
+        # SITTING confirmed → cap at MODERATE (seated person is not mid-fall)
         if ctx_result.posture == "SITTING" and state.level == "HIGH":
+            state = _dc_replace(state, level="MODERATE", alert=False)
+        # STANDING confirmed → cap at MODERATE (upright stable posture is not a fall)
+        # Only fires when posture classifier has settled on STANDING (not TRANSITION),
+        # so genuine fall-while-standing-up transitions still pass through.
+        if ctx_result.posture == "STANDING" and state.level == "HIGH":
             state = _dc_replace(state, level="MODERATE", alert=False)
 
         # 5-second replay buffer (~150 frames at 30fps → keep last 150)
@@ -262,6 +364,29 @@ async def _broadcast_loop(room_id: str):
         # Alert handling — only write to DB if we have a valid numeric patient id.
         # Run in thread (blocking sync call) and catch all network errors so a
         # transient Supabase disconnect never kills the broadcast loop.
+        # ── Audio alert (edge device speaker) ────────────────────────────────
+        # HIGH → repeating two-tone beep (800 Hz / 1200 Hz, 400 ms each).
+        # MODERATE → single low beep (600 Hz, 300 ms).
+        # Runs in a daemon thread so it never blocks the async loop.
+        # winsound is a stdlib module on Windows — no extra package needed.
+        if state.alert:
+            def _high_beep():
+                try:
+                    import winsound
+                    winsound.Beep(1200, 400)
+                    winsound.Beep(800, 400)
+                except Exception:
+                    pass
+            threading.Thread(target=_high_beep, daemon=True).start()
+        elif state.moderate_alert:
+            def _mod_beep():
+                try:
+                    import winsound
+                    winsound.Beep(600, 300)
+                except Exception:
+                    pass
+            threading.Thread(target=_mod_beep, daemon=True).start()
+
         alert_id = None
         if state.alert:
             try:
@@ -407,6 +532,52 @@ async def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
+class _LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/auth/login")
+async def auth_login(body: _LoginRequest):
+    """Proxy Supabase login so the mobile app doesn't need direct DNS to supabase.co."""
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="Auth service not configured.")
+    try:
+        resp = await asyncio.to_thread(
+            lambda: _supabase.auth.sign_in_with_password(
+                {"email": body.email, "password": body.password}
+            )
+        )
+        user = resp.user
+        if user is None:
+            raise HTTPException(status_code=401, detail="Login failed.")
+
+        profile = await asyncio.to_thread(
+            lambda: _supabase.table("profiles")
+                .select("name, role")
+                .eq("id", user.id)
+                .maybe_single()
+                .execute()
+        )
+        profile_data = profile.data if profile else None
+        if not profile_data:
+            raise HTTPException(status_code=403, detail="Profile not found.")
+
+        role = profile_data.get("role", "")
+        if role not in ("caregiver", "admin", "supervisor"):
+            raise HTTPException(status_code=403, detail="Access denied.")
+
+        return {
+            "access_token": resp.session.access_token if resp.session else "",
+            "user_id":      user.id,
+            "name":         profile_data.get("name", body.email),
+            "role":         role,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
 @app.get("/api/dashboard/summary")
 async def dashboard_summary():
     return await asyncio.to_thread(get_dashboard_summary)
@@ -472,8 +643,14 @@ async def replay(alert_id: int):
 
 
 @app.delete("/api/alerts/clear-demo")
-async def clear_demo_alerts():
-    """Clear ALL alerts and reset all in-memory risk state — use before a viva/demo."""
+async def clear_demo_alerts(confirm: str = ""):
+    """Clear ALL alerts and reset all in-memory risk state — use before a viva/demo.
+    Requires ?confirm=yes to prevent accidental wipe.
+    """
+    if confirm.lower() != "yes":
+        return JSONResponse(status_code=400, content={
+            "error": "Pass ?confirm=yes to clear all alerts. This cannot be undone."
+        })
     try:
         # 1. Clear DB alerts and replay memory
         _replay_mem.clear()
@@ -527,6 +704,111 @@ async def set_zones(room_id: str, cfg: ZoneConfig):
 async def get_zones(room_id: str):
     zones = await asyncio.to_thread(get_room_zones, room_id)
     return {"room_id": room_id, "zones": zones, "configured": bool(zones)}
+
+
+@app.post("/api/rooms/{room_id}/calibrate")
+async def calibrate_zones(room_id: str, duration_s: int = 60):
+    """
+    Passive zone calibration.
+
+    Observes the patient's body-centre position (midpoint of left and right
+    hip joints) for `duration_s` seconds using the running inference engine.
+    Clusters the positions into three zones using K-Means (k=3) and saves
+    the resulting convex-hull polygons as BED, CHAIR, and WALKING zones.
+
+    Typical usage: place the patient in their normal positions (lying in bed,
+    sitting in chair, walking) and let the system observe for 60 seconds.
+
+    Returns the discovered zone polygons.
+    """
+    import numpy as np
+    from sklearn.cluster import KMeans
+    from scipy.spatial import ConvexHull
+
+    eng = _engines.get(room_id)
+    if eng is None:
+        raise HTTPException(400, f"No running engine for room '{room_id}'. "
+                                 "Configure camera first via /api/rooms/{room_id}/camera.")
+
+    # Collect body-centre samples (x, y) from the running engine
+    centres: list[tuple[float, float]] = []
+    deadline = time.monotonic() + duration_s
+    print(f"[calibrate] Collecting body-centre samples for {duration_s}s …")
+
+    while time.monotonic() < deadline:
+        skel = getattr(eng, "_latest_skeleton", None)
+        if skel is not None:
+            arr = np.array(skel, dtype=np.float32)  # (14, 4)
+            # Left hip = joint 6, Right hip = joint 7 (SENTRY 14-joint mapping)
+            if arr.shape[0] >= 8:
+                cx = float((arr[6, 0] + arr[7, 0]) / 2)
+                cy = float((arr[6, 1] + arr[7, 1]) / 2)
+                centres.append((cx, cy))
+        await asyncio.sleep(0.1)  # sample at ~10 Hz
+
+    if len(centres) < 30:
+        raise HTTPException(422, f"Only {len(centres)} samples collected — "
+                                 "ensure the patient is visible and moving.")
+
+    pts = np.array(centres)
+
+    # K-Means: 3 clusters → BED (lowest y = highest on screen),
+    # CHAIR (mid y), WALKING (spread / highest y)
+    k = min(3, len(pts))
+    km = KMeans(n_clusters=k, n_init=10, random_state=42)
+    labels = km.fit_predict(pts)
+
+    # Sort clusters by mean y (ascending) → BED first (person lies lowest on screen)
+    cluster_mean_y = [pts[labels == i, 1].mean() for i in range(k)]
+    order = sorted(range(k), key=lambda i: cluster_mean_y[i])
+    zone_names = ["BED", "CHAIR", "WALKING"]
+
+    zones: dict[str, list[list[float]]] = {}
+    for zone_name, cluster_idx in zip(zone_names, order):
+        cluster_pts = pts[labels == cluster_idx]
+        if len(cluster_pts) < 3:
+            # Too few points — use bounding box as fallback
+            xmin, ymin = cluster_pts.min(axis=0)
+            xmax, ymax = cluster_pts.max(axis=0)
+            pad = 0.05
+            polygon = [
+                [float(xmin - pad), float(ymin - pad)],
+                [float(xmax + pad), float(ymin - pad)],
+                [float(xmax + pad), float(ymax + pad)],
+                [float(xmin - pad), float(ymax + pad)],
+            ]
+        else:
+            try:
+                hull = ConvexHull(cluster_pts)
+                polygon = cluster_pts[hull.vertices].tolist()
+                # Expand hull by a small margin (5% of frame width)
+                centroid = cluster_pts.mean(axis=0)
+                polygon = [
+                    [centroid[0] + 1.05 * (p[0] - centroid[0]),
+                     centroid[1] + 1.05 * (p[1] - centroid[1])]
+                    for p in polygon
+                ]
+            except Exception:
+                xmin, ymin = cluster_pts.min(axis=0)
+                xmax, ymax = cluster_pts.max(axis=0)
+                polygon = [[float(xmin), float(ymin)], [float(xmax), float(ymin)],
+                           [float(xmax), float(ymax)], [float(xmin), float(ymax)]]
+        zones[zone_name] = polygon
+
+    # Persist and apply immediately
+    set_room_zones(room_id, zones)
+    if room_id in _contexts:
+        _contexts[room_id].configure_zones(zones)
+
+    print(f"[calibrate] Zones saved for {room_id}: {list(zones.keys())}")
+    return {
+        "room_id":       room_id,
+        "zones":         zones,
+        "samples":       len(centres),
+        "duration_s":    duration_s,
+        "status":        "calibrated",
+        "zone_names":    list(zones.keys()),
+    }
 
 
 # Camera config endpoint — set source for a room at runtime
@@ -656,8 +938,13 @@ async def _mjpeg_generator(room_id: str):
 
 
 @app.get("/video/{room_id}")
-async def video_stream(room_id: str):
-    """MJPEG stream — use as <img src='http://localhost:8000/video/ROOM_01'>"""
+async def video_stream(room_id: str, token: str = ""):
+    """MJPEG stream — browsers cannot send headers in <img> so auth uses ?token=<key>.
+    Example: <img src='http://localhost:8000/video/ROOM_01?token=sentry-demo-2026'>
+    If SENTRY_API_KEY is not set, stream is open (local-network-only deployments).
+    """
+    if _API_KEY and token != _API_KEY:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     return StreamingResponse(
         _mjpeg_generator(room_id),
         media_type="multipart/x-mixed-replace; boundary=frame",

@@ -1,9 +1,0 @@
-# MediaPipe landmark-extraction environment (.venv_mediapipe) — used
-# only by landmark_extraction.py / extract_landmarks_worker.py. Does
-# NOT include tensorflow/fastapi/supabase — those belong to .venv
-# (see requirements.txt).
-# Pinned to the versions currently installed and verified working.
-mediapipe==0.10.21
-opencv-python==4.11.0.86
-numpy==1.26.4
-pandas==3.0.5

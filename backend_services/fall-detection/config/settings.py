@@ -205,11 +205,29 @@ FEATURE_DISPLAY_NAMES = {
 }
 
 # ---------------------------------------------------------------------------
-# Risk-level thresholds (see backend/docs/risk_levels.md)
-# Tuned later on val set; these are sensible defaults.
+# Risk-level thresholds — loaded from models/saved/threshold.json so they
+# always match the calibrated model. threshold.json is written by evaluate.py
+# using the val-set optimal F1 cutoff (currently fusion_threshold=0.94).
+#
+# Three-band mapping relative to the model's binary threshold τ:
+#   NORMAL   : score < τ_low   (= τ * 0.80)
+#   MODERATE : τ_low ≤ score < τ_high  (= τ * 0.95)
+#   HIGH     : score ≥ τ_high
 # ---------------------------------------------------------------------------
-RISK_TAU_LOW = 0.55       # NORMAL→MODERATE — MJPEG test confirmed standing < 0.50; set above that
-RISK_TAU_HIGH = 0.72      # MODERATE→HIGH — only genuine sustained fall crosses this
+import json as _json, os as _os
+_thresh_path = _os.path.join(
+    _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+    "models", "saved", "threshold.json"
+)
+try:
+    with open(_thresh_path) as _f:
+        _t = _json.load(_f)
+    _fusion_tau = float(_t.get("fusion_threshold", 0.94))
+except Exception:
+    _fusion_tau = 0.94   # safe fallback if file missing
+
+RISK_TAU_LOW  = round(_fusion_tau * 0.80, 4)   # 0.752 at τ=0.94 — NORMAL→MODERATE
+RISK_TAU_HIGH = round(_fusion_tau * 0.95, 4)   # 0.893 at τ=0.94 — MODERATE→HIGH
 RISK_EMA_ALPHA = 0.25     # heavy smoothing — spikes need many frames to accumulate
 DWELL_S = {
     "to_moderate": 0.5,

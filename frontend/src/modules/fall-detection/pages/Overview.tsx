@@ -313,7 +313,7 @@ function PatientDetailPanel({ patient, rooms, alerts, onBack }: {
       try {
         const data = JSON.parse(e.data) as any
         if (data.type === 'skeleton') {
-          setFrame(f => f ? { ...f, skeleton: data.skeleton } : { skeleton: data.skeleton, risk_score: 0, risk_level: 'NORMAL', posture: '', zone: '', confidence: 0, key_factors: [] } as LiveFrame)
+          setFrame(f => f ? { ...f, skeleton: data.skeleton } : { skeleton: data.skeleton, risk_score: 0, risk_level: 'NORMAL', posture: '', zone: '', confidence: 0, key_factors: [], pose_quality: 'OK', alert: false } as LiveFrame)
         } else {
           setFrame(data as LiveFrame)
         }
@@ -596,6 +596,36 @@ function PatientsPanel({ patients, rooms, alerts, loading, onSelectPatient }: {
 }
 
 // ── PANEL: Live Monitoring ────────────────────────────────────────────────────
+// ── Instability heatmap — feature-name → joint indices (14-joint skeleton) ────
+// Joints: 0=nose 1=neck 2=L-shoulder 3=R-shoulder 4=L-elbow 5=R-elbow
+//         6=L-wrist 7=R-wrist 8=L-hip 9=R-hip 10=L-knee 11=R-knee 12=L-ankle 13=R-ankle
+const FEATURE_JOINTS: Record<string, number[]> = {
+  'mean vertical drop velocity': [8, 9],
+  'max vertical drop velocity':  [8, 9],
+  'mean horizontal velocity':    [8, 9],
+  'mean head drop velocity':     [0],
+  'peak vertical acceleration':  [8, 9],
+  'kinetic energy proxy':        [2, 3, 8, 9],
+  'kinetic energy spike':        [2, 3, 8, 9],
+  'mean torso inclination':      [2, 3, 8, 9],
+  'max torso lean angle':        [2, 3, 8, 9],
+  'torso angular velocity':      [2, 3, 8, 9],
+  'body aspect ratio':           [0, 12, 13],
+  'max body spread':             [2, 3, 8, 9, 12, 13],
+  'torso sway':                  [2, 3, 8, 9],
+  'lateral hip balance':         [8, 9],
+  'vertical hip bobbing':        [8, 9],
+  'hip trajectory length':       [8, 9],
+  'ground proximity':            [8, 9, 10, 11, 12, 13],
+  'gait dispersion':             [10, 11, 12, 13],
+}
+
+function hotJoints(keyFactors: string[]): Set<number> {
+  const s = new Set<number>()
+  keyFactors.forEach(f => (FEATURE_JOINTS[f] ?? []).forEach(j => s.add(j)))
+  return s
+}
+
 // ── Skeleton Canvas renderer ──────────────────────────────────────────────────
 interface LiveFrame {
   skeleton:    number[][]
@@ -605,11 +635,13 @@ interface LiveFrame {
   posture:     string
   zone:        string
   confidence:  number
-  key_factors: string[]
-  alert:      boolean
+  key_factors:  string[]
+  pose_quality: string   // "OK" | "DEGRADED" | "unavailable"
+  alert:        boolean
 }
 
-function SkeletonCanvas({ frame }: { frame: LiveFrame | null }) {
+function SkeletonCanvas({ frame, keyFactors }: { frame: LiveFrame | null; keyFactors?: string[] }) {
+  const hotKey = (keyFactors ?? frame?.key_factors ?? []).join('|')
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   // Resize canvas to match its CSS display size so it fills the container
@@ -655,6 +687,7 @@ function SkeletonCanvas({ frame }: { frame: LiveFrame | null }) {
     const level = frame.risk_level ?? 'NORMAL'
     const colors = JOINT_COLORS[level] ?? JOINT_COLORS.NORMAL
     const joints = frame.skeleton  // [[x,y,z,v], ...]
+    const hot = hotJoints(hotKey.split('|').filter(Boolean))
 
     // Map normalized coords to canvas — MediaPipe x=right, y=down
     const px = (j: number) => joints[j]?.[0] * W ?? 0
@@ -675,17 +708,24 @@ function SkeletonCanvas({ frame }: { frame: LiveFrame | null }) {
     })
     ctx.globalAlpha = 1
 
-    // Draw joints
+    // Draw joints — hot joints get a glow ring + amber fill
     joints.forEach((j, idx) => {
       if (!vis(idx)) return
       const x = j[0] * W, y = j[1] * H
-      const r = idx === 0 ? 8 : 5   // head is bigger
+      const r = idx === 0 ? 8 : 5
+      const isHot = hot.size > 0 && hot.has(idx)
+      if (isHot) {
+        ctx.beginPath()
+        ctx.arc(x, y, r + 5, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(251,146,60,0.25)'
+        ctx.fill()
+      }
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.fillStyle = idx === 0 ? colors.head : colors.joint
+      ctx.fillStyle = isHot ? '#fb923c' : (idx === 0 ? colors.head : colors.joint)
       ctx.fill()
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 1.5
+      ctx.strokeStyle = isHot ? '#fff7ed' : '#fff'
+      ctx.lineWidth = isHot ? 2 : 1.5
       ctx.stroke()
     })
 
@@ -703,7 +743,7 @@ function SkeletonCanvas({ frame }: { frame: LiveFrame | null }) {
     ctx.textAlign = 'right'
     ctx.fillText(level, W - 20, barY - 4)
 
-  }, [frame])
+  }, [frame, hotKey])
 
   return (
     <canvas
@@ -715,9 +755,10 @@ function SkeletonCanvas({ frame }: { frame: LiveFrame | null }) {
 }
 
 // ── PANEL: Live Monitoring ────────────────────────────────────────────────────
-function LivePanel({ rooms, patients, alerts, onBeep, onReplay, onViewPatient }: {
+function LivePanel({ rooms, patients, alerts, onBeep, onReplay, onViewPatient, onAcknowledge }: {
   rooms: Room[]; patients: Patient[]; alerts: Alert[]; onBeep: (freq: number, ms?: number) => void
   onReplay: (alert: Alert) => void; onViewPatient: (patient: Patient) => void
+  onAcknowledge: (id: number) => void
 }) {
   const activeRooms = rooms.filter(r => r.camera_src)
   const [selected,   setSelected]   = useState<Room | null>(() => activeRooms[0] ?? null)
@@ -769,7 +810,7 @@ function LivePanel({ rooms, patients, alerts, onBeep, onReplay, onViewPatient }:
         const data = JSON.parse(e.data) as any
         if (data.type === 'skeleton') {
           // Lightweight per-frame skeleton update — preserve existing risk data
-          setFrame(f => f ? { ...f, skeleton: data.skeleton } : { skeleton: data.skeleton, risk_score: 0, risk_level: 'NORMAL', posture: '', zone: '', confidence: 0, key_factors: [] } as LiveFrame)
+          setFrame(f => f ? { ...f, skeleton: data.skeleton } : { skeleton: data.skeleton, risk_score: 0, risk_level: 'NORMAL', posture: '', zone: '', confidence: 0, key_factors: [], pose_quality: 'OK', alert: false } as LiveFrame)
         } else {
           // Set frame FIRST — skeleton must update even if beep throws
           setFrame(data as LiveFrame)
@@ -831,7 +872,7 @@ function LivePanel({ rooms, patients, alerts, onBeep, onReplay, onViewPatient }:
       {unackedHigh.length > 0 && (
         <div className={styles.alertBannerHigh} style={{marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <span>🚨 HIGH RISK: {unackedHigh.length} unacknowledged HIGH alert{unackedHigh.length>1?'s':''} — Immediate attention needed</span>
-          <button className={styles.ackBtn}>Acknowledge All</button>
+          <button className={styles.ackBtn} onClick={() => unackedHigh.forEach(a => onAcknowledge(a.id))}>Acknowledge All</button>
         </div>
       )}
 
@@ -873,6 +914,14 @@ function LivePanel({ rooms, patients, alerts, onBeep, onReplay, onViewPatient }:
                     <button className={styles.ackBtn} onClick={()=>setCollapsed(true)}>⤡ Collapse</button>
                   </div>
                 </div>
+                {/* Pose quality warning banner */}
+                {frame && (frame.pose_quality === 'DEGRADED' || frame.posture === 'UNKNOWN') && (
+                  <div style={{background:'#7c2d12',borderRadius:6,padding:'6px 10px',marginBottom:6,
+                    display:'flex',alignItems:'center',gap:8,fontSize:11,color:'#fed7aa'}}>
+                    <span style={{fontSize:14}}>⚠</span>
+                    <span><strong>Monitoring degraded</strong> — patient may be out of frame or occluded. Verify camera view.</span>
+                  </div>
+                )}
                 {/* Skeleton screen — uses SkeletonCanvas for real joint positions */}
                 <div style={{background:'#060d1a',borderRadius:6,height:280,position:'relative',marginBottom:8,overflow:'hidden'}}>
                   {frame
@@ -1022,10 +1071,10 @@ function AlertsPanel({ alerts, loading, onAcknowledge, onReplay, rooms, caregive
         </button>
         <button className={styles.exportBtn2} onClick={() => {
           const csv = 'id,time,risk,score,posture,key_factors,status\n' +
-            alerts.map(a => `${a.id},"${fmtTime(a.timestamp)}",${a.risk_level},${Math.round(a.risk_score)},"${a.posture??''}","${(a.key_factors??[]).join('; ')}",${a.acknowledged?'Acked':'Pending'}`).join('\n')
+            shown.map(a => `${a.id},"${fmtTime(a.timestamp)}",${a.risk_level},${Math.round(a.risk_score)},"${a.posture??''}","${(a.key_factors??[]).join('; ')}",${a.acknowledged?'Acked':'Pending'}`).join('\n')
           const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}))
           const el = document.createElement('a'); el.href=url; el.download='alerts.csv'; el.click()
-        }}>⬇ Export</button>
+        }}>⬇ Export ({shown.length})</button>
       </div>
 
       {unackCount > 0 && (
@@ -1093,8 +1142,8 @@ function AlertsPanel({ alerts, loading, onAcknowledge, onReplay, rooms, caregive
 }
 
 // ── Replay Player component ────────────────────────────────────────────────────
-function ReplayPlayer({ alertId, riskLevel, riskScore }: {
-  alertId: number; riskLevel: 'HIGH'|'MODERATE'|'NORMAL'; riskScore: number
+function ReplayPlayer({ alertId, riskLevel, riskScore, keyFactors }: {
+  alertId: number; riskLevel: 'HIGH'|'MODERATE'|'NORMAL'; riskScore: number; keyFactors?: string[]
 }) {
   const [frames, setFrames] = useState<any[]>([])
   const [idx, setIdx] = useState(0)
@@ -1122,7 +1171,7 @@ function ReplayPlayer({ alertId, riskLevel, riskScore }: {
   const currentFrame = frames[idx]
   const liveFrame = currentFrame ? {
     skeleton: currentFrame.skeleton, risk_score: riskScore, risk_level: riskLevel,
-    posture: '', zone: '', confidence: 0, key_factors: []
+    posture: '', zone: '', confidence: 0, key_factors: keyFactors ?? []
   } as any : null
 
   const colorOf = (l: string) => l === 'HIGH' ? '#ef4444' : l === 'MODERATE' ? '#f59e0b' : '#22c55e'
@@ -1140,6 +1189,13 @@ function ReplayPlayer({ alertId, riskLevel, riskScore }: {
           {Math.round(riskScore)}
         </div>
       </div>
+      {/* Heatmap legend */}
+      {(keyFactors ?? []).length > 0 && (
+        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6,fontSize:10,color:'#94a3b8'}}>
+          <span style={{width:10,height:10,borderRadius:'50%',background:'#fb923c',display:'inline-block',flexShrink:0}} />
+          <span>Highlighted joints contributed to: <strong style={{color:'#fb923c'}}>{(keyFactors ?? []).join(', ')}</strong></span>
+        </div>
+      )}
       {/* Controls */}
       <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:6}}>
         <button className={styles.ackBtn} onClick={() => { setIdx(0); setPlaying(true) }}>⏮</button>
@@ -1254,7 +1310,7 @@ function ReplayPanel({ alerts, initialAlert, onAcknowledge }: { alerts: Alert[];
                         Skeleton Replay
                         <span className={styles.replayLiveDot}>● Privacy-preserving</span>
                       </div>
-                      <ReplayPlayer alertId={selected.id} riskLevel={selected.risk_level as 'HIGH'|'MODERATE'|'NORMAL'} riskScore={selected.risk_score} />
+                      <ReplayPlayer alertId={selected.id} riskLevel={selected.risk_level as 'HIGH'|'MODERATE'|'NORMAL'} riskScore={selected.risk_score} keyFactors={selected.key_factors ?? []} />
                     </div>
 
                     {/* Right metadata column */}
@@ -1313,7 +1369,7 @@ function ReplayPanel({ alerts, initialAlert, onAcknowledge }: { alerts: Alert[];
 }
 
 // ── PANEL: History ────────────────────────────────────────────────────────────
-function HistoryPanel({ alerts, loading, patients, rooms, caregivers }: { alerts: Alert[]; loading: boolean; patients: Patient[]; rooms: Room[]; caregivers: Caregiver[] }) {
+function HistoryPanel({ alerts, loading, patients, rooms, caregivers, onReplay }: { alerts: Alert[]; loading: boolean; patients: Patient[]; rooms: Room[]; caregivers: Caregiver[]; onReplay: (a: Alert) => void }) {
   const cgMap = Object.fromEntries(caregivers.map(c => [c.id, c.display_name]))
   const roomCgMap = Object.fromEntries(rooms.map(r => [String(r.id), r.caregiver_id ? (cgMap[r.caregiver_id] ?? '—') : '—']))
   const [patientFilter, setPatientFilter] = useState('all')
@@ -1436,7 +1492,7 @@ function HistoryPanel({ alerts, loading, patients, rooms, caregivers }: { alerts
                       </td>
                       <td>
                         {(a.risk_level === 'HIGH' || a.risk_level === 'MODERATE')
-                          ? <span className={styles.replayLink}>▶</span>
+                          ? <span className={styles.replayLink} style={{cursor:'pointer'}} onClick={() => onReplay(a)}>▶</span>
                           : <span style={{color:'#94a3b8'}}>—</span>}
                       </td>
                     </tr>
@@ -1568,16 +1624,16 @@ function AnalyticsPanel({ summary, alerts, patients, rooms }: {
   const zoneCounts: Record<string,number> = {}
   periodAlerts.forEach(a => (a.key_factors??[]).forEach(f => { zoneCounts[f]=(zoneCounts[f]??0)+1 }))
 
-  // Top patients by avg score (risk_score is stored 0..1 — compare on that scale)
-  const patScores: Record<string, number[]> = {}
+  // Top patients by avg score — group by patient_id if available, else by room_id
+  const patScores: Record<string, { scores: number[], room: string }> = {}
   periodAlerts.forEach(a => {
-    if (!a.patient_id) return
-    const k = String(a.patient_id)
-    if (!patScores[k]) patScores[k] = []
-    patScores[k].push(a.risk_score)
+    const k = a.patient_id ? String(a.patient_id) : (a.room_id ? `Room ${a.room_id}` : 'Unknown')
+    if (!patScores[k]) patScores[k] = { scores: [], room: a.room_code ?? a.room_id ?? '—' }
+    patScores[k].scores.push(a.risk_score)
   })
-  const topPats = Object.entries(patScores).map(([pid, scores]) => ({
+  const topPats = Object.entries(patScores).map(([pid, { scores, room }]) => ({
     pid,
+    room,
     avg: scores.reduce((s,x)=>s+x,0)/scores.length,
     high: scores.filter(s=>s>=0.50).length,
     mod: scores.filter(s=>s>=0.25&&s<0.50).length,
@@ -1634,7 +1690,7 @@ function AnalyticsPanel({ summary, alerts, patients, rooms }: {
 
         {/* Risk by Zone */}
         <div className={styles.analyticCard2}>
-          <div className={styles.analyticTitle}>Risk by Zone / Key Factor</div>
+          <div className={styles.analyticTitle}>Top Contributing Risk Factors</div>
           {Object.keys(zoneCounts).length === 0
             ? <div style={{fontSize:11,color:'#94a3b8',marginTop:16}}>No zone data yet — run inference to populate</div>
             : Object.entries(zoneCounts).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([z,cnt]) => (
@@ -1664,7 +1720,7 @@ function AnalyticsPanel({ summary, alerts, patients, rooms }: {
                     <tr key={p.pid}>
                       <td style={{fontWeight:700}}>{i+1}</td>
                       <td style={{color:'#60a5fa',fontWeight:600}}>{pat?.patient_code ?? p.pid}</td>
-                      <td>{pat?.room_id ?? '—'}</td>
+                      <td>{pat?.room_id ?? p.room}</td>
                       <td style={{fontWeight:700,color:p.avg>=0.50?'#ef4444':'#f59e0b'}}>{Math.round(p.avg*100)}</td>
                       <td style={{color:'#ef4444',fontWeight:600}}>{p.high}</td>
                       <td style={{color:'#f59e0b'}}>{p.mod}</td>
@@ -1892,6 +1948,7 @@ function ConfigPanel({ rooms, patients, onRefresh, alerts }: { rooms: Room[]; pa
   const [replayStatus, setReplayStatus] = React.useState<{count:number;total_frames:number;alert_ids:number[]} | null>(null)
   const [clearing, setClearing] = React.useState(false)
   const [cleared,  setCleared]  = React.useState(false)
+  const [backendOk, setBackendOk] = React.useState<boolean | null>(null)
 
   const fetchReplayStatus = () =>
     fetch('http://localhost:8000/api/replay/status').then(r => r.ok ? r.json() : null).then(d => { if (d) setReplayStatus(d) }).catch(() => {})
@@ -1899,7 +1956,12 @@ function ConfigPanel({ rooms, patients, onRefresh, alerts }: { rooms: Room[]; pa
   React.useEffect(() => {
     fetchReplayStatus()
     const t = setInterval(fetchReplayStatus, 15_000)
-    return () => clearInterval(t)
+    // Real health check
+    const checkHealth = () =>
+      fetch('http://localhost:8000/api/health').then(r => setBackendOk(r.ok)).catch(() => setBackendOk(false))
+    checkHealth()
+    const h = setInterval(checkHealth, 15_000)
+    return () => { clearInterval(t); clearInterval(h) }
   }, [])
 
   const handleClearDemo = async () => {
@@ -2061,9 +2123,11 @@ function ConfigPanel({ rooms, patients, onRefresh, alerts }: { rooms: Room[]; pa
         <div className={styles.configTitle}>System Status</div>
         <div className={styles.storageGrid}>
           <div className={styles.storageCard}>
-            <div className={styles.storageLabel}>Patient & Room Records</div>
-            <div className={styles.storageVal} style={{color:'#22c55e'}}>● Connected</div>
-            <div className={styles.storageSub}>Patients, rooms, and alert history are being saved</div>
+            <div className={styles.storageLabel}>Backend & Database</div>
+            <div className={styles.storageVal} style={{color: backendOk === null ? '#f59e0b' : backendOk ? '#22c55e' : '#ef4444'}}>
+              {backendOk === null ? '● Checking…' : backendOk ? '● Connected' : '● Unreachable'}
+            </div>
+            <div className={styles.storageSub}>{backendOk ? 'Patients, rooms, and alert history are being saved' : 'Backend is not responding — check that the server is running'}</div>
           </div>
           <div className={styles.storageCard}>
             <div className={styles.storageLabel}>Alert Replay Clips</div>
@@ -2324,7 +2388,10 @@ function ZoneConfigPanel({ rooms }: { rooms: Room[] }) {
         {/* RIGHT — editable δ per zone + explanation */}
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           <div style={{fontSize:11,fontWeight:700,color:'#475569',marginBottom:2}}>
-            Configure δ values per zone — saved to Supabase, applied immediately
+            Zone risk modifiers (δ) — fixed in context_engine.py
+          </div>
+          <div style={{fontSize:10,color:'#94a3b8',marginBottom:6}}>
+            These δ values are constants in the inference engine. Save above updates zone shapes only.
           </div>
 
           {ZONE_DEFS.map(z => {
@@ -2450,7 +2517,7 @@ export default function Overview() {
   useEffect(() => { void loadAll(true) }, [loadAll])
   useEffect(() => {
     // Background refresh — no spinner, don't blank existing data
-    const t = setInterval(() => { void loadAll(false) }, 15_000)
+    const t = setInterval(() => { void loadAll(false) }, 5_000)
     return () => clearInterval(t)
   }, [loadAll])
 
@@ -2565,6 +2632,7 @@ export default function Overview() {
             rooms={rooms} patients={patients} alerts={alerts} onBeep={playBeep}
             onReplay={(a) => { setReplayTarget(a); setActiveTab('replay') }}
             onViewPatient={(p) => { setSelectedPatient(p); setActiveTab('patients') }}
+            onAcknowledge={handleAcknowledge}
           />
         )}
         {activeTab === 'alerts'    && (
@@ -2575,7 +2643,7 @@ export default function Overview() {
           />
         )}
         {activeTab === 'replay'    && <ReplayPanel alerts={alerts} initialAlert={replayTarget} onAcknowledge={handleAcknowledge} />}
-        {activeTab === 'history'   && <HistoryPanel alerts={alerts} loading={loading} patients={patients} rooms={rooms} caregivers={caregivers} />}
+        {activeTab === 'history'   && <HistoryPanel alerts={alerts} loading={loading} patients={patients} rooms={rooms} caregivers={caregivers} onReplay={(a) => { setReplayTarget(a); setActiveTab('replay') }} />}
         {activeTab === 'analytics' && <AnalyticsPanel summary={summary} alerts={alerts} patients={patients} rooms={rooms} />}
         {activeTab === 'reports'   && <ReportsPanel alerts={alerts} patients={patients} rooms={rooms} />}
         {activeTab === 'users'     && <UsersPanel caregivers={caregivers} rooms={rooms} />}
