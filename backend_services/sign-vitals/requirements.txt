@@ -1,5 +1,5 @@
 # Main backend environment (.venv) — FastAPI + TensorFlow/Keras
-# inference + DTW grading + guarded Gemini rewording + Supabase. Does NOT include mediapipe/opencv/pandas —
+# inference + DTW grading + guarded Gemini rewording + Supabase. Does NOT include mediapipe/opencv —
 # those belong to .venv_mediapipe (see requirements-mediapipe.txt).
 # Pinned to the versions currently installed and verified working.
 fastapi==0.141.1
@@ -11,6 +11,7 @@ supabase==2.31.0
 dtw-python==1.9.0
 google-genai==2.29.0
 python-dotenv==1.2.3
+pandas==3.0.5           # preprocessing.py (landmark normalisation, as in the notebook)
 tzdata==2026.3          # zoneinfo on Windows: caregiver time zones (monthly badges)
 boto3==1.43.83          # Cloudflare R2 presigned URLs (Reference Video tab, Parkinson's videos)
 requests==2.34.2        # scripts/e2e_test_caregiver.py and the timing / setup checks only
