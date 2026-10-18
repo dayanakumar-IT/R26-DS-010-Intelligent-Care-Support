@@ -74,17 +74,27 @@ optional (see the comments in `.env.example`). Never commit `.env`.
 ## 5. Database (Supabase)
 
 All migrations are in `supabase/migrations/`. On the shared CareSense project
-they are already applied up to **0048**. **0049** (`gloss_learners`, supervisor
-learning) and **0050** (supervisors read Parkinson's education progress) are
-applied by the component owner — each runs in one transaction; undo scripts
+they are applied up to **0050**: **0049** (`gloss_learners`, supervisor
+learning) and **0050** (supervisors read Parkinson's education progress).
+**0051** (`is_test` flag, so test logins are left out of Team learning) is
+applied by the component owner. Each runs in one transaction; undo scripts
 are in `backend_services/sign-vitals/db_undo/`. On a new Supabase project,
 run every file in order in the SQL editor (back up first on an existing one).
 
 Optional — a clearly labelled test login, so testing never touches real
-caregivers (writes its password only to `.env`):
+caregivers (writes its password only to `.env`; after 0051 it also marks the
+login as a test account):
 
 ```powershell
 .venv\Scripts\python scripts\create_test_caregiver.py
+```
+
+For checking the supervisor screens, a temporary test supervisor (it can read
+every caregiver's learning, so delete it afterwards):
+
+```powershell
+.venv\Scripts\python scripts\create_test_supervisor.py
+.venv\Scripts\python scripts\create_test_supervisor.py --delete
 ```
 
 ## 6. Start the backend
@@ -94,8 +104,10 @@ cd backend_services\sign-vitals
 .venv\Scripts\python -m uvicorn main:app --host 127.0.0.1 --port 8009
 ```
 
-Wait for `backend ready for inference` and `warm-up done | mediapipe_worker=ready`
-in the log (about 10–20 s). Check: open http://127.0.0.1:8009/health — every
+Wait for `backend ready for inference`, `long-running worker started | ... |
+unthrottled=True` and `warm-up done | mediapipe_worker=ready` in the log
+(about 10–20 s). `unthrottled=True` means Windows will not slow the backend
+down while the browser is in front. Check: open http://127.0.0.1:8009/health — every
 entry should say `"loaded": true`. (`--reload` is fine while editing code.)
 
 ## 7. Frontend
@@ -136,8 +148,8 @@ From `backend_services\sign-vitals` (backend not required to be running):
 
 # Everything else (no network)
 foreach ($t in "test_persistent_worker","test_progress_rules","test_attempt_modes","test_session_recovery",
-               "test_not_recommended","test_supervisor","test_capture_gates","test_execution_score",
-               "test_feedback_hands","test_learner_model") { .venv\Scripts\python "tests\$t.py" }
+               "test_not_recommended","test_supervisor","test_attempt_errors","test_win_perf","test_capture_gates",
+               "test_execution_score","test_feedback_hands","test_learner_model") { .venv\Scripts\python "tests\$t.py" }
 
 # Row-level security on the real migration files (in-memory Postgres, never the live database)
 cd tests\rls
@@ -162,7 +174,7 @@ with `water.mp4`, `pain.mp4`, `afternoon.mp4` and `please.mp4` sign clips):
 |---|---|
 | `Could not find the .venv_mediapipe Python interpreter` | Step 3: `.venv_mediapipe` must be inside `backend_services\sign-vitals`. |
 | `/health` shows a fingerprint mismatch | A file in `gloss_assets/` changed (e.g. line endings). Re-checkout it: `git checkout -- gloss_assets`. |
-| Attempts take much longer than ~5–8 s | Close other heavy programs (MediaPipe is CPU-bound, ~50 ms per frame); keep the backend running between attempts (the worker loads once). |
+| Attempts take much longer than ~5–8 s | Check the start-up log says `unthrottled=True` (Windows power throttling slows background processes 3–4x while the browser is in front). Close other heavy programs (MediaPipe is CPU-bound, ~50 ms per frame); keep the backend running between attempts (the worker loads once). |
 | Reference Video says "not available" | R2 keys missing in `.env` (optional); the 2D guide and 3D Signer still work. |
 | "This feature needs the GLOSS database migrations…" | Apply the migrations in step 5. |
 | Camera hand guide missing (only a faint face oval) | The browser is too slow for the live hand guide or has no GPU; practice and grading are unaffected. |
