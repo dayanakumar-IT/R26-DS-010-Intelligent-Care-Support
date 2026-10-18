@@ -25,6 +25,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.config import to_colombo
+
 BRAND_BLUE = colors.HexColor("#1e3a8a")
 BRAND_ACCENT = colors.HexColor("#14b8a6")
 SLATE_700 = colors.HexColor("#334155")
@@ -53,25 +55,173 @@ EXCEL_COLUMNS = [
 
 
 def _format_time(value: Any) -> str:
-    if isinstance(value, str) and "T" in value:
-        return value.split("T")[1][:5]
-    return str(value)
+    """HH:MM in Sri Lanka time — see app.config.to_colombo. Records are
+    stored/queried in UTC; this converts only for display."""
+    dt = to_colombo(value)
+    if dt is None:
+        return str(value)
+    return dt.strftime("%H:%M")
 
 
 def _format_record_date(value: Any) -> str:
-    if isinstance(value, str) and len(value) >= 10:
-        return value[:10]
-    return ""
-
-
-def _clean_summary_line(line: str) -> str:
-    text = line.strip()
-    if not text:
+    """YYYY-MM-DD in Sri Lanka time. Slicing the raw stored string gave the
+    UTC calendar date, which can be a day off from the Sri Lanka date for
+    anything recorded near midnight — convert first."""
+    dt = to_colombo(value)
+    if dt is None:
         return ""
-    text = re.sub(r"^═+\s*", "", text)
-    text = re.sub(r"\s*═+$", "", text)
-    text = text.replace("──", "—")
-    return text.strip()
+    return dt.strftime("%Y-%m-%d")
+
+
+# Period-summary text line patterns — same conventions as summary_builder.py
+# and the frontend's parseSummary.ts (title banner, "── Section ──" headers,
+# "Label: value" meta lines, "  • ..." bullets), parsed here only to lay the
+# PDF out with real headings/tables instead of one flat list of paragraphs.
+_TITLE_BANNER_RE = re.compile(r"^═+\s*(.+?)\s*═+$")
+_SECTION_HEADER_RE = re.compile(r"^──\s*(.+?)\s*──$")
+_META_LINE_RE = re.compile(r"^(Date range|Caregivers|Current caregiver):\s*(.+)$", re.IGNORECASE)
+_BULLET_COUNT_RE = re.compile(r"^\s*•\s*([^:]+):\s*(\d+)\s*$")
+_BULLET_OBSERVATION_RE = re.compile(
+    r"^\s*•\s*(?:((?:\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4},\s*)?\d{1,2}:\d{2}(?:\s*[AP]M)?)\s*)?"
+    r"(?:\[([^\]]+)\]\s*)?(.+?)(\s*\[ALERT\])?\s*$"
+)
+_KV_LINE_RE = re.compile(r"^([^:]+):\s*(.+)$")
+
+
+def _build_mini_table(
+    header: list[str],
+    rows: list[list[Any]],
+    col_widths: list[float],
+    header_cell_style: ParagraphStyle,
+) -> Table:
+    """Same visual language as the Observation log table (brand-blue header,
+    alternating row tint, thin grid) so Period summary tables don't look
+    like a different document."""
+    data: list[list[Any]] = [[Paragraph(f"<b>{h}</b>", header_cell_style) for h in header]]
+    data.extend(rows)
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+    table.setStyle(
+        TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("TEXTCOLOR", (0, 1), (-1, -1), SLATE_700),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, ROW_ALT]),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ])
+    )
+    return table
+
+
+def _render_period_summary(
+    summary_text: str,
+    *,
+    body: ParagraphStyle,
+    subsection_style: ParagraphStyle,
+    meta_style: ParagraphStyle,
+    cell_style: ParagraphStyle,
+    header_cell_style: ParagraphStyle,
+) -> list[Any]:
+    """Turns the generated period-summary text into headed, tabular PDF
+    content — same information as before, laid out instead of dumped as one
+    flat list of identical paragraphs."""
+    elements: list[Any] = []
+    observation_rows: list[list[Any]] = []
+    category_rows: list[list[Any]] = []
+
+    def flush_observations() -> None:
+        if observation_rows:
+            elements.append(Spacer(1, 4))
+            elements.append(
+                _build_mini_table(
+                    ["Date / time", "Category", "Observation", "Alert"],
+                    list(observation_rows),
+                    [95, 60, 255, 38],
+                    header_cell_style,
+                )
+            )
+            elements.append(Spacer(1, 8))
+            observation_rows.clear()
+
+    def flush_categories() -> None:
+        if category_rows:
+            elements.append(Spacer(1, 4))
+            elements.append(
+                _build_mini_table(
+                    ["Category", "Count"],
+                    list(category_rows),
+                    [300, 100],
+                    header_cell_style,
+                )
+            )
+            elements.append(Spacer(1, 8))
+            category_rows.clear()
+
+    for raw_line in summary_text.split("\n"):
+        line = raw_line.strip()
+        if not line or line.lower().startswith("end of"):
+            continue
+        if _TITLE_BANNER_RE.match(line):
+            continue
+
+        section_match = _SECTION_HEADER_RE.match(line)
+        if section_match:
+            title = section_match.group(1)
+            if title.lower().startswith("end of"):
+                continue
+            flush_observations()
+            flush_categories()
+            elements.append(Paragraph(title, subsection_style))
+            continue
+
+        meta_match = _META_LINE_RE.match(line)
+        if meta_match:
+            elements.append(
+                Paragraph(f"<b>{meta_match.group(1)}:</b> {meta_match.group(2)}", meta_style)
+            )
+            continue
+
+        if line.startswith("•"):
+            count_match = _BULLET_COUNT_RE.match(line)
+            if count_match:
+                flush_observations()
+                category_rows.append([count_match.group(1).strip(), count_match.group(2).strip()])
+                continue
+
+            obs_match = _BULLET_OBSERVATION_RE.match(line)
+            if obs_match:
+                flush_categories()
+                time_part = obs_match.group(1) or ""
+                category_part = (obs_match.group(2) or "").strip()
+                text_part = (obs_match.group(3) or "").strip()
+                is_alert = bool(obs_match.group(4))
+                observation_rows.append([
+                    time_part,
+                    category_part.title(),
+                    Paragraph(text_part or "—", cell_style),
+                    "Yes" if is_alert else "No",
+                ])
+                continue
+
+        flush_observations()
+        flush_categories()
+        kv_match = _KV_LINE_RE.match(line)
+        if kv_match:
+            elements.append(
+                Paragraph(f"{kv_match.group(1).strip()}: <b>{kv_match.group(2).strip()}</b>", body)
+            )
+        else:
+            elements.append(Paragraph(line, body))
+
+    flush_observations()
+    flush_categories()
+    return elements
 
 
 class _ScribePdfDoc(BaseDocTemplate):
@@ -176,7 +326,7 @@ def build_excel_report(
         ("Patient", patient_code),
         ("Start date", start_date.isoformat()),
         ("End date", end_date.isoformat()),
-        ("Generated", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")),
+        ("Generated", to_colombo(datetime.now(timezone.utc)).strftime("%Y-%m-%d %H:%M")),
         ("Total observations", str(len(records))),
     ]
     for label, value in metadata_rows:
@@ -262,8 +412,8 @@ def build_pdf_report(
     summary_text: str,
     generated_at: datetime | None = None,
 ) -> bytes:
-    generated = generated_at or datetime.now(timezone.utc)
-    generated_label = generated.strftime("%d %b %Y · %H:%M UTC")
+    generated = to_colombo(generated_at or datetime.now(timezone.utc))
+    generated_label = generated.strftime("%d %b %Y · %H:%M") if generated else ""
 
     buffer = io.BytesIO()
     header_meta = {
@@ -302,6 +452,14 @@ def build_pdf_report(
         fontSize=9,
         textColor=SLATE_500,
         spaceAfter=10,
+    )
+    subsection_style = ParagraphStyle(
+        "Subsection",
+        parent=styles["Heading3"],
+        fontSize=10,
+        textColor=BRAND_BLUE,
+        spaceBefore=10,
+        spaceAfter=4,
     )
     cell_style = ParagraphStyle(
         "Cell",
@@ -373,14 +531,16 @@ def build_pdf_report(
 
     story.append(Spacer(1, 16))
     story.append(Paragraph("Period summary", section_title))
-
-    for raw_line in summary_text.split("\n"):
-        line = _clean_summary_line(raw_line)
-        if not line or line.lower().startswith("end of"):
-            continue
-        if line.startswith("Period Summary") or line.startswith("═══"):
-            continue
-        story.append(Paragraph(line, body))
+    story.extend(
+        _render_period_summary(
+            summary_text,
+            body=body,
+            subsection_style=subsection_style,
+            meta_style=meta_style,
+            cell_style=cell_style,
+            header_cell_style=header_cell_style,
+        )
+    )
 
     doc.build(story)
     return buffer.getvalue()

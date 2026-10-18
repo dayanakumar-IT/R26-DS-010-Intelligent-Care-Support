@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 from typing import Any
+
+from app.config import to_colombo
 
 
 def build_daily_report(
@@ -34,8 +36,9 @@ def build_daily_report(
 
 
 def _format_time(value: Any) -> str:
-    if isinstance(value, datetime):
-        return value.strftime("%H:%M")
-    if isinstance(value, str) and "T" in value:
-        return value.split("T")[1][:5]
-    return str(value)
+    """HH:MM in Sri Lanka time — see app.config.to_colombo. Records are
+    stored/queried in UTC; this converts only for display."""
+    dt = to_colombo(value)
+    if dt is None:
+        return str(value)
+    return dt.strftime("%H:%M")

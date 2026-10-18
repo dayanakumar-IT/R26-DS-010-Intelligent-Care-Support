@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -60,7 +61,42 @@ TMP_DIR = _ROOT / "tmp"
 MODELS_DIR = _ROOT / "models"
 PROTECTED_VOCAB_PATH = _ROOT / "protected_vocab.txt"
 
+# Whisper only ever attends to ~30s per call — recordings longer than this
+# are split into the smallest number of equal chunks that are each <= this
+# many seconds (see app/pipeline/audio_preprocess.py: split_into_chunks).
+MAX_CHUNK_SECONDS = float(os.environ.get("SCRIBE_MAX_CHUNK_SECONDS", "30"))
+
 ADL_CATEGORIES = frozenset({
     "medication", "meal", "fluid_intake", "hygiene", "mobility",
     "symptom", "mood", "nurse_check", "family_visit",
 })
+
+# Sri Lanka has used a fixed UTC+05:30 offset (no daylight saving) since
+# 1996, so a static offset is correct and avoids relying on the IANA tzdata
+# package being installed (zoneinfo.ZoneInfo("Asia/Colombo") would need it
+# on Windows). Shared by every place that queries by calendar day or
+# displays a stored (UTC) timestamp as a human-readable local time.
+COLOMBO_TZ = timezone(timedelta(hours=5, minutes=30))
+
+
+def to_colombo(value: object) -> datetime | None:
+    """Parses a stored UTC timestamp (str or datetime) and returns it
+    converted to Sri Lanka time. Records are stored and queried in UTC —
+    this conversion belongs only at the point a timestamp is formatted for
+    a human to read, never before. Returns None if value can't be parsed."""
+    if isinstance(value, datetime):
+        dt = value
+    elif isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(COLOMBO_TZ)
+
+
+def colombo_today() -> date:
+    return datetime.now(COLOMBO_TZ).date()

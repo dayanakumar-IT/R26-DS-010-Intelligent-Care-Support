@@ -1,17 +1,16 @@
-import { Play } from 'lucide-react'
-import Button from '../../../shared/components/Button'
 import type { AdlRecord } from '../types'
 import { formatTime } from '../utils/format'
 import styles from '../styles/dashboard.module.css'
 import AdlDetailsList from './AdlDetailsList'
 import CategoryBadge from './CategoryBadge'
 import ObservationRowMenu from './ObservationRowMenu'
+import PlayToggleButton from './PlayToggleButton'
 import StatusBadge from './StatusBadge'
 
 interface ObservationTableProps {
   records: AdlRecord[]
   playingId?: string | null
-  onPlay?: (record: AdlRecord) => void
+  onTogglePlay?: (record: AdlRecord) => void
   onEdit?: (record: AdlRecord) => void
   onDelete?: (record: AdlRecord) => void
   showManageActions?: boolean
@@ -66,7 +65,7 @@ function reviewStatus(record: AdlRecord) {
 export default function ObservationTable({
   records,
   playingId,
-  onPlay,
+  onTogglePlay,
   onEdit,
   onDelete,
   showManageActions = false,
@@ -101,7 +100,7 @@ export default function ObservationTable({
             {showAdlDetails && <th>Extracted ADL</th>}
             <th>Time</th>
             <th>Status</th>
-            {(onPlay || showActions) && <th className={styles.tableActionCol}>Actions</th>}
+            {(onTogglePlay || showActions) && <th className={styles.tableActionCol}>Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -129,19 +128,15 @@ export default function ObservationTable({
               )}
               <td className={styles.timeCell}>{formatRecordedAt(record.recorded_at)}</td>
               <td>{renderStatus(record)}</td>
-              {(onPlay || showActions) && (
+              {(onTogglePlay || showActions) && (
                 <td className={styles.tableActionCol}>
                   <div className={styles.tableActions}>
-                    {onPlay && (
-                      <Button
-                        variant="secondary"
-                        disabled={!record.r2_audio_key || playingId === record.id}
-                        onClick={() => onPlay(record)}
-                        className={styles.tableActionButton}
-                      >
-                        <Play size={14} aria-hidden="true" />
-                        {playingId === record.id ? 'Playing…' : 'Play'}
-                      </Button>
+                    {onTogglePlay && (
+                      <PlayToggleButton
+                        playing={playingId === record.id}
+                        disabled={!record.r2_audio_key}
+                        onToggle={() => onTogglePlay(record)}
+                      />
                     )}
                     {showActions ? (
                       <ObservationRowMenu record={record} onEdit={onEdit} onDelete={onDelete} />

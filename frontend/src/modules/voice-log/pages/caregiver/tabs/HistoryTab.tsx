@@ -9,6 +9,7 @@ import StatusBadge from '../../../components/StatusBadge'
 import { useToast } from '../../../components/Toast'
 import { fetchAudioUrl, fetchPatients } from '../../../services/scribeApi'
 import { fetchCaregiverRecords } from '../../../services/scribeSupabase'
+import { useAudioPlayer } from '../../../hooks/useAudioPlayer'
 import type { AdlRecord, Patient } from '../../../types'
 import styles from '../../../styles/dashboard.module.css'
 
@@ -54,7 +55,7 @@ export default function HistoryTab({ caregiverId }: HistoryTabProps) {
   const [patients, setPatients] = useState<Map<number, Patient>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [playingId, setPlayingId] = useState<string | null>(null)
+  const { playingId, toggle: togglePlay } = useAudioPlayer()
   const [expandedSelection, setExpandedSelection] = useState<string | null>(null)
 
   const loadHistory = useCallback(async () => {
@@ -90,23 +91,14 @@ export default function HistoryTab({ caregiverId }: HistoryTabProps) {
     setExpandedSelection((current) => (current === key ? null : key))
   }
 
-  const handlePlay = async (record: AdlRecord) => {
+  const handleTogglePlay = async (record: AdlRecord) => {
     if (!record.r2_audio_key) {
       showError('Audio has been purged or is unavailable.')
       return
     }
     try {
-      setPlayingId(record.id)
-      const url = await fetchAudioUrl(record.patient_id, record.id)
-      const audio = new Audio(url)
-      audio.onended = () => setPlayingId(null)
-      audio.onerror = () => {
-        setPlayingId(null)
-        showError('Failed to play audio.')
-      }
-      await audio.play()
+      await togglePlay(record.id, () => fetchAudioUrl(record.patient_id, record.id))
     } catch (err) {
-      setPlayingId(null)
       showError(err instanceof Error ? err.message : 'Failed to load audio.')
     }
   }
@@ -200,7 +192,7 @@ export default function HistoryTab({ caregiverId }: HistoryTabProps) {
                         <ObservationTable
                           records={dayRecords}
                           playingId={playingId}
-                          onPlay={handlePlay}
+                          onTogglePlay={handleTogglePlay}
                           showAdlDetails={false}
                           statusMode="processing"
                         />

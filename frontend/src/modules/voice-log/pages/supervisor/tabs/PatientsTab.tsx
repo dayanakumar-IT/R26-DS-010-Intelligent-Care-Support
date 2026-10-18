@@ -14,6 +14,8 @@ import LoadingState from '../../../components/LoadingState'
 
 import SectionHeader from '../../../components/SectionHeader'
 
+import AlertObservationCell from '../../../components/AlertObservationCell'
+
 import CategoryBadge from '../../../components/CategoryBadge'
 
 import ObservationTable from '../../../components/ObservationTable'
@@ -28,7 +30,11 @@ import PeriodSummaryView from '../../../components/PeriodSummaryView'
 
 import StatusBadge from '../../../components/StatusBadge'
 
+import TableSearchBox from '../../../components/TableSearchBox'
+
 import { useToast } from '../../../components/Toast'
+
+import { useAudioPlayer } from '../../../hooks/useAudioPlayer'
 
 import {
 
@@ -74,7 +80,7 @@ import type {
 
 } from '../../../types'
 
-import { formatCategory } from '../../../utils/format'
+import { formatCategory, formatReadableDateTime } from '../../../utils/format'
 import styles from '../../../styles/dashboard.module.css'
 
 
@@ -145,7 +151,9 @@ export default function PatientsTab({ initialPatientId = null }: { initialPatien
 
   const [loadingPeriod, setLoadingPeriod] = useState(false)
 
-  const [playingId, setPlayingId] = useState<string | null>(null)
+  const { playingId, toggle: togglePlay } = useAudioPlayer()
+
+  const [recordSearch, setRecordSearch] = useState('')
 
 
 
@@ -391,12 +399,24 @@ export default function PatientsTab({ initialPatientId = null }: { initialPatien
 
 
 
+  const filteredDailyRecords = useMemo(() => {
+    if (!dailyReport) return []
+    const query = recordSearch.trim().toLowerCase()
+    if (!query) return dailyReport.records
+    const patientCode = patients.find((p) => p.id === selectedPatientId)?.patient_code.toLowerCase() ?? ''
+    return dailyReport.records.filter((record) => {
+      const transcript = (record.cleaned_transcript ?? record.raw_transcript ?? '').toLowerCase()
+      return (
+        record.category.toLowerCase().includes(query) ||
+        transcript.includes(query) ||
+        patientCode.includes(query)
+      )
+    })
+  }, [dailyReport, recordSearch, patients, selectedPatientId])
+
   const categoryGroups = useMemo(
-
-    () => (dailyReport ? groupRecordsByCategory(dailyReport.records) : new Map()),
-
-    [dailyReport],
-
+    () => groupRecordsByCategory(filteredDailyRecords),
+    [filteredDailyRecords],
   )
 
 
@@ -421,44 +441,16 @@ export default function PatientsTab({ initialPatientId = null }: { initialPatien
 
 
 
-  const handlePlay = async (record: AdlRecord) => {
-
+  const handleTogglePlay = async (record: AdlRecord) => {
     if (!record.r2_audio_key) {
-
       showError('Audio unavailable.')
-
       return
-
     }
-
     try {
-
-      setPlayingId(record.id)
-
-      const url = await fetchAudioUrl(record.patient_id, record.id)
-
-      const audio = new Audio(url)
-
-      audio.onended = () => setPlayingId(null)
-
-      audio.onerror = () => {
-
-        setPlayingId(null)
-
-        showError('Playback failed.')
-
-      }
-
-      await audio.play()
-
+      await togglePlay(record.id, () => fetchAudioUrl(record.patient_id, record.id))
     } catch (err) {
-
-      setPlayingId(null)
-
       showError(err instanceof Error ? err.message : 'Failed to load audio.')
-
     }
-
   }
 
 
@@ -901,13 +893,16 @@ export default function PatientsTab({ initialPatientId = null }: { initialPatien
 
                   <h3 className="text-sm font-semibold text-red-800">Open alerts</h3>
 
-                  <ul className="mt-2 flex flex-col gap-1 text-sm text-red-700">
+                  <ul className="mt-2 flex flex-col gap-2 text-sm text-red-700">
 
                     {patientAlerts.map((alert) => (
 
-                      <li key={alert.id}>
+                      <li key={alert.id} className="flex flex-col gap-1">
 
-                        Alert raised {new Date(alert.created_at).toLocaleString()}
+                        <span className="text-xs font-medium text-red-600">
+                          {formatReadableDateTime(alert.created_at)}
+                        </span>
+                        <AlertObservationCell alert={alert} />
 
                       </li>
 
@@ -969,35 +964,49 @@ export default function PatientsTab({ initialPatientId = null }: { initialPatien
 
                 ) : (
 
-                  [...categoryGroups.entries()].map(([category, records]) => (
-
-                    <div key={category} className="mb-6 flex flex-col gap-2">
-
-                      <CategoryBadge category={category} />
-
-                      <ObservationTable
-
-                        records={records}
-
-                        hideCategory
-
-                        statusMode="review"
-
-                        showManageActions
-
-                        onEdit={setEditingRecord}
-
-                        onDelete={(record) => void handleDelete(record)}
-
-                        onPlay={handlePlay}
-
-                        playingId={playingId}
-
+                  <>
+                    <div className="mb-4">
+                      <TableSearchBox
+                        value={recordSearch}
+                        onChange={setRecordSearch}
+                        placeholder="Search category or transcript…"
                       />
-
                     </div>
 
-                  ))
+                    {categoryGroups.size === 0 ? (
+                      <p className="text-sm text-[var(--text-secondary)]">No matching records.</p>
+                    ) : (
+                      [...categoryGroups.entries()].map(([category, records]) => (
+
+                        <div key={category} className="mb-6 flex flex-col gap-2">
+
+                          <CategoryBadge category={category} />
+
+                          <ObservationTable
+
+                            records={records}
+
+                            hideCategory
+
+                            statusMode="review"
+
+                            showManageActions
+
+                            onEdit={setEditingRecord}
+
+                            onDelete={(record) => void handleDelete(record)}
+
+                            onTogglePlay={handleTogglePlay}
+
+                            playingId={playingId}
+
+                          />
+
+                        </div>
+
+                      ))
+                    )}
+                  </>
 
                 )}
 

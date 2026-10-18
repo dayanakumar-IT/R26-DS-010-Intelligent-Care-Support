@@ -7,13 +7,29 @@ from collections import Counter, defaultdict
 from datetime import date, datetime
 from typing import Any
 
+from app.config import to_colombo
+
 
 def _format_time(value: Any) -> str:
-    if isinstance(value, datetime):
-        return value.strftime("%H:%M")
-    if isinstance(value, str) and "T" in value:
-        return value.split("T")[1][:5]
-    return str(value)
+    """HH:MM in Sri Lanka time. Records are stored/queried in UTC — this
+    converts only for display, via the shared to_colombo() helper, so every
+    formatter in the app shifts timestamps the same way."""
+    dt = to_colombo(value)
+    if dt is None:
+        return str(value)
+    return dt.strftime("%H:%M")
+
+
+def _format_date_time(value: Any) -> str:
+    """Readable Sri Lanka date + time, e.g. '29 Aug 2026, 5:32 PM' — used
+    anywhere a summary can span multiple days (period summaries, handover
+    briefs), so the day is never ambiguous. Falls back to the raw value if
+    it can't be parsed as a date, rather than hiding data."""
+    dt = to_colombo(value)
+    if dt is None:
+        return str(value)
+    hour = dt.strftime("%I").lstrip("0") or "12"
+    return f"{dt.day} {dt.strftime('%b %Y')}, {hour}:{dt.strftime('%M %p')}"
 
 
 def _polish_transcript(text: str | None) -> str:
@@ -109,13 +125,20 @@ def _synthesize_highlight(row: dict[str, Any]) -> str:
     return polished
 
 
-def _observation_line(row: dict[str, Any], *, synthesized: bool = False) -> str:
+def _observation_line(row: dict[str, Any], *, synthesized: bool = False, with_date: bool = False) -> str:
+    """with_date=True uses the full readable date+time ('29 Aug 2026, 5:32 PM')
+    instead of a bare 'HH:MM' — needed wherever a summary can span more than
+    one day (period summaries, handover briefs) so the day is never
+    ambiguous. Defaults to the original bare-time behaviour so callers that
+    are always scoped to a single day/activity (e.g. the daily care-activity
+    summary) are unaffected."""
     text = _synthesize_highlight(row) if synthesized else (
         row.get("cleaned_transcript") or row.get("raw_transcript") or "(no transcript)"
     )
     alert = " [ALERT]" if row.get("alert_required") else ""
     category = (row.get("category") or "unknown").replace("_", " ").title()
-    return f"  • {_format_time(row.get('recorded_at'))} [{category}] {text}{alert}"
+    timestamp = _format_date_time(row.get("recorded_at")) if with_date else _format_time(row.get("recorded_at"))
+    return f"  • {timestamp} [{category}] {text}{alert}"
 
 
 def _structured_fields(row: dict[str, Any]) -> list[str]:
@@ -206,6 +229,33 @@ def build_daily_activity_summary(
     return "\n".join(lines)
 
 
+def _format_date_only(value: Any) -> str:
+    dt = to_colombo(value)
+    if dt is None:
+        return str(value)
+    return f"{dt.day} {dt.strftime('%b %Y')}"
+
+
+def _format_caregiver_entry(caregiver: dict[str, Any]) -> str:
+    name = caregiver.get("name") or "Unknown"
+    assigned_at = caregiver.get("assigned_at")
+    if not assigned_at:
+        return name
+    start_label = _format_date_only(assigned_at)
+    ended_at = caregiver.get("ended_at")
+    end_label = _format_date_only(ended_at) if ended_at else "present"
+    return f"{name} ({start_label} – {end_label})"
+
+
+def _format_caregiver_list(caregivers: list[dict[str, Any]] | None) -> str:
+    """Renders every caregiver assignment overlapping the period (Change:
+    previously only the current caregiver was shown, even for a range where
+    the patient had been handed over between several caregivers)."""
+    if not caregivers:
+        return "Unassigned"
+    return ", ".join(_format_caregiver_entry(c) for c in caregivers)
+
+
 def build_period_summary_text(
     *,
     patient_code: str,
@@ -213,7 +263,7 @@ def build_period_summary_text(
     end_date: date,
     records: list[dict[str, Any]],
     alerts: list[dict[str, Any]],
-    current_caregiver: str | None = None,
+    caregivers: list[dict[str, Any]] | None = None,
     completed_activities: int = 0,
 ) -> str:
     if not records:
@@ -226,20 +276,15 @@ def build_period_summary_text(
     alert_count = sum(1 for row in records if row.get("alert_required"))
     unacked = sum(1 for a in alerts if not a.get("acknowledged"))
 
-    display_categories: Counter[str] = Counter()
-    for row in records:
-        cat = row.get("category", "unknown")
-        text = (row.get("cleaned_transcript") or row.get("raw_transcript") or "").lower()
-        if cat == "symptom" and any(w in text for w in ("water", "ml", "glass", "juice", "drank", "gave")):
-            if not any(w in text for w in ("pain", "fever", "cough", "bleeding", "fall")):
-                display_categories["fluid_intake"] += 1
-                continue
-        display_categories[cat] += 1
+    # Always the real stored category — no display-only reclassification.
+    display_categories: Counter[str] = Counter(
+        row.get("category", "unknown") for row in records
+    )
 
     lines = [
         f"═══ Period Summary — {patient_code} ═══",
         f"Date range: {start_date.isoformat()} to {end_date.isoformat()}",
-        f"Current caregiver: {current_caregiver or 'Unassigned'}",
+        f"Caregivers: {_format_caregiver_list(caregivers)}",
         "",
         "── Overview ──",
         f"Total observations: {len(records)}",
@@ -256,20 +301,95 @@ def build_period_summary_text(
     if medication_rows:
         lines.append("\n── Medication observations ──")
         for row in medication_rows[-5:]:
-            lines.append(_observation_line(row, synthesized=True))
+            lines.append(_observation_line(row, synthesized=True, with_date=True))
 
     flagged_rows = [r for r in records if r.get("alert_required")]
     if flagged_rows:
         lines.append("\n── Flagged items ──")
         for row in flagged_rows[-5:]:
-            lines.append(_observation_line(row, synthesized=True))
+            lines.append(_observation_line(row, synthesized=True, with_date=True))
 
     lines.append("\n── Recent highlights ──")
     for row in records[-8:]:
-        lines.append(_observation_line(row, synthesized=True))
+        lines.append(_observation_line(row, synthesized=True, with_date=True))
 
     lines.append("\n── End of period summary ──")
     return "\n".join(lines)
+
+
+def _spoken_date(value: date) -> str:
+    return f"{value.day} {value.strftime('%B %Y')}"
+
+
+def build_spoken_period_summary(
+    *,
+    patient_code: str,
+    start_date: date,
+    end_date: date,
+    caregivers: list[dict[str, Any]] | None,
+    records: list[dict[str, Any]],
+    alerts: list[dict[str, Any]],
+) -> str:
+    """Short gTTS script (Change: separate from summary_text, which stays
+    the full written report for "View full text" and exports). Every open
+    alert is included in full — completeness there matters more than
+    hitting a 20-40s target, so a patient with many open alerts will run
+    longer. Routine items are counts only; no category labels or banners.
+    """
+    caregiver_names: list[str] = []
+    for caregiver in caregivers or []:
+        name = caregiver.get("name")
+        if name and name not in caregiver_names:
+            caregiver_names.append(name)
+    caregiver_text = ", ".join(caregiver_names) if caregiver_names else "unassigned"
+
+    sentences = [
+        f"Period summary for patient {patient_code}, "
+        f"{_spoken_date(start_date)} to {_spoken_date(end_date)}. "
+        f"Caregiver: {caregiver_text}."
+    ]
+
+    open_alerts = [a for a in alerts if not a.get("acknowledged")]
+    acknowledged_alerts = [a for a in alerts if a.get("acknowledged")]
+
+    if open_alerts:
+        sentences.append(
+            f"{len(open_alerts)} open alert{'s' if len(open_alerts) != 1 else ''} requiring attention."
+        )
+        for alert in open_alerts:
+            record = alert.get("adl_records") or {}
+            detail = _synthesize_highlight(record) if record else "details unavailable."
+            sentences.append(f"Alert on {_format_date_time(alert.get('created_at'))}: {detail}")
+    else:
+        sentences.append("No open alerts.")
+
+    if acknowledged_alerts:
+        sentences.append(
+            f"{len(acknowledged_alerts)} alert"
+            f"{'s' if len(acknowledged_alerts) != 1 else ''} already acknowledged."
+        )
+
+    medication_rows = [r for r in records if r.get("category") == "medication"]
+    if medication_rows:
+        descriptions: list[str] = []
+        for row in medication_rows:
+            name = row.get("medication_name")
+            dosage = row.get("dosage")
+            if name and dosage:
+                descriptions.append(f"{name} {dosage}")
+            elif name:
+                descriptions.append(name)
+        unique_descriptions = list(dict.fromkeys(descriptions))
+        detail = f": {', '.join(unique_descriptions)}" if unique_descriptions else ""
+        sentences.append(
+            f"{len(medication_rows)} medication observation"
+            f"{'s' if len(medication_rows) != 1 else ''}{detail}."
+        )
+
+    sentences.append(f"{len(records)} total observation{'s' if len(records) != 1 else ''} recorded.")
+    sentences.append("End of summary.")
+
+    return " ".join(sentences)
 
 
 def build_handover_summary(
@@ -285,7 +405,7 @@ def build_handover_summary(
     lines = [
         f"═══ Patient Handover Summary ═══",
         f"Patient: {patient_code}",
-        f"Handover date: {handover_at.strftime('%Y-%m-%d %H:%M')}",
+        f"Handover date: {_format_date_time(handover_at)}",
         f"Previous caregiver: {from_caregiver or 'None (first assignment)'}",
         f"New caregiver: {to_caregiver}",
         "",
@@ -297,12 +417,18 @@ def build_handover_summary(
         lines.append("  No recent observations on record.")
     else:
         for row in recent_records[:10]:
-            lines.append(_observation_line(row, synthesized=True))
+            lines.append(_observation_line(row, synthesized=True, with_date=True))
 
     if open_alerts:
         lines.append("\n── Open alerts (requires attention) ──")
         for alert in open_alerts:
-            lines.append(f"  • Alert raised {alert.get('created_at', 'unknown')}")
+            # adl_records is the joined ADL record (see assignments.py's
+            # perform_handover query) — without it we only have a bare
+            # timestamp and no way to say what the alert actually is.
+            record = alert.get("adl_records") or {}
+            category = (record.get("category") or "unknown").replace("_", " ").title()
+            detail = _synthesize_highlight(record) if record else "Alert details unavailable."
+            lines.append(f"  • {_format_date_time(alert.get('created_at'))} [{category}] {detail} [ALERT]")
 
     categories = Counter(r.get("category") for r in recent_records)
     if categories:
