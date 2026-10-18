@@ -7,7 +7,7 @@ testing GLOSS without touching real caregivers' data:
   profiles    name "GLOSS TEST caregiver", role caregiver
   participants  one 'demo' row (required by caregiver_profiles)
   caregiver_profiles  display_name "GLOSS TEST caregiver", ward "TEST", synthetic, no supervisor
-  gloss_caregiver_accounts  link login -> caregiver profile
+  gloss_caregiver_accounts  link login -> caregiver profile, is_test = true (0051)
 
 Idempotent: re-running reuses what exists. The password is written only to
 the gitignored .env (GLOSS_TEST_CAREGIVER_EMAIL / _PASSWORD) and never printed.
@@ -67,6 +67,14 @@ def main():
             created.append("participant + caregiver_profiles row")
         db.table("gloss_caregiver_accounts").insert({"user_id": user_id, "caregiver_profile_id": cp_id}).execute()
         created.append("gloss_caregiver_accounts link")
+
+    # Mark it as a test account (migration 0051) so supervisors' Team learning
+    # leaves it out. By its login id, never by name. Safe to re-run.
+    try:
+        db.table("gloss_caregiver_accounts").update({"is_test": True}).eq("user_id", user_id).execute()
+        created.append("is_test flag set")
+    except Exception:
+        print("note: is_test not set (apply migration 0051, then run this script again)")
 
     print(f"{NAME}: login {EMAIL} | user {user_id} | caregiver_profile_id {cp_id}")
     print("created: " + (", ".join(created) if created else "nothing (already existed)"))

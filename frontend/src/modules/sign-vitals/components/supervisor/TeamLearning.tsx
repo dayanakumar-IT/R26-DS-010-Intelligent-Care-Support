@@ -20,6 +20,30 @@ const day = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00`).toLocaleD
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
+const TREND: Record<string, { arrow: string; text: string }> = {
+  steady: { arrow: '→', text: 'steady' },
+  more: { arrow: '↗', text: 'more' },
+  fewer: { arrow: '↘', text: 'fewer' },
+}
+
+/** "Signs demonstrated per week (last 4 weeks): 0, 0, 0, 1" + a small neutral trend word. */
+function PaceLine({ row }: { row: SupervisorCaregiverRow }) {
+  const t = TREND[row.pace.trend] ?? TREND.steady
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-slate-700">
+      <span>
+        Signs demonstrated per week <span className="text-slate-500">(last 4 weeks)</span>: <b>{row.pace.demonstrated.join(', ')}</b>
+      </span>
+      <span
+        className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600"
+        title="The last 2 weeks compared with the 2 weeks before"
+      >
+        <span aria-hidden="true">{t.arrow}</span> {t.text}
+      </span>
+    </span>
+  )
+}
+
 function Pace({ row }: { row: SupervisorCaregiverRow }) {
   const max = Math.max(1, ...row.pace.demonstrated)
   return (
@@ -33,7 +57,6 @@ function Pace({ row }: { row: SupervisorCaregiverRow }) {
           </span>
         ))}
       </div>
-      <span className="text-sm text-slate-600">{row.pace.trend}</span>
     </div>
   )
 }
@@ -91,7 +114,8 @@ function Detail({ caregiverId, onBack }: { caregiverId: string; onBack: () => vo
             </div>
             <div className="flex flex-wrap items-end justify-between gap-4 rounded-[12px] border border-slate-200 bg-white p-3">
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pace · Demonstrated per week</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pace</span>
+                <PaceLine row={detail} />
                 <Pace row={detail} />
               </div>
               <span className="text-sm text-slate-600">Last active: {day(detail.last_active)}</span>
@@ -134,13 +158,13 @@ export default function TeamLearning({ overview, error, onRetry }: TeamLearningP
   const [selected, setSelected] = useState<string | null>(null)
 
   return (
-    <section id="team-learning" aria-label="Team learning" className="flex scroll-mt-6 flex-col gap-4 rounded-[20px] border border-[#E5EAF2] bg-white p-5 shadow-[var(--shadow-sm)] sm:p-6">
+    <section id="team-learning" aria-label="Team learning" className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-2xl font-bold text-[var(--brand-blue)]">
           <Users size={22} aria-hidden="true" /> Team learning
         </h2>
         <p className="text-base text-slate-600">
-          Every caregiver&apos;s sign language and Parkinson&apos;s education, sorted by name. What they have achieved — no rankings, no video.
+          Every caregiver&apos;s sign language and Parkinson&apos;s education, sorted by name (test accounts are not listed). What they have achieved — no rankings, no video.
         </p>
       </div>
 
@@ -164,7 +188,7 @@ export default function TeamLearning({ overview, error, onRetry }: TeamLearningP
                 <button
                   type="button"
                   onClick={() => setSelected(r.caregiver_profile_id)}
-                  className="grid w-full gap-3 rounded-[14px] border border-slate-200 bg-white p-4 text-left hover:border-[#93b4f5] hover:bg-[#f8fbff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)] lg:grid-cols-[1.2fr_1.3fr_1.1fr_1.2fr_auto] lg:items-center"
+                  className="grid w-full gap-3 rounded-[14px] border border-slate-200 bg-white p-4 text-left hover:border-[#93b4f5] hover:bg-[#f8fbff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)] lg:grid-cols-[1fr_1.1fr_1.7fr_1.1fr_auto] lg:items-center"
                 >
                   <span className="flex flex-col">
                     <span className="text-lg font-semibold text-slate-900">{r.name}</span>
@@ -175,7 +199,7 @@ export default function TeamLearning({ overview, error, onRetry }: TeamLearningP
                     <span className="text-sm text-slate-600">{r.retained} Retained · {r.practised} practised</span>
                   </span>
                   <span className="flex flex-col gap-0.5 text-base text-slate-700">
-                    <span className="flex items-center gap-1.5"><TrendingUp size={15} aria-hidden="true" className="text-[var(--brand-blue)]" />{r.pace.demonstrated.join(' · ')} <span className="text-sm text-slate-500">per week</span></span>
+                    <span className="flex items-start gap-1.5"><TrendingUp size={15} aria-hidden="true" className="mt-1 shrink-0 text-[var(--brand-blue)]" /><PaceLine row={r} /></span>
                     <span className="flex items-center gap-1.5 text-sm text-slate-600"><CalendarDays size={14} aria-hidden="true" />{r.active_days_this_week} of 7 days this week · {r.active_days_total} overall</span>
                   </span>
                   <span className="flex flex-col gap-0.5 text-base text-slate-700">

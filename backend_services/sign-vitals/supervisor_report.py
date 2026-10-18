@@ -45,11 +45,11 @@ def _plural(n: int, word: str) -> str:
 
 
 def trend_word(pace: list[int]) -> str:
-    """Neutral comparison of the last 2 weeks with the 2 weeks before."""
+    """One neutral word: the last 2 weeks compared with the 2 weeks before."""
     recent, earlier = sum(pace[-2:]), sum(pace[:-2])
     if recent == earlier:
-        return "about the same as the 2 weeks before"
-    return "more than the 2 weeks before" if recent > earlier else "fewer than the 2 weeks before"
+        return "steady"
+    return "more" if recent > earlier else "fewer"
 
 
 def caregiver_row(caregiver: dict, milestones: list[dict], attempts: list[dict], pdedu: dict,
@@ -127,18 +127,53 @@ def _by(rows: list[dict]) -> dict[str, list[dict]]:
     return out
 
 
+def _accounts(db) -> list[dict]:
+    """Caregiver logins with a GLOSS account; test logins (is_test, migration
+    0051) are left out. Before 0051 every account is returned."""
+    try:
+        rows = (db.table("gloss_caregiver_accounts").select("user_id, caregiver_profile_id, timezone, is_test")
+                .execute().data or [])
+    except Exception:
+        rows = db.table("gloss_caregiver_accounts").select("user_id, caregiver_profile_id, timezone").execute().data or []
+    return [r for r in rows if not r.get("is_test")]
+
+
+def _names(db, accounts: list[dict]) -> tuple[dict, dict]:
+    """(login name by user_id from profiles.name, caregiver_profiles.display_name by id)."""
+    user_ids = [a["user_id"] for a in accounts if a.get("user_id")]
+    cp_ids = [a["caregiver_profile_id"] for a in accounts]
+    logins = {r["id"]: r["name"] for r in
+              (db.table("profiles").select("id, name").in_("id", user_ids).execute().data or [])} if user_ids else {}
+    profiles = {r["id"]: r["display_name"] for r in
+                (db.table("caregiver_profiles").select("id, display_name").in_("id", cp_ids).execute().data or [])} if cp_ids else {}
+    return logins, profiles
+
+
 def _caregivers(db) -> list[dict]:
-    accounts = db.table("gloss_caregiver_accounts").select("caregiver_profile_id, timezone").execute().data or []
-    ids = [a["caregiver_profile_id"] for a in accounts]
-    if not ids:
+    """Real caregivers, named by their LOGIN display name (profiles.name) —
+    the name they see when they sign in — falling back to the caregiver
+    profile's display_name only if the login has no name."""
+    accounts = _accounts(db)
+    if not accounts:
         return []
-    names = {r["id"]: r["display_name"] for r in
-             (db.table("caregiver_profiles").select("id, display_name").in_("id", ids).execute().data or [])}
+    logins, profiles = _names(db, accounts)
     return sorted(
-        ({"id": a["caregiver_profile_id"], "name": names.get(a["caregiver_profile_id"], "Caregiver"),
+        ({"id": a["caregiver_profile_id"],
+          "name": logins.get(a.get("user_id")) or profiles.get(a["caregiver_profile_id"]) or "Caregiver",
           "timezone": a.get("timezone") or cfg.DEFAULT_TIMEZONE} for a in accounts),
         key=lambda c: c["name"].lower(),
     )
+
+
+def name_mismatches(db) -> list[dict]:
+    """Accounts whose login name (profiles.name) differs from the shared
+    caregiver_profiles.display_name — for reporting to the team; nothing is
+    changed."""
+    accounts = _accounts(db)
+    logins, profiles = _names(db, accounts)
+    return [{"caregiver_profile_id": a["caregiver_profile_id"], "login_name": logins.get(a.get("user_id")),
+             "caregiver_profile_name": profiles.get(a["caregiver_profile_id"])}
+            for a in accounts if logins.get(a.get("user_id")) != profiles.get(a["caregiver_profile_id"])]
 
 
 def _rows_for(db, ids: list[str]) -> dict:

@@ -14,6 +14,7 @@ import {
   Route,
   ScanSearch,
   TrendingUp,
+  Users,
   Video,
 } from 'lucide-react'
 import Button from '../../../shared/components/Button'
@@ -37,10 +38,15 @@ import Celebration from '../components/gloss/Celebration'
 import CheckMySign from '../components/CheckMySign'
 import RecallChallenge from '../components/RecallChallenge'
 import MyJourney from '../components/journey/MyJourney'
+import TeamLearning from '../components/supervisor/TeamLearning'
+import TeamPopup from '../components/supervisor/TeamPopup'
+import { shouldShowTeamPopup } from '../utils/teamPopup'
 import ProgressReportPrint from '../components/journey/ProgressReportPrint'
 import { lowHandTip } from '../utils/captureTips'
 import {
+  getGlossMe,
   getGlossProgressSummary,
+  getSupervisorOverview,
   getNextGlossLesson,
   submitMultipleChoiceAttempt,
   submitWebcamAttempt,
@@ -56,7 +62,9 @@ import type {
   GlossNewMilestone,
   GlossProgressSummary,
   GlossProgressReport,
+  GlossMe,
   GlossSign,
+  SupervisorOverview,
 } from '../types/gloss'
 import {
   PROGRESS_LABEL,
@@ -78,7 +86,7 @@ type Stage =
   | 'quiz'
   | 'error'
 
-type TabId = 'practice' | 'check' | 'recall' | 'browse' | 'journey' | 'progress'
+type TabId = 'practice' | 'check' | 'recall' | 'browse' | 'journey' | 'progress' | 'team'
 
 const TABS: ReadonlyArray<GlossTab<TabId>> = [
   { id: 'practice', label: 'Practice', icon: Video },
@@ -88,6 +96,8 @@ const TABS: ReadonlyArray<GlossTab<TabId>> = [
   { id: 'journey', label: 'My Journey', icon: Route },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
 ]
+// Supervisors only (the server checks the role again on every request).
+const TEAM_TAB: GlossTab<TabId> = { id: 'team', label: 'Team learning', icon: Users }
 
 function signLabel(signId: string): string {
   return signId.replace(/_/g, ' ')
@@ -148,6 +158,32 @@ export default function SignLanguage() {
   // Levels / badges / My Journey (GET /gloss/progress/summary). null until
   // loaded, or if unavailable (e.g. migrations not applied): the welcome
   // card is then hidden and practice is unaffected.
+  // Who is signed in. Supervisors also see Team learning and, once a day, a
+  // short team summary; their own learning works like a caregiver's.
+  const [me, setMe] = useState<GlossMe | null>(null)
+  const [team, setTeam] = useState<SupervisorOverview | null>(null)
+  const [teamError, setTeamError] = useState<string | null>(null)
+  const [teamPopup, setTeamPopup] = useState(false)
+  const loadTeam = useCallback((withPopup: boolean, userKey: string) => {
+    setTeamError(null)
+    getSupervisorOverview()
+      .then((o) => {
+        setTeam(o)
+        if (withPopup && shouldShowTeamPopup(userKey)) setTeamPopup(true)
+      })
+      .catch((e: unknown) => setTeamError(e instanceof Error ? e.message : 'Unavailable'))
+  }, [])
+  useEffect(() => {
+    getGlossMe()
+      .then((m) => {
+        setMe(m)
+        if (m.is_supervisor) loadTeam(true, m.name ?? 'supervisor')
+      })
+      .catch(() => {
+        /* the learning tabs work without it */
+      })
+  }, [loadTeam])
+
   const [summary, setSummary] = useState<GlossProgressSummary | null>(null)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [celebrate, setCelebrate] = useState<GlossNewMilestone[]>([])
@@ -584,7 +620,7 @@ export default function SignLanguage() {
 
       {celebrate.length > 0 && <Celebration milestones={celebrate} onClose={() => setCelebrate([])} />}
 
-      <GlossTabBar tabs={TABS} activeId={tab} onChange={(t) => { setCelebrate([]); setTab(t) }}>
+      <GlossTabBar tabs={me?.is_supervisor ? [...TABS, TEAM_TAB] : TABS} activeId={tab} onChange={(t) => { setCelebrate([]); setTab(t) }}>
         {tab === 'practice' && practiceContent}
 
         {tab === 'check' && (
@@ -628,7 +664,23 @@ export default function SignLanguage() {
         )}
 
         {tab === 'progress' && <ProgressReport summary={summary} />}
+
+        {tab === 'team' && me?.is_supervisor && (
+          <TeamLearning overview={team} error={teamError} onRetry={() => loadTeam(false, me.name ?? 'supervisor')} />
+        )}
       </GlossTabBar>
+
+      {teamPopup && team && me && (
+        <TeamPopup
+          userKey={me.name ?? 'supervisor'}
+          lines={team.popup}
+          onClose={() => setTeamPopup(false)}
+          onViewTeam={() => {
+            setTeamPopup(false)
+            setTab('team')
+          }}
+        />
+      )}
 
       {showReport && summary && <ProgressReportPrint summary={summary} onClose={() => setShowReport(false)} />}
 

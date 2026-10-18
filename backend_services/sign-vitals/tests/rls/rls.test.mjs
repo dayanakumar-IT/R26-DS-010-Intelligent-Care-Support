@@ -213,3 +213,13 @@ test("a supervisor learner (0049) learns with their own id only; caregivers cann
   assert.deepEqual(rows.map((r) => r.id).sort(), [CP.A, CP.B].sort());
   assert.ok(rows.every((r) => r.id === r.caregiver_profile_id));
 });
+
+test("0051: is_test flag on caregiver accounts, false by default; caregivers cannot change it", async () => {
+  const rows = (await db.query("select caregiver_profile_id, is_test from gloss_caregiver_accounts order by 1")).rows;
+  assert.ok(rows.length >= 2 && rows.every((r) => r.is_test === false), JSON.stringify(rows));
+  await db.query(`update gloss_caregiver_accounts set is_test = true where caregiver_profile_id = '${CP.B}'`);  // backend / script
+  const r = await as(db, { role: "authenticated", uid: U.careA }, (tx) =>
+    tx.query(`update gloss_caregiver_accounts set is_test = true where caregiver_profile_id = '${CP.A}'`)).catch(() => ({ affectedRows: 0 }));
+  assert.equal(r.affectedRows ?? 0, 0, "a caregiver flagged their own account");
+  await db.query(`update gloss_caregiver_accounts set is_test = false where caregiver_profile_id = '${CP.B}'`);
+});

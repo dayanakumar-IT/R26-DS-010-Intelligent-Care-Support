@@ -84,9 +84,12 @@ def _verified_user_id(supabase_client, authorization_header: str | None, context
     return str(user.id), key
 
 
-def _learner_id_for_user(supabase_client, user_id: str) -> str | None:
+def _learner_id_for_user(supabase_client, user_id: str, *, create_for_supervisor: bool = False) -> str | None:
     """A caregiver's caregiver_profile_id, else a supervisor's learner id
-    (gloss_learners, migration 0049; None if that table is not there yet)."""
+    (gloss_learners, migration 0049; None if that table is not there yet).
+    create_for_supervisor: a supervisor without a learner row gets one now
+    (name from profiles.name; role checked here, on the server), so every
+    learning screen works for them on first use."""
     rows = (supabase_client.table("gloss_caregiver_accounts").select("caregiver_profile_id")
             .eq("user_id", user_id).limit(1).execute().data)
     if rows:
@@ -96,7 +99,24 @@ def _learner_id_for_user(supabase_client, user_id: str) -> str | None:
                 .eq("user_id", user_id).eq("kind", "supervisor").limit(1).execute().data)
     except Exception:
         return None
-    return rows[0]["id"] if rows else None
+    if rows:
+        return rows[0]["id"]
+    if not create_for_supervisor:
+        return None
+    profile = _profile(supabase_client, user_id)
+    if profile.get("role") != "supervisor":
+        return None
+    try:
+        created = (supabase_client.table("gloss_learners")
+                   .insert({"kind": "supervisor", "user_id": user_id, "display_name": profile.get("name") or "Supervisor"})
+                   .execute().data)
+    except Exception:
+        # Created by a parallel request (user_id is unique): read it back.
+        created = (supabase_client.table("gloss_learners").select("id")
+                   .eq("user_id", user_id).eq("kind", "supervisor").limit(1).execute().data)
+    if created:
+        logger.info("[GLOSS][AUTH] supervisor learner profile created | learner=%s", str(created[0]["id"])[:8])
+    return created[0]["id"] if created else None
 
 
 def get_authenticated_caregiver(
@@ -105,8 +125,9 @@ def get_authenticated_caregiver(
     """
     The caller's learner id (caregiver_profile_id column value) from a
     verified login: 401 for a missing / invalid token, 403 for a login that
-    is neither a caregiver account nor a supervisor learner. Only
-    successful lookups are cached (AUTH_CACHE_SECONDS).
+    is neither a caregiver account nor a supervisor (a supervisor's learner
+    row is created on first use). Only successful lookups are cached
+    (AUTH_CACHE_SECONDS).
 
     Logging never includes the token, the header or the Supabase user id —
     only a short prefix of the learner id, and the reason on rejection.
@@ -115,7 +136,7 @@ def get_authenticated_caregiver(
     learner_id = _cached(f"learner:{key}")
     if learner_id:
         return learner_id
-    learner_id = _learner_id_for_user(supabase_client, user_id)
+    learner_id = _learner_id_for_user(supabase_client, user_id, create_for_supervisor=True)
     if not learner_id:
         _reject(context, 403, "This login is not linked to a GLOSS caregiver identity")
     _remember(f"learner:{key}", learner_id)

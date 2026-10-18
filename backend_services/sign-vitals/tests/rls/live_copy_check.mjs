@@ -30,7 +30,7 @@ const ORDER = ["profiles", "participants", "caregiver_profiles", "gloss_signs", 
 const run = (db, file) => db.exec(fs.readFileSync(file, "utf8"));
 const ok = (msg) => console.log(`  ok  ${msg}`);
 
-const { db } = await freshDatabase({ until: "0048_~", onError: "collect" });
+const { db } = await freshDatabase({ until: "0048_~", onError: "collect" });  // the live state before 0049
 
 // ---- load the copy (as the database owner, like the backend) ----
 // Seed migrations already put reference rows in some of these tables; the
@@ -67,7 +67,8 @@ const before = { counts: await counts(), ids: await ids(), policies: await polic
 // ---- apply 0049 + 0050 ----
 await run(db, path.join(MIGRATIONS, "0049_gloss_learners.sql"));
 await run(db, path.join(MIGRATIONS, "0050_pdedu_supervisor_read.sql"));
-ok("0049 and 0050 applied (each in one transaction)");
+await run(db, path.join(MIGRATIONS, "0051_gloss_test_account_flag.sql"));
+ok("0049, 0050 and 0051 applied (each in one transaction)");
 
 assert.deepEqual(await counts(), before.counts, "row counts changed");
 assert.deepEqual(await ids(), before.ids, "caregiver ids changed");
@@ -123,6 +124,8 @@ await assert.rejects(db.query("insert into gloss_learners (id, kind, caregiver_p
 ok("learner shape is enforced (supervisor needs a login; caregiver learner id = caregiver id)");
 
 // ---- undo, then re-apply ----
+assert.ok((await db.query("select bool_and(not is_test) ok from gloss_caregiver_accounts")).rows[0].ok);
+await run(db, path.join(UNDO, "0051_gloss_test_account_flag_undo.sql"));
 await run(db, path.join(UNDO, "0050_pdedu_supervisor_read_undo.sql"));
 await run(db, path.join(UNDO, "0049_gloss_learners_undo.sql"));
 assert.deepEqual(await counts(), before.counts, "undo: counts differ");
@@ -130,12 +133,13 @@ assert.deepEqual(await ids(), before.ids, "undo: caregiver ids differ");
 assert.deepEqual(await policies(), before.policies, "undo: policies differ");
 assert.deepEqual(await fks(), before.fks, "undo: foreign keys differ");
 assert.equal((await db.query("select to_regclass('public.gloss_learners') t")).rows[0].t, null);
-ok("undo 0050 + 0049: policies, foreign keys, rows and ids exactly as before (supervisor learning removed)");
+ok("undo 0051 + 0050 + 0049: policies, foreign keys, rows and ids exactly as before (supervisor learning removed)");
 
 await run(db, path.join(MIGRATIONS, "0049_gloss_learners.sql"));
 await run(db, path.join(MIGRATIONS, "0050_pdedu_supervisor_read.sql"));
+await run(db, path.join(MIGRATIONS, "0051_gloss_test_account_flag.sql"));
 assert.deepEqual(await counts(), before.counts);
-ok("re-applied 0049 + 0050 after the undo");
+ok("re-applied 0049 + 0050 + 0051 after the undo");
 
 // ---- new account trigger, cascade ----
 const free = copy.caregiver_profiles.find((cp) => !accounts.some((a) => a.caregiver_profile_id === cp.id) && !used.includes(cp.id));

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
@@ -13,11 +13,6 @@ import {
 } from 'lucide-react'
 import parkinsonsHero from '../assets/images/parkinsons-hero.jpg'
 import glossHero from '../assets/images/gloss-hero.jpg'
-import TeamLearning from '../components/supervisor/TeamLearning'
-import TeamPopup from '../components/supervisor/TeamPopup'
-import { shouldShowTeamPopup } from '../utils/teamPopup'
-import { createSupervisorLearnerProfile, getGlossMe, getSupervisorOverview } from '../services/glossApi'
-import type { GlossMe, SupervisorOverview } from '../types/gloss'
 
 type Accent = 'purple' | 'blue'
 
@@ -154,54 +149,6 @@ function LearningModuleCard({
 
 export default function Overview() {
   const navigate = useNavigate()
-  // Supervisors (role from the server): Team learning, the daily popup, and
-  // their own learning once they have a learner profile.
-  const [me, setMe] = useState<GlossMe | null>(null)
-  const [overview, setOverview] = useState<SupervisorOverview | null>(null)
-  const [overviewError, setOverviewError] = useState<string | null>(null)
-  const [popup, setPopup] = useState(false)
-  const [startError, setStartError] = useState<string | null>(null)
-
-  const loadOverview = useCallback((userKey: string, withPopup: boolean) => {
-    setOverviewError(null)
-    getSupervisorOverview()
-      .then((o) => {
-        setOverview(o)
-        if (withPopup && shouldShowTeamPopup(userKey)) setPopup(true)
-      })
-      .catch((e: unknown) => setOverviewError(e instanceof Error ? e.message : 'Unavailable'))
-  }, [])
-
-  useEffect(() => {
-    getGlossMe()
-      .then((m) => {
-        setMe(m)
-        if (m.is_supervisor) loadOverview(m.name ?? 'supervisor', true)
-      })
-      .catch(() => {
-        /* not signed in / backend down: the learning cards still work as before */
-      })
-  }, [loadOverview])
-
-  // A supervisor's first "Start learning" creates their learner profile.
-  const start = async (path: string) => {
-    setStartError(null)
-    if (me?.is_supervisor && !me.learner_id) {
-      try {
-        const { learner_id } = await createSupervisorLearnerProfile()
-        setMe({ ...me, learner_id })
-      } catch (e) {
-        setStartError(e instanceof Error ? e.message : 'Could not start your learning profile.')
-        return
-      }
-    }
-    navigate(path)
-  }
-
-  const viewTeam = () => {
-    setPopup(false)
-    document.getElementById('team-learning')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
 
   return (
     <div className="w-full">
@@ -216,10 +163,6 @@ export default function Overview() {
           </p>
         </header>
 
-        {me?.is_supervisor && (
-          <TeamLearning overview={overview} error={overviewError} onRetry={() => loadOverview(me.name ?? 'supervisor', false)} />
-        )}
-
         {/* Module selection heading */}
         <section className="flex flex-col gap-6">
           <div className="flex flex-col items-start gap-2 text-left">
@@ -227,11 +170,8 @@ export default function Overview() {
               Choose a learning module
             </h2>
             <p className="text-[15px] text-slate-500 sm:text-base">
-              {me?.is_supervisor
-                ? 'Your own learning: progress is yours and is not listed in Team learning.'
-                : 'Select an area to begin your training.'}
+              Select an area to begin your training.
             </p>
-            {startError && <p className="text-base text-rose-700">{startError}</p>}
             <span
               className="mt-1 h-1 w-12 rounded-full bg-gradient-to-r from-violet-400 to-blue-500"
               aria-hidden="true"
@@ -254,7 +194,7 @@ export default function Overview() {
                 { icon: <ClipboardList size={15} />, label: 'Scenarios' },
                 { icon: <BarChart3 size={15} />, label: 'Adaptive Quizzes' },
               ]}
-              onStart={() => void start('/sign-vitals/parkinsons')}
+              onStart={() => navigate('/sign-vitals/parkinsons')}
             />
 
             <LearningModuleCard
@@ -271,14 +211,11 @@ export default function Overview() {
                 { icon: <Sparkles size={15} />, label: 'AI Recognition' },
                 { icon: <MessageSquare size={15} />, label: 'Personalised Feedback' },
               ]}
-              onStart={() => void start('/sign-vitals/sign-language')}
+              onStart={() => navigate('/sign-vitals/sign-language')}
             />
           </div>
         </section>
       </div>
-      {popup && overview && me && (
-        <TeamPopup userKey={me.name ?? 'supervisor'} lines={overview.popup} onClose={() => setPopup(false)} onViewTeam={viewTeam} />
-      )}
     </div>
   )
 }
