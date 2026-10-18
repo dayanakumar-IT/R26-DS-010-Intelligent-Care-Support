@@ -164,7 +164,7 @@ export default function TeamLearning({ overview, error, onRetry }: TeamLearningP
           <Users size={22} aria-hidden="true" /> Team learning
         </h2>
         <p className="text-base text-slate-600">
-          Every caregiver&apos;s sign language and Parkinson&apos;s education, sorted by name (test accounts are not listed). What they have achieved — no rankings, no video.
+          Every caregiver&apos;s sign language and Parkinson&apos;s education, sorted by name. What they have achieved — no rankings, no video.
         </p>
       </div>
 

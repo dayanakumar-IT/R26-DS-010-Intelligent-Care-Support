@@ -8,6 +8,9 @@ import { LAST_RESULT_LABEL, STRONG_NEEDED, progressState, strongInARow } from '.
 import ProgressStatCard from './gloss/ProgressStatCard'
 import PracticeCalendar from './gloss/PracticeCalendar'
 import HistoryList from './HistoryList'
+import DailyPracticePopup from './gloss/DailyPracticePopup'
+import { getGlossHistoryPage } from '../services/glossApi'
+import type { GlossHistoryEntry } from '../types/gloss'
 
 // Task 2 — polished caregiver learning dashboard. A learning report,
 // not an analytics dashboard. GET /gloss/progress and GET /gloss/history
@@ -54,6 +57,17 @@ export default function ProgressReport({ summary }: { summary: GlossProgressSumm
   const [status, setStatus] = useState<Status>(peekGlossProgress() ? 'ready' : 'loading')
   const [report, setReport] = useState<GlossProgressReport | null>(peekGlossProgress() ?? null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  // Clicking a day: the history list beside the calendar shows that day, and
+  // the day popup lists the words practised / learnt that day.
+  const [popupDay, setPopupDay] = useState<{ date: string; entries: GlossHistoryEntry[] } | null>(null)
+  const openDay = (date: string | null) => {
+    setSelectedDate(date)
+    if (!date) return
+    const [y, m, d] = date.split('-').map(Number)
+    getGlossHistoryPage({ limit: 100, start: new Date(y, m - 1, d).toISOString(), end: new Date(y, m - 1, d + 1).toISOString() })
+      .then((page) => setPopupDay({ date, entries: page.attempts }))
+      .catch(() => setPopupDay({ date, entries: [] }))
+  }
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
@@ -165,7 +179,7 @@ export default function ProgressReport({ summary }: { summary: GlossProgressSumm
           <PracticeCalendar
             byDate={calendarByDate}
             selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
+            onSelectDate={openDay}
           />
         </div>
 
@@ -190,6 +204,9 @@ export default function ProgressReport({ summary }: { summary: GlossProgressSumm
       </section>
 
 
+      {popupDay && (
+        <DailyPracticePopup dateIso={popupDay.date} entries={popupDay.entries} onClose={() => setPopupDay(null)} />
+      )}
     </div>
   )
 }
