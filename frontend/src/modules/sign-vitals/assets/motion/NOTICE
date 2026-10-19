@@ -1,0 +1,20 @@
+NOTICE: GLOSS reference-sign motion files
+
+The motion files in this folder (<sign>.json) are DERIVED DATA. Each one was
+computed from a video in the ASL Citizen dataset: MediaPipe landmarks were
+extracted from the reference signer's video and converted into humanoid joint
+rotations and facial blendshape scores.
+
+ASL Citizen's licence permits non-commercial research use only and forbids
+redistributing the data, or modified versions of it, and hosting it for
+others. These derived files are therefore provided for non-commercial
+research use within the GLOSS / CareSense research project only and must not
+be redistributed, published, or hosted for third parties.
+
+The files are used for display only (an animated reference demonstration).
+They play no part in recognising or grading a learner's sign; grading uses
+the original landmark pipeline.
+
+Source dataset: ASL Citizen (Desai et al., 2023). Video identifiers in each
+file's "source" field are the renamed local file names (asl_citizen_NNN)
+used in this project, not the original ASL Citizen file names.
