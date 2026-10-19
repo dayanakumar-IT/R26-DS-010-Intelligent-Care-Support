@@ -1,0 +1,12 @@
+{
+  "name": "gloss-rls-tests",
+  "private": true,
+  "type": "module",
+  "description": "GLOSS row-level-security tests: the real supabase/migrations files in an in-memory Postgres (PGlite). Never touches the live database.",
+  "scripts": {
+    "test": "node --test rls.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.15"
+  }
+}

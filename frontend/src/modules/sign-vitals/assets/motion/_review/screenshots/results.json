@@ -1,0 +1,29 @@
+{
+ "hello": {
+  "caption": "hello · frame 33 of 66 · 30.00 fps · asl_citizen_028 · video 67.9 frames long"
+ },
+ "please": {
+  "caption": "please · frame 39 of 79 · 29.97 fps · asl_citizen_022 · video 80.6 frames long"
+ },
+ "angry": {
+  "caption": "angry · frame 50 of 100 · 31.11 fps · asl_citizen_004 · video 100.9 frames long"
+ },
+ "help": {
+  "caption": "help · frame 29 of 58 · 30.66 fps · asl_citizen_010 · video 59.5 frames long"
+ },
+ "come": {
+  "caption": "come · frame 30 of 61 · 30.44 fps · asl_citizen_002 · video 63.7 frames long"
+ },
+ "happy": {
+  "caption": "happy · frame 25 of 50 · 29.99 fps · asl_citizen_002 · video 51.2 frames long"
+ },
+ "water": {
+  "caption": "water · frame 34 of 68 · 30.43 fps · asl_citizen_029 · video 70.8 frames long"
+ },
+ "nose": {
+  "caption": "nose · frame 48 of 96 · 30.00 fps · asl_citizen_007 · video 96.6 frames long"
+ },
+ "hello@20": {
+  "caption": "hello · frame 20 of 66 · 30.00 fps · asl_citizen_028 · video 67.9 frames long"
+ }
+}
