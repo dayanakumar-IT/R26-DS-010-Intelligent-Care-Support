@@ -1,0 +1,1090 @@
+{
+  "note": "ASL Citizen videos were renamed to asl_citizen_NNN when Sign_Language_PP2 was built; the original ASL Citizen file name / signer id was not recorded.",
+  "dataset_root": "/content/drive/MyDrive/Sign_Language_PP2",
+  "signs": {
+    "afternoon": {
+      "sign": "afternoon",
+      "reference_frames": 79,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_020.mp4",
+      "video_path": "Greetings_Organized/afternoon/asl_citizen_020.mp4",
+      "frame_range": [
+        0,
+        78
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 25.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 79,
+      "frame_count_decoded": 79
+    },
+    "angry": {
+      "sign": "angry",
+      "reference_frames": 100,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_004.mp4",
+      "video_path": "Emotions_Responses_Organized/angry/asl_citizen_004.mp4",
+      "frame_range": [
+        0,
+        99
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 31.113,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 100,
+      "frame_count_decoded": 100
+    },
+    "arm": {
+      "sign": "arm",
+      "reference_frames": 83,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_024.mp4",
+      "video_path": "Body_Parts_Organized/arm/asl_citizen_024.mp4",
+      "frame_range": [
+        0,
+        82
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.99638597759306,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 83,
+      "frame_count_decoded": 83,
+      "reason": "corrected: exact match found in the August extraction (PP2_Preprocessed_Sign_Language), not the re-run",
+      "reference_extraction": "PP2_Preprocessed_Sign_Language (August run)",
+      "closest_candidates": [
+        {
+          "normalized_root": "/content/drive/MyDrive/PP2_Preprocessed_Sign_Language/normalized",
+          "npy": "arm/asl_citizen_024.npy",
+          "max_abs_diff": 0.0,
+          "mean_abs_diff": 0.0,
+          "identical_frames": 1.0
+        }
+      ]
+    },
+    "back": {
+      "sign": "back",
+      "reference_frames": 65,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_014.mp4",
+      "video_path": "Body_Parts_Organized/back/asl_citizen_014.mp4",
+      "frame_range": [
+        0,
+        64
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 65,
+      "frame_count_decoded": 65,
+      "reason": "corrected: exact match found in the August extraction (PP2_Preprocessed_Sign_Language), not the re-run",
+      "reference_extraction": "PP2_Preprocessed_Sign_Language (August run)",
+      "closest_candidates": [
+        {
+          "normalized_root": "/content/drive/MyDrive/PP2_Preprocessed_Sign_Language/normalized",
+          "npy": "back/asl_citizen_014.npy",
+          "max_abs_diff": 0.0,
+          "mean_abs_diff": 0.0,
+          "identical_frames": 1.0
+        }
+      ]
+    },
+    "bread": {
+      "sign": "bread",
+      "reference_frames": 45,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_021.mp4",
+      "video_path": "Food_Drink_Organized/bread/asl_citizen_021.mp4",
+      "frame_range": [
+        0,
+        44
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 45,
+      "frame_count_decoded": 45
+    },
+    "call": {
+      "sign": "call",
+      "reference_frames": 46,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_010.mp4",
+      "video_path": "Emergency_Organized/call/asl_citizen_010.mp4",
+      "frame_range": [
+        0,
+        45
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.00652315720809,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 46,
+      "frame_count_decoded": 46
+    },
+    "close": {
+      "sign": "close",
+      "reference_frames": 107,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_022.mp4",
+      "video_path": "Daily_Actions_Organized/close/asl_citizen_022.mp4",
+      "frame_range": [
+        0,
+        106
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.971988795518207,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 107,
+      "frame_count_decoded": 107
+    },
+    "coffee": {
+      "sign": "coffee",
+      "reference_frames": 61,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_003.mp4",
+      "video_path": "Food_Drink_Organized/coffee/asl_citizen_003.mp4",
+      "frame_range": [
+        0,
+        60
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.00491883915396,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 61,
+      "frame_count_decoded": 61
+    },
+    "come": {
+      "sign": "come",
+      "reference_frames": 61,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_002.mp4",
+      "video_path": "Emergency_Organized/come/asl_citizen_002.mp4",
+      "frame_range": [
+        0,
+        60
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.439,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 61,
+      "frame_count_decoded": 61
+    },
+    "comfortable": {
+      "sign": "comfortable",
+      "reference_frames": 84,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_004.mp4",
+      "video_path": "Emotions_Responses_Organized/comfortable/asl_citizen_004.mp4",
+      "frame_range": [
+        0,
+        83
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.967891544773458,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 84,
+      "frame_count_decoded": 84
+    },
+    "confused": {
+      "sign": "confused",
+      "reference_frames": 71,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_034.mp4",
+      "video_path": "Emotions_Responses_Organized/confused/asl_citizen_034.mp4",
+      "frame_range": [
+        0,
+        70
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.9704516673702,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 71,
+      "frame_count_decoded": 71
+    },
+    "cough": {
+      "sign": "cough",
+      "reference_frames": 52,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_026.mp4",
+      "video_path": "Health_Medical_Organized/cough/asl_citizen_026.mp4",
+      "frame_range": [
+        0,
+        51
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.919447640966627,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 52,
+      "frame_count_decoded": 52
+    },
+    "danger": {
+      "sign": "danger",
+      "reference_frames": 64,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_010.mp4",
+      "video_path": "Emergency_Organized/danger/asl_citizen_010.mp4",
+      "frame_range": [
+        0,
+        63
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.004688232536335,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 64,
+      "frame_count_decoded": 64
+    },
+    "dizzy": {
+      "sign": "dizzy",
+      "reference_frames": 61,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_026.mp4",
+      "video_path": "Health_Medical_Organized/dizzy/asl_citizen_026.mp4",
+      "frame_range": [
+        0,
+        60
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.975429975429975,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 61,
+      "frame_count_decoded": 61
+    },
+    "doctor": {
+      "sign": "doctor",
+      "reference_frames": 108,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_053.mp4",
+      "video_path": "Emergency_Organized/doctor/asl_citizen_053.mp4",
+      "frame_range": [
+        0,
+        107
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 31.048,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 108,
+      "frame_count_decoded": 108
+    },
+    "drink": {
+      "sign": "drink",
+      "reference_frames": 54,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_026.mp4",
+      "video_path": "Daily_Actions_Organized/drink/asl_citizen_026.mp4",
+      "frame_range": [
+        0,
+        53
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.966703662597116,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 54,
+      "frame_count_decoded": 54
+    },
+    "eat": {
+      "sign": "eat",
+      "reference_frames": 73,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_045.mp4",
+      "video_path": "Daily_Actions_Organized/eat/asl_citizen_045.mp4",
+      "frame_range": [
+        0,
+        72
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.004110152075626,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 73,
+      "frame_count_decoded": 73
+    },
+    "egg": {
+      "sign": "egg",
+      "reference_frames": 61,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_029.mp4",
+      "video_path": "Food_Drink_Organized/egg/asl_citizen_029.mp4",
+      "frame_range": [
+        0,
+        60
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.916625796959295,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 61,
+      "frame_count_decoded": 61
+    },
+    "fruit": {
+      "sign": "fruit",
+      "reference_frames": 63,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_006.mp4",
+      "video_path": "Food_Drink_Organized/fruit/asl_citizen_006.mp4",
+      "frame_range": [
+        0,
+        62
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 63,
+      "frame_count_decoded": 63
+    },
+    "give": {
+      "sign": "give",
+      "reference_frames": 57,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_017.mp4",
+      "video_path": "Daily_Actions_Organized/give/asl_citizen_017.mp4",
+      "frame_range": [
+        0,
+        56
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.091,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 57,
+      "frame_count_decoded": 57
+    },
+    "go": {
+      "sign": "go",
+      "reference_frames": 67,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_015.mp4",
+      "video_path": "Emergency_Organized/go/asl_citizen_015.mp4",
+      "frame_range": [
+        0,
+        66
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.977628635346758,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 67,
+      "frame_count_decoded": 67
+    },
+    "good": {
+      "sign": "good",
+      "reference_frames": 47,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_012.mp4",
+      "video_path": "Greetings_Organized/good/asl_citizen_012.mp4",
+      "frame_range": [
+        0,
+        46
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 15.171078114912847,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 47,
+      "frame_count_decoded": 47
+    },
+    "happy": {
+      "sign": "happy",
+      "reference_frames": 50,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_002.mp4",
+      "video_path": "Emotions_Responses_Organized/happy/asl_citizen_002.mp4",
+      "frame_range": [
+        0,
+        49
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.99400119976005,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 50,
+      "frame_count_decoded": 50
+    },
+    "head": {
+      "sign": "head",
+      "reference_frames": 87,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_004.mp4",
+      "video_path": "Body_Parts_Organized/head/asl_citizen_004.mp4",
+      "frame_range": [
+        0,
+        86
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 27.078,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 87,
+      "frame_count_decoded": 87
+    },
+    "hello": {
+      "sign": "hello",
+      "reference_frames": 66,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_028.mp4",
+      "video_path": "Greetings_Organized/hello/asl_citizen_028.mp4",
+      "frame_range": [
+        0,
+        65
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 66,
+      "frame_count_decoded": 66
+    },
+    "help": {
+      "sign": "help",
+      "reference_frames": 58,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_010.mp4",
+      "video_path": "Emergency_Organized/help/asl_citizen_010.mp4",
+      "frame_range": [
+        0,
+        57
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.655,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 58,
+      "frame_count_decoded": 58
+    },
+    "hospital": {
+      "sign": "hospital",
+      "reference_frames": 67,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_030.mp4",
+      "video_path": "Emergency_Organized/hospital/asl_citizen_030.mp4",
+      "frame_range": [
+        0,
+        66
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.00447828034035,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 67,
+      "frame_count_decoded": 67
+    },
+    "hot": {
+      "sign": "hot",
+      "reference_frames": 71,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_006.mp4",
+      "video_path": "Emergency_Organized/hot/asl_citizen_006.mp4",
+      "frame_range": [
+        0,
+        70
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.995775242923532,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 71,
+      "frame_count_decoded": 71
+    },
+    "hungry": {
+      "sign": "hungry",
+      "reference_frames": 64,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_005.mp4",
+      "video_path": "Food_Drink_Organized/hungry/asl_citizen_005.mp4",
+      "frame_range": [
+        0,
+        63
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.004688232536335,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 64,
+      "frame_count_decoded": 64
+    },
+    "hurt": {
+      "sign": "hurt",
+      "reference_frames": 68,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_029.mp4",
+      "video_path": "Emergency_Organized/hurt/asl_citizen_029.mp4",
+      "frame_range": [
+        0,
+        67
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.995588883987647,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 68,
+      "frame_count_decoded": 68
+    },
+    "me": {
+      "sign": "me",
+      "reference_frames": 55,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_003.mp4",
+      "video_path": "Greetings_Organized/me/asl_citizen_003.mp4",
+      "frame_range": [
+        0,
+        54
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.97002997002997,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 55,
+      "frame_count_decoded": 55
+    },
+    "meet": {
+      "sign": "meet",
+      "reference_frames": 77,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_010.mp4",
+      "video_path": "Greetings_Organized/meet/asl_citizen_010.mp4",
+      "frame_range": [
+        0,
+        76
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.99610440202571,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 77,
+      "frame_count_decoded": 77
+    },
+    "milk": {
+      "sign": "milk",
+      "reference_frames": 50,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_047.mp4",
+      "video_path": "Food_Drink_Organized/milk/asl_citizen_047.mp4",
+      "frame_range": [
+        0,
+        49
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.976019184652277,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 50,
+      "frame_count_decoded": 50
+    },
+    "morning": {
+      "sign": "morning",
+      "reference_frames": 84,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_009.mp4",
+      "video_path": "Greetings_Organized/morning/asl_citizen_009.mp4",
+      "frame_range": [
+        0,
+        83
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 28.25,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 84,
+      "frame_count_decoded": 84
+    },
+    "mouth": {
+      "sign": "mouth",
+      "reference_frames": 184,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_028.mp4",
+      "video_path": "Body_Parts_Organized/mouth/asl_citizen_028.mp4",
+      "frame_range": [
+        0,
+        183
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.00163052339801,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 184,
+      "frame_count_decoded": 184
+    },
+    "no": {
+      "sign": "no",
+      "reference_frames": 53,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_020.mp4",
+      "video_path": "Emotions_Responses_Organized/no/asl_citizen_020.mp4",
+      "frame_range": [
+        0,
+        52
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.97737556561086,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 53,
+      "frame_count_decoded": 53
+    },
+    "nose": {
+      "sign": "nose",
+      "reference_frames": 96,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_007.mp4",
+      "video_path": "Body_Parts_Organized/nose/asl_citizen_007.mp4",
+      "frame_range": [
+        0,
+        95
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 96,
+      "frame_count_decoded": 96
+    },
+    "open": {
+      "sign": "open",
+      "reference_frames": 85,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_023.mp4",
+      "video_path": "Daily_Actions_Organized/open/asl_citizen_023.mp4",
+      "frame_range": [
+        0,
+        84
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.281,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 85,
+      "frame_count_decoded": 85
+    },
+    "pain": {
+      "sign": "pain",
+      "reference_frames": 128,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_024.mp4",
+      "video_path": "Health_Medical_Organized/pain/asl_citizen_024.mp4",
+      "frame_range": [
+        0,
+        127
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.997656433091166,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 128,
+      "frame_count_decoded": 128
+    },
+    "please": {
+      "sign": "please",
+      "reference_frames": 79,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_022.mp4",
+      "video_path": "Greetings_Organized/please/asl_citizen_022.mp4",
+      "frame_range": [
+        0,
+        78
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.969650986342945,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 79,
+      "frame_count_decoded": 79
+    },
+    "sad": {
+      "sign": "sad",
+      "reference_frames": 95,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_015.mp4",
+      "video_path": "Emotions_Responses_Organized/sad/asl_citizen_015.mp4",
+      "frame_range": [
+        0,
+        94
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.921259842519685,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 95,
+      "frame_count_decoded": 95
+    },
+    "scared": {
+      "sign": "scared",
+      "reference_frames": 65,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_027.mp4",
+      "video_path": "Emotions_Responses_Organized/scared/asl_citizen_027.mp4",
+      "frame_range": [
+        0,
+        64
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.995385325334563,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 65,
+      "frame_count_decoded": 65
+    },
+    "sick": {
+      "sign": "sick",
+      "reference_frames": 150,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_022.mp4",
+      "video_path": "Health_Medical_Organized/sick/asl_citizen_022.mp4",
+      "frame_range": [
+        0,
+        149
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 150,
+      "frame_count_decoded": 150
+    },
+    "sit": {
+      "sign": "sit",
+      "reference_frames": 86,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_001.mp4",
+      "video_path": "Daily_Actions_Organized/sit/asl_citizen_001.mp4",
+      "frame_range": [
+        0,
+        85
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.923451635351427,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 86,
+      "frame_count_decoded": 86
+    },
+    "sleep": {
+      "sign": "sleep",
+      "reference_frames": 67,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_014.mp4",
+      "video_path": "Daily_Actions_Organized/sleep/asl_citizen_014.mp4",
+      "frame_range": [
+        0,
+        66
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.00447828034035,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 67,
+      "frame_count_decoded": 67
+    },
+    "sorry": {
+      "sign": "sorry",
+      "reference_frames": 53,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_003.mp4",
+      "video_path": "Greetings_Organized/sorry/asl_citizen_003.mp4",
+      "frame_range": [
+        0,
+        52
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.994340690435767,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 53,
+      "frame_count_decoded": 53
+    },
+    "stand": {
+      "sign": "stand",
+      "reference_frames": 90,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_011.mp4",
+      "video_path": "Daily_Actions_Organized/stand/asl_citizen_011.mp4",
+      "frame_range": [
+        0,
+        89
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 90,
+      "frame_count_decoded": 90
+    },
+    "stomach": {
+      "sign": "stomach",
+      "reference_frames": 66,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_025.mp4",
+      "video_path": "Body_Parts_Organized/stomach/asl_citizen_025.mp4",
+      "frame_range": [
+        0,
+        65
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 66,
+      "frame_count_decoded": 66
+    },
+    "stop": {
+      "sign": "stop",
+      "reference_frames": 57,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_005.mp4",
+      "video_path": "Emergency_Organized/stop/asl_citizen_005.mp4",
+      "frame_range": [
+        0,
+        56
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.53,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 57,
+      "frame_count_decoded": 57
+    },
+    "take": {
+      "sign": "take",
+      "reference_frames": 53,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_026.mp4",
+      "video_path": "Daily_Actions_Organized/take/asl_citizen_026.mp4",
+      "frame_range": [
+        0,
+        52
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.994340690435767,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 53,
+      "frame_count_decoded": 53
+    },
+    "tea": {
+      "sign": "tea",
+      "reference_frames": 76,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_016.mp4",
+      "video_path": "Food_Drink_Organized/tea/asl_citizen_016.mp4",
+      "frame_range": [
+        0,
+        75
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.003947887879985,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 76,
+      "frame_count_decoded": 76
+    },
+    "thirsty": {
+      "sign": "thirsty",
+      "reference_frames": 58,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_014.mp4",
+      "video_path": "Food_Drink_Organized/thirsty/asl_citizen_014.mp4",
+      "frame_range": [
+        0,
+        57
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.00517330574237,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 58,
+      "frame_count_decoded": 58
+    },
+    "tired": {
+      "sign": "tired",
+      "reference_frames": 72,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_005.mp4",
+      "video_path": "Emotions_Responses_Organized/tired/asl_citizen_005.mp4",
+      "frame_range": [
+        0,
+        71
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.392,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 72,
+      "frame_count_decoded": 72
+    },
+    "wait": {
+      "sign": "wait",
+      "reference_frames": 71,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_014.mp4",
+      "video_path": "Emergency_Organized/wait/asl_citizen_014.mp4",
+      "frame_range": [
+        0,
+        70
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 71,
+      "frame_count_decoded": 71
+    },
+    "walk": {
+      "sign": "walk",
+      "reference_frames": 52,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_026.mp4",
+      "video_path": "Daily_Actions_Organized/walk/asl_citizen_026.mp4",
+      "frame_range": [
+        0,
+        51
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.005770340450088,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 52,
+      "frame_count_decoded": 52
+    },
+    "water": {
+      "sign": "water",
+      "reference_frames": 68,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_029.mp4",
+      "video_path": "Food_Drink_Organized/water/asl_citizen_029.mp4",
+      "frame_range": [
+        0,
+        67
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 30.425,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 68,
+      "frame_count_decoded": 68
+    },
+    "weak": {
+      "sign": "weak",
+      "reference_frames": 41,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_003.mp4",
+      "video_path": "Health_Medical_Organized/weak/asl_citizen_003.mp4",
+      "frame_range": [
+        0,
+        40
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.927007299270073,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 41,
+      "frame_count_decoded": 41
+    },
+    "welcome": {
+      "sign": "welcome",
+      "reference_frames": 74,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_049.mp4",
+      "video_path": "Greetings_Organized/welcome/asl_citizen_049.mp4",
+      "frame_range": [
+        0,
+        73
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 25.0,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 74,
+      "frame_count_decoded": 74
+    },
+    "yes": {
+      "sign": "yes",
+      "reference_frames": 46,
+      "dataset": "ASL Citizen",
+      "video_file": "asl_citizen_029.mp4",
+      "video_path": "Emotions_Responses_Organized/yes/asl_citizen_029.mp4",
+      "frame_range": [
+        0,
+        45
+      ],
+      "status": "matched",
+      "max_abs_diff": 0.0,
+      "fps": 29.96742671009772,
+      "width": 640,
+      "height": 480,
+      "frame_count_header": 46,
+      "frame_count_decoded": 46
+    }
+  }
+}

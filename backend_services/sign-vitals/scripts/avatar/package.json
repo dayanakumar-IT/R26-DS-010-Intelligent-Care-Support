@@ -1,0 +1,14 @@
+﻿{
+  "name": "gloss-avatar-bake",
+  "private": true,
+  "type": "module",
+  "description": "Bakes MediaPipe extractions into avatar-independent VRM 1.0 humanoid rotations (display only).",
+  "scripts": {
+    "bake": "node bake.mjs",
+    "test": "node --experimental-strip-types --no-warnings --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "kalidokit": "1.1.5"
+  }
+}
+

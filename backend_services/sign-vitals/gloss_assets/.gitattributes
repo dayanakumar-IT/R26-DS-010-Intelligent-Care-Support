@@ -1,0 +1,3 @@
+# Fingerprinted bundle (see manifest.json): store every file byte-for-byte,
+# so line-ending conversion can never change a SHA-256 fingerprint.
+* -text

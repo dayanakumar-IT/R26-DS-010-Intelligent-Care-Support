@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>3D signer preview (dev only)</title>
+    <style>
+      body { margin: 0; padding: 12px; font: 13px system-ui, sans-serif; color: #334155; background: #fff; }
+      #row { display: flex; gap: 12px; }
+      .panel { width: 480px; display: flex; flex-direction: column; gap: 4px; }
+      video, #avatar { width: 480px; height: 360px; border-radius: 8px; background: #000; object-fit: contain; }
+      #avatar { background: #eef2f6; overflow: hidden; }
+      #caption { margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <div id="row">
+      <div class="panel"><b>Reference video (source frame)</b><video id="video" muted playsinline></video></div>
+      <div class="panel"><b>3D signer (same frame)</b><div id="avatar"></div></div>
+    </div>
+    <div id="caption"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
