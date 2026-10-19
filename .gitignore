@@ -67,3 +67,10 @@ SUPERBASE Project - caresense-pp2-d.txt
 Phase 02.zip
 package-lock.json
 LICENSE
+# Viva / handoff generated files
+blur_faces.py
+create_word_doc.py
+Pictures_blurred/
+diagrams_tmp/
+SENTRY_Component_Handoff.docx
+App SS/
