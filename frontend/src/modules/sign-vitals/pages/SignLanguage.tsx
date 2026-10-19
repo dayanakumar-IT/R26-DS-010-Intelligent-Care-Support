@@ -103,6 +103,10 @@ function signLabel(signId: string): string {
   return signId.replace(/_/g, ' ')
 }
 
+// Quiz session: how long the checked answer stays on screen before the
+// next sign is shown.
+const QUIZ_NEXT_DELAY_MS = 1800
+
 // Practice-landing display values come straight from GET /gloss/progress;
 // wording comes from utils/progressLabels (one vocabulary on every screen).
 
@@ -142,6 +146,26 @@ export default function SignLanguage() {
   // compares against. Never overwritten by later refreshes.
   const [sessionBaseline, setSessionBaseline] = useState<GlossMasterySummaryRow[] | null>(null)
 
+  // Quiz session (camera unavailable): sign after sign until End Session.
+  // Its answers share their own session id, so Progress history can show
+  // the whole quiz as one row.
+  const [quizSessionId, setQuizSessionId] = useState<string | undefined>(undefined)
+  const [quizAnswer, setQuizAnswer] = useState<{ selectedSignId: string; correct: boolean } | null>(null)
+  const [quizBusy, setQuizBusy] = useState(false)
+  const [quizStats, setQuizStats] = useState({ answered: 0, correct: 0 })
+  const quizAskedRef = useRef<Set<string>>(new Set())
+  const quizTimerRef = useRef<number | null>(null)
+  const clearQuizTimer = () => {
+    if (quizTimerRef.current !== null) window.clearTimeout(quizTimerRef.current)
+    quizTimerRef.current = null
+  }
+  useEffect(() => clearQuizTimer, [])
+  // Leaving the quiz (another sign picked, End Session, an error) cancels a
+  // pending "next sign", so it never replaces what the learner chose.
+  useEffect(() => {
+    if (stage !== 'quiz') clearQuizTimer()
+  }, [stage])
+
   // A practice session belongs to one login: forget it when the user signs
   // out or a different user signs in, so a stale id is never sent. (The
   // backend also starts a new session if an id is missing or not theirs.)
@@ -149,7 +173,10 @@ export default function SignLanguage() {
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       const userId = session?.user.id ?? null
-      if (event === 'SIGNED_OUT' || userId !== sessionUserRef.current) setSessionId(undefined)
+      if (event === 'SIGNED_OUT' || userId !== sessionUserRef.current) {
+        setSessionId(undefined)
+        setQuizSessionId(undefined)
+      }
       sessionUserRef.current = userId
     })
     return () => data.subscription.unsubscribe()
@@ -331,22 +358,82 @@ export default function SignLanguage() {
     }
   }
 
+  // Start a fresh quiz session on the current sign.
+  const startQuiz = () => {
+    clearQuizTimer()
+    setQuizSessionId(undefined)
+    setQuizAnswer(null)
+    setQuizStats({ answered: 0, correct: 0 })
+    quizAskedRef.current = new Set(targetSignId ? [targetSignId] : [])
+    setStage('quiz')
+  }
+
+  // The next quiz sign: the recommendation when it hasn't been asked in this
+  // quiz yet, otherwise another recommendable sign not asked yet.
+  const nextQuizSign = (recommended: string | undefined, current: string): string => {
+    const asked = quizAskedRef.current
+    if (recommended && recommended !== current && !asked.has(recommended) && allSigns.some((s) => s.id === recommended)) {
+      return recommended
+    }
+    const pool = allSigns.filter((s) => s.recommendable !== false && s.id !== current)
+    const fresh = pool.filter((s) => !asked.has(s.id))
+    const candidates = fresh.length > 0 ? fresh : pool
+    if (candidates.length === 0) return recommended ?? current
+    return candidates[Math.floor(Math.random() * candidates.length)].id
+  }
+
+  // Quiz answer: checked in place, then the next sign follows automatically
+  // (the quiz continues until End Session).
   const handleMultipleChoiceAttempt = async (selectedSignId: string) => {
-    if (!targetSignId) return
-    setStage('submitting')
+    if (!targetSignId || quizBusy || quizAnswer) return
+    setQuizBusy(true)
     setErrorMessage(null)
     try {
-      const result = await submitMultipleChoiceAttempt(targetSignId, selectedSignId, sessionId)
-      setSessionId(result.session_id)
+      const result = await submitMultipleChoiceAttempt(targetSignId, selectedSignId, quizSessionId)
+      setQuizSessionId(result.session_id)
       setSessionAttempts((prev) => [...prev, result])
-      setAttemptResult(result)
-      setStage('feedback')
       afterAttempt(result)
       invalidateGlossActivity()
+      const correct = result.outcome === 'quiz_correct' || result.is_correct_sign
+      setQuizAnswer({ selectedSignId, correct })
+      setQuizStats((s) => ({ answered: s.answered + 1, correct: s.correct + (correct ? 1 : 0) }))
+      const next = nextQuizSign(result.next_recommended_sign_id, targetSignId)
+      clearQuizTimer()
+      quizTimerRef.current = window.setTimeout(() => {
+        quizTimerRef.current = null
+        quizAskedRef.current.add(next)
+        setTargetSignId(next)
+        setPickedByUser(false)
+        setQuizAnswer(null)
+      }, QUIZ_NEXT_DELAY_MS)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Could not submit your answer.')
       setStage('error')
+    } finally {
+      setQuizBusy(false)
     }
+  }
+
+  // End Session: the summary first (if anything was attempted); closing it
+  // starts a new session and returns to the Practice page.
+  const finishSession = () => {
+    clearQuizTimer()
+    setShowSummary(false)
+    setSessionAttempts([])
+    setSessionId(undefined)
+    setQuizSessionId(undefined)
+    setQuizAnswer(null)
+    setQuizStats({ answered: 0, correct: 0 })
+    setSessionBaseline(null)
+    setCelebrate([])
+    setTab('practice')
+    void loadRecommendedSign()
+  }
+
+  const endSession = () => {
+    clearQuizTimer()
+    if (sessionAttempts.length > 0) setShowSummary(true)
+    else finishSession()
   }
 
   // Practice-landing widgets — all values below come straight from the
@@ -513,7 +600,7 @@ export default function SignLanguage() {
         <CameraPermissionPrompt
           signLabel={signLabel(targetSignId)}
           onAllowCamera={() => setStage('practicing')}
-          onUseQuiz={() => setStage('quiz')}
+          onUseQuiz={startQuiz}
         />
       )}
 
@@ -548,7 +635,7 @@ export default function SignLanguage() {
             <SignDemoPanel key={targetSignId} signId={targetSignId} />
             <div className="flex flex-col justify-center gap-3">
               <Button onClick={() => setStage('practicing')}>Try Camera Again</Button>
-              <Button variant="secondary" onClick={() => setStage('quiz')}>
+              <Button variant="secondary" onClick={startQuiz}>
                 Continue With Quiz
               </Button>
             </div>
@@ -561,7 +648,9 @@ export default function SignLanguage() {
           targetSignId={targetSignId}
           allSigns={allSigns}
           onSelect={handleMultipleChoiceAttempt}
-          disabled={false}
+          disabled={quizBusy}
+          answer={quizAnswer}
+          progress={quizStats}
         />
       )}
 
@@ -619,8 +708,8 @@ export default function SignLanguage() {
           Back to Sign &amp; Vitals
         </Link>
 
-        {sessionAttempts.length > 0 && (
-          <Button variant="secondary" onClick={() => setShowSummary(true)}>
+        {(sessionAttempts.length > 0 || (tab === 'practice' && stage === 'quiz')) && (
+          <Button variant="secondary" onClick={endSession}>
             <LogOut size={16} />
             End Session
           </Button>
@@ -698,7 +787,7 @@ export default function SignLanguage() {
         <SessionSummaryModal
           attempts={sessionAttempts}
           baseline={sessionBaseline}
-          onClose={() => setShowSummary(false)}
+          onClose={finishSession}
         />
       )}
     </div>
