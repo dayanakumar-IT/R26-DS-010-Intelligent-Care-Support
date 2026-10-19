@@ -40,7 +40,7 @@ def build_history_page(supabase_client, caregiver_profile_id: str, limit: int = 
         supabase_client.table("gloss_attempts")
         .select(
             "id, target_sign_id, recognized_sign_id, recognition_confidence, "
-            "execution_score, quality_tier, attempt_type, attempted_at" + extra
+            "execution_score, quality_tier, attempt_type, attempted_at, session_id" + extra
         )
         .eq("caregiver_profile_id", caregiver_profile_id)
     )
@@ -94,6 +94,9 @@ def _history_entry(r: dict, display_name_by_id: dict) -> dict:
         "quality_tier": None if not_recognised else r["quality_tier"],
         "execution_score": None if not_recognised else r["execution_score"],
         "attempted_at": r["attempted_at"],
+        # The sitting this attempt belongs to: the app groups one quiz
+        # session's answers into a single history row.
+        "session_id": r.get("session_id"),
         # practice | recall | free (Check my sign: no target, never counted).
         "mode": r.get("mode") or "practice",
         # Made with an earlier grading pipeline: counts as practice only.

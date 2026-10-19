@@ -224,6 +224,8 @@ export interface GlossHistoryEntry {
   quality_tier: GlossQualityTier | null
   execution_score: number | null
   attempted_at: string
+  // The sitting it belongs to; one quiz session's answers are grouped by it.
+  session_id?: string | null
   mode?: GlossAttemptMode
   // Made with an earlier grading pipeline: practice only, never skill.
   earlier_version?: boolean

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, ClipboardCheck, HelpCircle, RotateCcw, X } from 'lucide-react'
+import { Check, ChevronDown, ClipboardCheck, HelpCircle, RotateCcw, X } from 'lucide-react'
 import { getGlossHistoryPage } from '../services/glossApi'
 import type { GlossHistoryEntry } from '../types/gloss'
 import { TIER_LABEL } from '../utils/progressLabels'
@@ -133,6 +133,106 @@ function HistoryRow({ entry }: { entry: GlossHistoryEntry }) {
   )
 }
 
+// One quiz session (camera unavailable): its answers share a session id
+// and are listed as one row; opening it shows the word list.
+type HistoryItem =
+  | { kind: 'attempt'; entry: GlossHistoryEntry }
+  | { kind: 'quiz'; sessionId: string; entries: GlossHistoryEntry[] }
+
+function groupQuizSessions(entries: GlossHistoryEntry[]): HistoryItem[] {
+  const items: HistoryItem[] = []
+  const quizBySession = new Map<string, GlossHistoryEntry[]>()
+  for (const entry of entries) {
+    if (entry.attempt_type === 'multiple_choice' && entry.mode !== 'recall' && entry.session_id) {
+      const group = quizBySession.get(entry.session_id)
+      if (group) {
+        group.push(entry)
+        continue
+      }
+      const fresh = [entry]
+      quizBySession.set(entry.session_id, fresh)
+      items.push({ kind: 'quiz', sessionId: entry.session_id, entries: fresh })
+      continue
+    }
+    items.push({ kind: 'attempt', entry })
+  }
+  return items
+}
+
+function QuizSessionRow({ entries }: { entries: GlossHistoryEntry[] }) {
+  const [open, setOpen] = useState(false)
+  const correct = entries.filter((e) => e.is_correct_sign).length
+  const newest = entries[0]
+  const oldest = entries[entries.length - 1]
+  // Entries are newest first; the word list reads in the order answered.
+  const inOrder = [...entries].reverse()
+
+  return (
+    <li className="rounded-[var(--radius-md)] border border-slate-200 bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-start gap-3 rounded-[var(--radius-md)] p-3 text-left hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-blue)]"
+      >
+        <span
+          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          style={{ background: ACCENT['quiz-correct'].bg, color: ACCENT['quiz-correct'].fg }}
+        >
+          <ClipboardCheck size={16} />
+        </span>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex flex-wrap items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-slate-800">
+            Quiz session
+            <Tag>Quiz</Tag>
+          </span>
+          <span className="text-xs font-medium" style={{ color: ACCENT['quiz-correct'].fg }}>
+            {entries.length} word{entries.length === 1 ? '' : 's'} · {correct} correct
+          </span>
+          <span className="text-xs text-slate-500">
+            {open ? 'Hide the words' : 'Show the words'} · movement not scored
+          </span>
+        </div>
+
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap pt-0.5 text-[11px] text-slate-400">
+          {entries.length > 1 && oldest.attempted_at !== newest.attempted_at
+            ? `${formatWhen(oldest.attempted_at)} – ${new Date(newest.attempted_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+            : formatWhen(newest.attempted_at)}
+          <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </span>
+      </button>
+
+      {open && (
+        <ol className="flex flex-col gap-1.5 border-t border-slate-100 px-3 pb-3 pt-2">
+          {inOrder.map((entry, index) => {
+            const variant: Variant = entry.is_correct_sign ? 'quiz-correct' : 'quiz-wrong'
+            return (
+              <li key={entry.attempt_id} className="flex items-center gap-2.5 rounded-[10px] bg-slate-50 px-3 py-2 text-sm">
+                <span className="w-5 shrink-0 text-right text-xs text-slate-400">{index + 1}.</span>
+                <span
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: ACCENT[variant].bg, color: ACCENT[variant].fg }}
+                >
+                  {entry.is_correct_sign ? <Check size={13} /> : <X size={13} />}
+                </span>
+                <span className="font-semibold capitalize text-slate-800">{entry.target_display_name}</span>
+                <span className="ml-auto text-xs" style={{ color: ACCENT[variant].fg }}>
+                  {entry.is_correct_sign
+                    ? 'Correct'
+                    : entry.recognized_display_name
+                      ? `You chose ${entry.recognized_display_name}`
+                      : 'Wrong'}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </li>
+  )
+}
+
 function dayBounds(dateKey: string): { start: string; end: string } {
   const [y, m, d] = dateKey.split('-').map(Number)
   return { start: new Date(y, m - 1, d).toISOString(), end: new Date(y, m - 1, d + 1).toISOString() }
@@ -247,9 +347,13 @@ export default function HistoryList({ selectedDate, onClearDate }: HistoryListPr
         ) : (
           <>
             <ul className="flex flex-col gap-2">
-              {entries.map((entry) => (
-                <HistoryRow key={entry.attempt_id} entry={entry} />
-              ))}
+              {groupQuizSessions(entries).map((item) =>
+                item.kind === 'quiz' ? (
+                  <QuizSessionRow key={`quiz-${item.sessionId}`} entries={item.entries} />
+                ) : (
+                  <HistoryRow key={item.entry.attempt_id} entry={item.entry} />
+                ),
+              )}
             </ul>
             {hasMore && (
               <button
